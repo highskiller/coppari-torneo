@@ -121,6 +121,25 @@ tr:last-child td { border-bottom:0; }
 .leader-row strong { display:block; }
 .leader-row span { color:var(--muted); font-size:12px; }
 .leader-value { font-size:20px; font-weight:900; }
+.leader-value small { display:block; margin-top:2px; color:var(--muted); font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+
+.awards-panel { overflow:hidden; position:relative; margin-bottom:16px; padding:22px; border:0; background:linear-gradient(135deg,#13251a 0%,#24543a 68%,#326d4b 100%); color:white; }
+.awards-panel::after { content:""; position:absolute; width:250px; height:250px; right:-105px; top:-125px; border-radius:50%; background:rgba(215,241,118,.17); }
+.awards-head { position:relative; z-index:1; display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:16px; }
+.awards-head h2 { margin:5px 0 4px; font-size:clamp(22px,4vw,32px); }
+.awards-head p { margin:0; color:#c8d6cc; font-size:13px; }
+.awards-head .kicker { color:#dff29c; }
+.awards-status { display:inline-flex; align-items:center; gap:7px; flex:0 0 auto; padding:7px 10px; border:1px solid rgba(255,255,255,.2); border-radius:999px; background:rgba(255,255,255,.09); font-size:11px; font-weight:850; text-transform:uppercase; letter-spacing:.04em; }
+.awards-grid { position:relative; z-index:1; display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; }
+.award-card { min-width:0; padding:15px; border:1px solid rgba(255,255,255,.13); border-radius:16px; background:rgba(255,255,255,.09); backdrop-filter:blur(5px); }
+.award-icon { display:grid; place-items:center; width:38px; height:38px; margin-bottom:11px; border-radius:12px; background:var(--brand-2); color:#162219; font-size:20px; }
+.award-title { color:#c8d6cc; font-size:10px; font-weight:850; text-transform:uppercase; letter-spacing:.07em; }
+.award-name { overflow-wrap:anywhere; margin-top:4px; font-size:17px; line-height:1.2; font-weight:900; }
+.award-team { min-height:16px; margin-top:4px; color:#c8d6cc; font-size:11px; }
+.award-value { margin-top:11px; color:var(--brand-2); font-size:12px; font-weight:850; }
+.awards-method { position:relative; z-index:1; margin:13px 0 0; color:#bdcbc1; font-size:11px; line-height:1.45; }
+.awards-actions { position:relative; z-index:1; display:flex; justify-content:flex-end; margin-top:14px; }
+.awards-actions .ghost { color:white; border-color:#54745e; }
 
 .modal-backdrop { position:fixed; inset:0; background:rgba(10,18,13,.55); display:grid; place-items:center; padding:20px; z-index:50; }
 .modal-backdrop.hidden { display:none; }
@@ -440,6 +459,11 @@ tr:hover td { background:#fbfcf8; }
   .toast { right:max(12px,env(safe-area-inset-right)); bottom:calc(78px + env(safe-area-inset-bottom)); left:max(12px,env(safe-area-inset-left)); text-align:center; }
   .ios-banner { flex-wrap:wrap; }
   .ios-banner button { width:100%; }
+  .awards-panel { padding:18px; }
+  .awards-head { display:block; }
+  .awards-status { margin-top:12px; }
+  .awards-grid { grid-template-columns:1fr; }
+  .awards-actions .ghost { width:100%; }
 }
 
 @media (prefers-reduced-motion:reduce) {
@@ -463,7 +487,7 @@ tr:hover td { background:#fbfcf8; }
         <div class="brand-mark">C</div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v3.0</span>
+          <span>cabina di regia · v3.1</span>
         </div>
       </div>
 
@@ -518,7 +542,7 @@ tr:hover td { background:#fbfcf8; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.0';
+const APP_VERSION = '3.1';
 const STORAGE_KEY = 'coppari.v3';
 const HISTORY_KEY = 'coppari.v3.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
@@ -955,7 +979,7 @@ function managerNextAction(){
   if(!teamsReady)return {icon:'◆',title:'Crea e controlla le squadre',text:`Servono ${state.settings.teamCount} rose da ${state.settings.rosterSize} giocatori.`,label:'Vai alle squadre',view:'teams'};
   if(!state.matches.length)return {icon:'▦',title:'Genera il calendario',text:`La formula prevede ${totalGamesExpected()} partite complessive.`,label:'Crea partite',view:'calendar'};
   if(next)return {icon:next.status==='live'?'●':'▶',title:next.status==='live'?'Riprendi la partita in corso':'Prepara la prossima partita',text:`${teamById(next.homeTeamId)?.name||'?'} vs ${teamById(next.awayTeamId)?.name||'?'} · ${stageLabel(next)}`,label:next.status==='live'?'Riprendi arbitro':'Apri partita',referee:next.id};
-  return {icon:'♛',title:'Torneo completato',text:'Risultati, classifica e statistiche sono pronti da condividere.',label:'Apri classifica',view:'standings'};
+  return {icon:'♛',title:'Torneo completato',text:'Risultati, classifica e premi finali sono pronti da condividere.',label:'Apri premi finali',view:'stats'};
 }
 function managerChecklistHtml(){
   const active=activePlayers().length===state.settings.targetPlayers;
@@ -1508,8 +1532,97 @@ function renderStandings(){
   const s=standings(), complete=groupComplete(), q=qualifiedCount();
   view.innerHTML=s.length?`<div class="table-wrap"><table><thead><tr><th>#</th><th>Squadra</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>Pt</th></tr></thead><tbody>${s.map((x,i)=>`<tr><td><span class="rank">${i+1}</span></td><td><strong>${esc(x.team.name)}</strong>${complete&&state.settings.playoffs&&i<q?' <span class="badge green">Qualificata</span>':''}${complete&&!state.settings.playoffs&&i===0?' <span class="badge green">Vincitore</span>':''}</td><td>${x.pg}</td><td>${x.w}</td><td>${x.d}</td><td>${x.l}</td><td>${x.gf}</td><td>${x.ga}</td><td>${x.gd>0?'+':''}${x.gd}</td><td><strong>${x.pts}</strong></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty"><strong>Nessuna squadra</strong>La classifica apparirà qui.</div>';
 }
-function aggregateStats(){const map=new Map(state.players.map(p=>[p.id,{player:p,goals:0,assists:0,yellow:0,red:0,mvp:0}]));playedMatches().forEach(m=>{(m.stats||[]).forEach(s=>{const x=map.get(s.playerId);if(!x)return;x.goals+=s.goals||0;x.assists+=s.assists||0;x.yellow+=s.yellow||0;x.red+=s.red||0;x.mvp+=s.mvp?1:0;});if(m.mvpPlayerId&&!((m.stats||[]).some(s=>s.playerId===m.mvpPlayerId&&s.mvp))){const x=map.get(m.mvpPlayerId);if(x)x.mvp+=1;}});return [...map.values()];}
-function renderStats(){setHeader('Statistiche','Marcatori, assist, MVP e disciplina');const all=aggregateStats();const board=(key,label)=>{const arr=[...all].sort((a,b)=>b[key]-a[key]||a.player.name.localeCompare(b.player.name)).filter(x=>x[key]>0).slice(0,10);return `<div class="card"><h3>${label}</h3><div class="leaderboard">${arr.map((x,i)=>`<div class="leader-row"><span class="rank">${i+1}</span><div><strong>${esc(x.player.name)}</strong><span>${esc(teamById(x.player.teamId)?.name||'Senza squadra')}</span></div><div class="leader-value">${x[key]}</div></div>`).join('')||'<div class="empty">Nessun dato ancora</div>'}</div></div>`;};view.innerHTML=`<div class="grid cols-2">${board('goals','⚽ Marcatori')}${board('assists','🎯 Assist')}${board('mvp','⭐ MVP')}${board('yellow','🟨 Ammonizioni')}${board('red','🟥 Espulsioni')}</div>`;}
+function aggregateStats(){
+  const map=new Map(state.players.map(p=>[p.id,{player:p,goals:0,assists:0,yellow:0,red:0,mvp:0}]));
+  playedMatches().forEach(m=>{
+    (m.stats||[]).forEach(s=>{const x=map.get(s.playerId);if(!x)return;x.goals+=s.goals||0;x.assists+=s.assists||0;x.yellow+=s.yellow||0;x.red+=s.red||0;x.mvp+=s.mvp?1:0;});
+    if(m.mvpPlayerId&&!((m.stats||[]).some(s=>s.playerId===m.mvpPlayerId&&s.mvp))){const x=map.get(m.mvpPlayerId);if(x)x.mvp+=1;}
+  });
+  return [...map.values()];
+}
+function leadersByValue(rows,key){
+  const eligible=rows.filter(x=>(+x[key]||0)>0);
+  if(!eligible.length)return [];
+  const best=Math.max(...eligible.map(x=>+x[key]||0));
+  return eligible.filter(x=>(+x[key]||0)===best).sort((a,b)=>a.player.name.localeCompare(b.player.name,'it'));
+}
+function teamPerformanceStats(){
+  const map=new Map(state.teams.map(team=>[team.id,{team,matches:0,goalsFor:0,goalsAgainst:0,cleanSheets:0}]));
+  playedMatches().forEach(m=>{
+    const home=map.get(m.homeTeamId),away=map.get(m.awayTeamId),hs=+m.homeScore||0,as=+m.awayScore||0;
+    if(home){home.matches++;home.goalsFor+=hs;home.goalsAgainst+=as;if(as===0)home.cleanSheets++;}
+    if(away){away.matches++;away.goalsFor+=as;away.goalsAgainst+=hs;if(hs===0)away.cleanSheets++;}
+  });
+  return map;
+}
+function goalkeeperStats(){
+  const teamStats=teamPerformanceStats(),maxMatches=Math.max(0,...[...teamStats.values()].map(x=>x.matches)),minimumMatches=maxMatches>1?2:1;
+  return state.players.filter(p=>p.role==='POR'&&p.teamId&&teamStats.get(p.teamId)?.matches>=minimumMatches).map(player=>{
+    const team=teamStats.get(player.teamId);
+    return {player,team:team.team,matches:team.matches,goalsAgainst:team.goalsAgainst,cleanSheets:team.cleanSheets,average:team.goalsAgainst/team.matches};
+  }).sort((a,b)=>a.goalsAgainst*b.matches-b.goalsAgainst*a.matches||b.cleanSheets-a.cleanSheets||b.matches-a.matches||a.player.name.localeCompare(b.player.name,'it'));
+}
+function leadingGoalkeepers(rows=goalkeeperStats()){
+  const first=rows[0];if(!first)return [];
+  return rows.filter(x=>x.goalsAgainst*first.matches===first.goalsAgainst*x.matches&&x.cleanSheets===first.cleanSheets&&x.matches===first.matches);
+}
+function fairPlayStats(){
+  const performance=teamPerformanceStats(),map=new Map(state.teams.map(team=>[team.id,{team,matches:performance.get(team.id)?.matches||0,yellow:0,red:0,points:0}]));
+  playedMatches().forEach(m=>(m.stats||[]).forEach(s=>{const player=playerById(s.playerId),row=map.get(player?.teamId);if(!row)return;row.yellow+=s.yellow||0;row.red+=s.red||0;}));
+  const rows=[...map.values()].filter(x=>x.matches>0);rows.forEach(x=>x.points=x.yellow+x.red*3);
+  return rows.sort((a,b)=>a.points-b.points||a.red-b.red||a.yellow-b.yellow||a.team.name.localeCompare(b.team.name,'it'));
+}
+function leadingFairPlayTeams(rows=fairPlayStats()){
+  const first=rows[0];if(!first)return [];
+  return rows.filter(x=>x.points===first.points&&x.red===first.red&&x.yellow===first.yellow);
+}
+function awardsAreFinal(){
+  if(!state.matches.length||!state.matches.every(m=>m.status==='played'))return false;
+  if(state.settings.playoffs)return state.matches.some(m=>m.stage==='final'&&m.status==='played');
+  return groupComplete();
+}
+function playerAward(rows,key,icon,title,valueLabel,emptyNote){
+  const winners=leadersByValue(rows,key),value=winners[0]?.[key]||0;
+  return {icon,title,names:winners.map(x=>x.player.name),teams:[...new Set(winners.map(x=>teamById(x.player.teamId)?.name||'Senza squadra'))],value:value?valueLabel(value):'',detail:winners.length?'':emptyNote};
+}
+function postTournamentAwards(){
+  const all=aggregateStats(),keepers=leadingGoalkeepers(),fair=leadingFairPlayTeams();
+  const keeper=keepers[0],fairTeam=fair[0];
+  return [
+    playerAward(all,'goals','⚽','Capocannoniere',n=>`${n} gol`,'Attribuisci i gol ai singoli giocatori'),
+    playerAward(all,'assists','🎯','Re degli assist',n=>`${n} assist`,'Registra gli assist durante l’arbitraggio'),
+    playerAward(all,'mvp','⭐','Stella del torneo',n=>`${n} ${n===1?'premio MVP':'premi MVP'}`,'Scegli l’MVP alla chiusura delle partite'),
+    {icon:'🧤',title:'Miglior portiere',names:keepers.map(x=>x.player.name),teams:[...new Set(keepers.map(x=>x.team.name))],value:keeper?`${keeper.average.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})} GS/partita`:'',detail:keeper?`${keeper.goalsAgainst} gol subiti · ${keeper.matches} partite · ${keeper.cleanSheets} clean sheet`:'Assegna il ruolo POR e completa almeno una partita'},
+    {icon:'🤝',title:'Fair Play',names:fair.map(x=>x.team.name),teams:[],value:fairTeam?`${fairTeam.points} ${fairTeam.points===1?'punto':'punti'} disciplina`:'',detail:fairTeam?`${fairTeam.yellow} gialli · ${fairTeam.red} rossi`:'Completa almeno una partita'}
+  ];
+}
+function awardCardHtml(award){
+  const assigned=award.names.length>0,names=assigned?award.names.join(' · '):'Da assegnare',teams=award.teams?.join(' · ')||'',value=assigned?`${award.names.length>1?'Ex aequo · ':''}${award.value}`:'In attesa di dati';
+  return `<article class="award-card"><div class="award-icon">${award.icon}</div><div class="award-title">${esc(award.title)}</div><div class="award-name">${esc(names)}</div><div class="award-team">${esc(teams)}</div><div class="award-value">${esc(value)}</div><div class="award-team">${esc(award.detail||'')}</div></article>`;
+}
+function awardsSectionHtml(){
+  const played=playedMatches().length,final=awardsAreFinal(),status=final?'Premi definitivi':played?'Classifica provvisoria':'In attesa del torneo';
+  const subtitle=final?'Il torneo è concluso: questi riconoscimenti sono pronti per la premiazione.':played?'I riconoscimenti si aggiornano dopo ogni partita conclusa.':'Registra le partite con l’arbitraggio: i premi si compileranno automaticamente.';
+  return `<section class="awards-panel"><div class="awards-head"><div><div class="kicker">Premiazione Copparì</div><h2>${final?'Premi finali':'Premi del torneo'}</h2><p>${subtitle}</p></div><span class="awards-status">${final?'✓':'●'} ${status}</span></div><div class="awards-grid">${postTournamentAwards().map(awardCardHtml).join('')}</div><p class="awards-method">Il miglior portiere considera i giocatori con ruolo POR e usa la media dei gol subiti dalla squadra; in caso di parità contano clean sheet e partite giocate. I rigori sono esclusi. I gol squadra/autoreti non entrano nella classifica marcatori.</p><div class="awards-actions"><button class="ghost" id="copyAwards" ${played?'':'disabled'}>↗ Copia premi</button></div></section>`;
+}
+function goalkeeperBoardHtml(rows){
+  return `<div class="card"><h3>🧤 Portieri</h3><div class="leaderboard">${rows.slice(0,10).map((x,i)=>`<div class="leader-row"><span class="rank">${i+1}</span><div><strong>${esc(x.player.name)}</strong><span>${esc(x.team.name)} · ${x.goalsAgainst} GS · ${x.cleanSheets} clean sheet</span></div><div class="leader-value">${x.average.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})}<small>GS / partita</small></div></div>`).join('')||'<div class="empty">Servono un portiere con ruolo POR e partite concluse</div>'}</div></div>`;
+}
+function awardsTextLines(){
+  return postTournamentAwards().map(award=>`${award.title}: ${award.names.length?`${award.names.join(', ')}${award.names.length>1?' (ex aequo)':''} — ${award.value}`:'da assegnare'}`);
+}
+async function copyAwardsText(){
+  const title=`${awardsAreFinal()?'Premi finali':'Premi provvisori'} — ${state.settings.name}`,text=[title,state.settings.edition,'',...awardsTextLines()].join('\n');
+  try{await navigator.clipboard.writeText(text);toast('Premi copiati');}
+  catch{const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();toast('Premi copiati');}
+}
+function renderStats(){
+  setHeader('Statistiche','Premi, marcatori, portieri, assist, MVP e disciplina');
+  const all=aggregateStats(),keepers=goalkeeperStats();
+  const board=(key,label)=>{const arr=[...all].sort((a,b)=>b[key]-a[key]||a.player.name.localeCompare(b.player.name,'it')).filter(x=>x[key]>0).slice(0,10);return `<div class="card"><h3>${label}</h3><div class="leaderboard">${arr.map((x,i)=>`<div class="leader-row"><span class="rank">${i+1}</span><div><strong>${esc(x.player.name)}</strong><span>${esc(teamById(x.player.teamId)?.name||'Senza squadra')}</span></div><div class="leader-value">${x[key]}</div></div>`).join('')||'<div class="empty">Nessun dato ancora</div>'}</div></div>`;};
+  view.innerHTML=`${awardsSectionHtml()}<div class="grid cols-2">${board('goals','⚽ Marcatori')}${goalkeeperBoardHtml(keepers)}${board('assists','🎯 Assist')}${board('mvp','⭐ MVP')}${board('yellow','🟨 Ammonizioni')}${board('red','🟥 Espulsioni')}</div>`;
+  document.getElementById('copyAwards')?.addEventListener('click',copyAwardsText);
+}
 
 function settingsPreviewHtml(s=state.settings){
   const c=rosterCompatibility(s.targetPlayers,s.rosterSize);
@@ -1615,7 +1728,7 @@ function openIOSGuide(){
 }
 function openManagerGuide(initial=false){
   const localWarning=isLocalFileMode()?'<div class="notice warn" style="margin-top:10px"><span>!</span><span>Se hai ricevuto solo il file HTML e iOS lo mostra in anteprima, per il torneo è preferibile un link web aperto direttamente in Safari.</span></div>':'';
-  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma il comando e lo evidenzia; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> importa l'ultimo backup JSON.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Controlla finale, classifica e statistiche; copia il riepilogo con ↗, stampa le schermate utili ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
+  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> importa l'ultimo backup JSON.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione con ↗, stampa le schermate utili ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
   document.getElementById('closeGuide').onclick=()=>{storageSet(GUIDE_KEY,'1');closeModal(true);};
 }
 function openRefereeQuickGuide(){
@@ -1628,6 +1741,7 @@ function summaryText(){
   if(next)lines.push(`Prossima: ${teamById(next.homeTeamId)?.name||'?'} vs ${teamById(next.awayTeamId)?.name||'?'} (${stageLabel(next)})`);
   if(table.length)lines.push('', 'Classifica:',...table.map((x,i)=>`${i+1}. ${x.team.name} — ${x.pts} pt (${x.gf}:${x.ga})`));
   const final=state.matches.find(m=>m.stage==='final'&&m.status==='played');if(final){const winner=teamById(matchWinner(final));if(winner)lines.push('',`Vincitore: ${winner.name} 🏆`);}
+  if(awardsAreFinal())lines.push('','Premi finali:',...awardsTextLines());
   return lines.join('\n');
 }
 async function shareSummary(){const text=summaryText();try{await navigator.clipboard.writeText(text);toast('Riepilogo copiato');}catch{const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();toast('Riepilogo copiato');}}
