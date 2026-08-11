@@ -342,6 +342,9 @@ button:active:not(:disabled) { transform:translateY(1px) scale(.985); }
 .topbar-actions { display:flex; align-items:center; gap:8px; }
 .save-pill { display:inline-flex; align-items:center; gap:7px; min-height:36px; padding:7px 11px; border:1px solid var(--line); background:rgba(255,254,250,.8); border-radius:999px; color:var(--muted); font-size:12px; font-weight:750; }
 .save-dot { width:7px; height:7px; border-radius:50%; background:#4c9d65; box-shadow:0 0 0 4px rgba(76,157,101,.12); }
+.live-pill { color:#24543a; border-color:#c9dec8; background:#eff8ec; }
+.live-pill.offline { color:#82541a; border-color:#ecd5a7; background:#fff7e7; }
+.live-pill .live-dot { width:7px; height:7px; }
 .content { width:min(1420px,100%); margin:0 auto; padding:22px 30px 70px; }
 
 .card { box-shadow:var(--shadow); }
@@ -381,6 +384,23 @@ button:active:not(:disabled) { transform:translateY(1px) scale(.985); }
 .manager-hero + .ios-banner { margin-top:16px; }
 .setup-brand + .ios-banner { margin-bottom:16px; }
 .inline-meta { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+.live-share-card { display:flex; align-items:center; gap:13px; margin-top:16px; border-color:#cfe0cc; background:linear-gradient(145deg,#f8fcf5,#eef7e9); }
+.live-share-card > div { flex:1; min-width:0; }
+.live-share-card h3 { margin-bottom:4px; }
+.live-share-card p { margin:0; }
+.live-share-icon { display:grid; place-items:center; flex:0 0 auto; width:46px; height:46px; border-radius:15px; background:#2e6847; color:white; font-size:21px; }
+.live-share-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.live-link-box { display:grid; gap:6px; margin-top:12px; padding:12px; border:1px solid var(--line); border-radius:13px; background:#f7f9f4; }
+.live-link-box label { color:var(--muted); font-size:11px; font-weight:850; text-transform:uppercase; letter-spacing:.05em; }
+.live-link-row { display:flex; gap:7px; }
+.live-link-row input { flex:1; min-width:0; border:1px solid var(--line); border-radius:10px; padding:9px 10px; background:white; color:var(--ink); font-size:12px; }
+.spectator-hero { overflow:hidden; position:relative; background:linear-gradient(135deg,#13251a,#2d6547); color:white; border:0; }
+.spectator-hero .note,.spectator-hero .kicker { color:#c8d6cc; }
+.spectator-live-bar { display:flex; align-items:center; gap:9px; margin-bottom:16px; padding:11px 13px; border:1px solid #cce0c8; border-radius:14px; background:#eff8ec; color:#285b3b; font-size:12px; font-weight:800; }
+.spectator-live-bar.offline { border-color:#ecd5a7; background:#fff7e7; color:#82541a; }
+.live-wait { width:min(620px,100%); margin:8vh auto 0; text-align:center; }
+.live-wait .live-share-icon { margin:0 auto 14px; }
+body.spectator-mode .sidebar [data-view="players"],body.spectator-mode .sidebar [data-view="teams"],body.spectator-mode .sidebar [data-view="settings"],body.spectator-mode #exportBtn,body.spectator-mode .sidebar .file-label { display:none !important; }
 
 .step-tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:0 0 16px; }
 .step-tab { padding:10px; border-radius:12px; background:#f5f7f2; border:1px solid var(--line); font-size:12px; color:var(--muted); font-weight:760; text-align:center; }
@@ -437,6 +457,7 @@ tr:hover td { background:#fbfcf8; }
   .topbar { min-height:72px; padding:calc(12px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 9px max(14px,env(safe-area-inset-left)); }
   .topbar p { max-width:56vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .topbar-actions .save-pill { display:none; }
+  .topbar-actions .live-pill { display:inline-flex; max-width:128px; overflow:hidden; white-space:nowrap; }
   .content { padding:14px 13px 32px; }
   .manager-hero { padding:20px; }
   .next-action { grid-template-columns:44px 1fr; }
@@ -446,6 +467,8 @@ tr:hover td { background:#fbfcf8; }
   .mobile-nav button { border:0; background:transparent; color:var(--muted); display:grid; place-items:center; gap:1px; min-width:0; min-height:50px; padding:2px; font-size:10px; font-weight:760; border-radius:10px; }
   .mobile-nav button span:first-child { font-size:19px; }
   .mobile-nav button.active { background:#edf3e9; color:var(--brand); }
+  body.spectator-mode .mobile-nav { grid-template-columns:repeat(4,1fr); }
+  body.spectator-mode .mobile-nav [data-view="teams"] { display:none; }
   .modal-backdrop { padding:0; align-items:end; height:100vh; height:100dvh; overscroll-behavior:none; }
   .modal:not(.referee-modal) { max-height:94vh; border-radius:22px 22px 0 0; padding:18px 15px calc(18px + env(safe-area-inset-bottom)); }
   .referee-modal { min-height:100vh; min-height:100dvh; max-height:100vh; max-height:100dvh; padding:calc(12px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
@@ -459,6 +482,10 @@ tr:hover td { background:#fbfcf8; }
   .toast { right:max(12px,env(safe-area-inset-right)); bottom:calc(78px + env(safe-area-inset-bottom)); left:max(12px,env(safe-area-inset-left)); text-align:center; }
   .ios-banner { flex-wrap:wrap; }
   .ios-banner button { width:100%; }
+  .live-share-card { align-items:flex-start; flex-wrap:wrap; }
+  .live-share-actions { width:100%; }
+  .live-share-actions button { flex:1; }
+  .live-link-row { display:grid; }
   .awards-panel { padding:18px; }
   .awards-head { display:block; }
   .awards-status { margin-top:12px; }
@@ -487,7 +514,7 @@ tr:hover td { background:#fbfcf8; }
         <div class="brand-mark">C</div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v3.1</span>
+          <span>cabina di regia · v3.2</span>
         </div>
       </div>
 
@@ -504,6 +531,7 @@ tr:hover td { background:#fbfcf8; }
       <div class="sidebar-footer">
         <button class="ghost full" id="guideBtn">? Guida del gestore</button>
         <div class="sidebar-status"><strong>Salvataggio automatico</strong><span id="sidebarSaveStatus">Dati custoditi su questo dispositivo</span></div>
+        <button class="ghost full" id="liveShareBtn">● Condivisione live</button>
         <button class="ghost full" id="exportBtn">Esporta backup</button>
         <label class="ghost full file-label">Importa backup<input type="file" id="importInput" accept="application/json" hidden /></label>
       </div>
@@ -517,6 +545,7 @@ tr:hover td { background:#fbfcf8; }
           <p id="pageSubtitle">Gestione del torneo</p>
         </div>
         <div class="topbar-actions">
+          <span class="save-pill live-pill" id="liveStatusPill" hidden><span class="live-dot"></span><span id="liveStatusText">Live</span></span>
           <span class="save-pill"><span class="save-dot"></span><span id="saveStatus">Salvato</span></span>
           <button class="ghost icon-btn" id="shareBtn" title="Copia il riepilogo" aria-label="Copia il riepilogo">↗</button>
           <button class="ghost icon-btn" id="printBtn" title="Stampa la schermata" aria-label="Stampa la schermata">⌁</button>
@@ -542,10 +571,14 @@ tr:hover td { background:#fbfcf8; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.1';
+const APP_VERSION = '3.2';
 const STORAGE_KEY = 'coppari.v3';
 const HISTORY_KEY = 'coppari.v3.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
+const LIVE_CONFIG_KEY = 'coppari.v3.live';
+const PUBLIC_APP_URL = 'https://highskiller.github.io/coppari-torneo/';
+const PEERJS_URL = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js';
+const PEERJS_INTEGRITY = 'sha384-x0YgkOr/3UOZP2CRDxGW9e0Q+2Qjyr3uJrm4xU32Y7ZCNAo7Cc7bjhrZMi/dwczu';
 const LEGACY_KEYS = ['coppari.v2','coppari.v1.6','coppari.v1.5','coppari.v1.3','coppari.v1.2','coppari.v1.1','coppari.v1'];
 const teamPalette = ['#315b43','#934848','#385d7c','#9c7837','#6a4f86','#2f7471','#a05d37','#536b34','#7d4567','#596275','#8b6a28','#3d6d91'];
 const defaultTeamNames = [
@@ -564,6 +597,7 @@ const storageReady=storageAvailable('localStorage');
 const sessionReady=storageAvailable('sessionStorage');
 function storageGet(key){if(!storageReady)return null;try{return localStorage.getItem(key);}catch{return null;}}
 function storageSet(key,value){if(!storageReady)return false;try{localStorage.setItem(key,value);return true;}catch{return false;}}
+function storageRemove(key){if(!storageReady)return false;try{localStorage.removeItem(key);return true;}catch{return false;}}
 function sessionGet(key){if(!sessionReady)return null;try{return sessionStorage.getItem(key);}catch{return null;}}
 function sessionSet(key,value){if(!sessionReady)return false;try{sessionStorage.setItem(key,value);return true;}catch{return false;}}
 function isIOSDevice(){return /iPad|iPhone|iPod/.test(navigator.userAgent||'') || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);}
@@ -583,6 +617,20 @@ let activeRefereeMatchId = null;
 let refereeWakeLock = null;
 let refGuardArm = null;
 let feedbackAudioContext = null;
+let liveRole = null;
+let liveRoomId = null;
+let liveSecret = null;
+let livePeer = null;
+let liveConnection = null;
+let liveConnected = false;
+let liveConnecting = false;
+let liveHasState = false;
+let liveApplyingRemote = false;
+let liveRevision = 0;
+let liveErrorMessage = '';
+let liveReconnectTimer = null;
+let peerLibraryPromise = null;
+const liveHostConnections = new Map();
 
 const view = document.getElementById('view');
 const pageTitle = document.getElementById('pageTitle');
@@ -769,24 +817,36 @@ function loadState(){
     return normalizeState(JSON.parse(raw));
   } catch { return emptyState(); }
 }
+function persistStateLocally(){
+  if(!storageReady)return false;
+  return storageSet(STORAGE_KEY,JSON.stringify(state));
+}
 function save(){
+  if(liveRole==='viewer')return true;
+  state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};
+  if(liveRole==='manager'){
+    if(liveApplyingRemote)return true;
+    if(!liveConnected){toast('Collegamento live interrotto: attendi la riconnessione',4200);return false;}
+    sendLiveManagerUpdate();updateSaveIndicator();return true;
+  }
   if(!storageReady){toast('Salvataggio non disponibile: apri l’app in Safari',4200);return false;}
   try{
-    state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};
-    if(!storageSet(STORAGE_KEY,JSON.stringify(state)))throw new Error('storage');
-    updateSaveIndicator();
-    return true;
-  }catch(error){ toast('Spazio esaurito: esporta subito un backup'); return false; }
+    if(!persistStateLocally())throw new Error('storage');
+    if(liveRole==='host'&&!liveApplyingRemote){liveRevision++;broadcastLiveState();}
+    updateSaveIndicator();return true;
+  }catch(error){toast('Spazio esaurito: esporta subito un backup');return false;}
 }
 function toast(msg,duration=2200){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(el._hideTimer); el._hideTimer=setTimeout(()=>el.classList.remove('show'),duration); }
 function updateSaveIndicator(){
   const now=new Date();
-  const label=storageReady?`Salvato alle ${now.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}`:'Salvataggio non disponibile';
+  const time=now.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  const label=liveRole==='viewer'?(liveConnected?'Diretta · sola lettura':'Diretta non collegata'):liveRole==='manager'?(liveConnected?`Sincronizzato live alle ${time}`:'Gestore non collegato'):liveRole==='host'?(liveConnected?`Salvato e condiviso alle ${time}`:`Salvato sul telefono alle ${time}`):storageReady?`Salvato alle ${time}`:'Salvataggio non disponibile';
   const top=document.getElementById('saveStatus'),side=document.getElementById('sidebarSaveStatus');
   if(top)top.textContent=label;if(side)side.textContent=label;
 }
 function historyEntries(){try{return JSON.parse(storageGet(HISTORY_KEY)||'[]');}catch{return [];}}
 function createSnapshot(label){
+  if(liveRole==='viewer'||liveRole==='manager')return false;
   try{
     const history=historyEntries();
     history.unshift({id:uid('snap'),label,createdAt:new Date().toISOString(),state:JSON.parse(JSON.stringify(state))});
@@ -810,12 +870,218 @@ function navigate(name){
   render(); sidebar.classList.remove('open');window.scrollTo({top:0,behavior:'smooth'});
 }
 function render(){
+  document.body.classList.toggle('spectator-mode',liveRole==='viewer');
+  if((['viewer','manager'].includes(liveRole)&&liveConnecting&&!liveHasState)||(liveRole==='manager'&&!liveConnected)){renderLiveWaiting();return;}
+  if(liveRole==='viewer'){
+    setSetupMode(false);
+    if(!['home','calendar','standings','stats'].includes(currentView))currentView='home';
+    const spectatorRenders={home:renderSpectatorHome,calendar:renderSpectatorCalendar,standings:renderStandings,stats:renderStats};
+    (spectatorRenders[currentView]||renderSpectatorHome)();updateLiveStatusUI();return;
+  }
   if(!state.settings.configured){ renderSetup(); return; }
   setSetupMode(false);
   const renders={home:renderHome,dashboard:renderHome,night:renderHome,players:renderPlayers,teams:renderTeams,calendar:renderCalendar,standings:renderStandings,stats:renderStats,settings:renderSettings};
-  (renders[currentView]||renderHome)();
+  (renders[currentView]||renderHome)();updateLiveStatusUI();
 }
 function metric(label,value,sub=''){ return `<div class="card"><div class="metric-label">${label}</div><div class="metric">${value}</div>${sub?`<div class="note">${sub}</div>`:''}</div>`; }
+
+function cleanLiveRoomId(value){const text=String(value||'').trim();return /^[a-z0-9-]{12,80}$/i.test(text)?text:null;}
+function cleanLiveSecret(value){const text=String(value||'').trim();return /^[a-z0-9_-]{20,120}$/i.test(text)?text:null;}
+function randomLiveToken(bytes=18){
+  const data=new Uint8Array(bytes);crypto.getRandomValues(data);
+  return btoa(String.fromCharCode(...data)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function readLiveHostConfig(){
+  try{const raw=JSON.parse(storageGet(LIVE_CONFIG_KEY)||'null');const roomId=cleanLiveRoomId(raw?.roomId),secret=cleanLiveSecret(raw?.secret);return roomId&&secret&&raw?.active?{roomId,secret,active:true}:null;}catch{return null;}
+}
+function writeLiveHostConfig(config){return storageSet(LIVE_CONFIG_KEY,JSON.stringify(config));}
+function parseLiveJoinFromLocation(){
+  const roomId=cleanLiveRoomId(new URLSearchParams(location.search).get('live'));if(!roomId)return null;
+  const hash=new URLSearchParams(location.hash.replace(/^#/,'')),secret=cleanLiveSecret(hash.get('manage'));
+  return {roomId,role:secret?'manager':'viewer',secret};
+}
+function liveLinks(){
+  if(!liveRoomId)return {viewer:'',manager:''};
+  const base=new URL(isLocalFileMode()?PUBLIC_APP_URL:location.origin+location.pathname);base.searchParams.set('live',liveRoomId);
+  return {viewer:`${base.toString()}#view`,manager:liveSecret?`${base.toString()}#manage=${encodeURIComponent(liveSecret)}`:''};
+}
+function sharedStateSnapshot(){return JSON.parse(JSON.stringify(state));}
+function loadPeerLibrary(){
+  if(window.Peer)return Promise.resolve(window.Peer);
+  if(peerLibraryPromise)return peerLibraryPromise;
+  peerLibraryPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');script.src=PEERJS_URL;script.integrity=PEERJS_INTEGRITY;script.crossOrigin='anonymous';script.referrerPolicy='no-referrer';
+    script.onload=()=>window.Peer?resolve(window.Peer):reject(new Error('PeerJS non disponibile'));
+    script.onerror=()=>reject(new Error('Impossibile caricare il collegamento WebRTC'));
+    document.head.appendChild(script);
+  });
+  return peerLibraryPromise;
+}
+function closeLiveTransport(){
+  clearTimeout(liveReconnectTimer);liveReconnectTimer=null;
+  liveHostConnections.forEach(conn=>{try{conn.close();}catch{}});liveHostConnections.clear();
+  try{liveConnection?.close();}catch{}liveConnection=null;
+  try{livePeer?.destroy();}catch{}livePeer=null;liveConnected=false;
+}
+function hostConnectionCount(){return [...liveHostConnections.values()].filter(conn=>conn.open).length;}
+function updateLiveStatusUI(){
+  const pill=document.getElementById('liveStatusPill'),text=document.getElementById('liveStatusText'),button=document.getElementById('liveShareBtn');if(!pill||!text)return;
+  pill.hidden=!liveRole;const online=liveConnected;pill.classList.toggle('offline',!!liveRole&&!online);
+  if(liveRole==='host')text.textContent=online?`Live · ${hostConnectionCount()}`:'Live offline';
+  else if(liveRole==='manager')text.textContent=online?'Gestore live':'Riconnessione';
+  else if(liveRole==='viewer')text.textContent=online?'Diretta':'Diretta offline';
+  if(button)button.textContent=liveRole==='host'?`● Live · ${hostConnectionCount()} collegati`:liveRole==='manager'?'● Gestione live':liveRole==='viewer'?'● Info diretta':'● Condivisione live';
+  updateSaveIndicator();
+  const count=document.getElementById('liveConnectedCount');if(count)count.textContent=String(hostConnectionCount());
+}
+function liveWaitingMessage(){return liveErrorMessage||'Connessione al telefono che sta gestendo il torneo…';}
+function renderLiveWaiting(){
+  setSetupMode(false);setHeader('Collegamento live',liveRole==='manager'?'Accesso gestore':'Modalità spettatore');
+  view.innerHTML=`<div class="card live-wait"><div class="live-share-icon">●</div><h2>${liveErrorMessage?'Diretta non raggiungibile':'Apertura della diretta…'}</h2><p class="note">${esc(liveWaitingMessage())}</p><div class="button-row center" style="margin-top:16px"><button class="primary" id="retryLive">Riprova</button><button class="ghost" id="leaveLive">Apri Copparì locale</button></div><p class="note">Il telefono principale deve restare online con Copparì aperto.</p></div>`;
+  document.getElementById('retryLive').onclick=()=>{liveErrorMessage='';connectToLiveHost();};
+  document.getElementById('leaveLive').onclick=()=>{const url=new URL(location.href);url.searchParams.delete('live');url.hash='';location.href=url.toString();};
+  updateLiveStatusUI();
+}
+function refreshAfterLiveState(){
+  if(activeRefereeMatchId&&liveRole==='manager'&&state.matches.some(m=>m.id===activeRefereeMatchId))renderRefereeMode(activeRefereeMatchId);else render();
+}
+function applyLiveClientState(raw,revision,force=false){
+  try{
+    if(JSON.stringify(raw).length>2000000)throw new Error('too-large');
+    if(!force&&Number.isFinite(+revision)&&+revision<liveRevision)return;
+    const clean=normalizeState(raw),first=!liveHasState;liveApplyingRemote=true;
+    Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,clean);
+    liveRevision=Math.max(0,+revision||0);liveHasState=true;liveConnecting=false;liveConnected=true;liveErrorMessage='';
+    if(first){currentView='home';sessionSet('coppari.currentView','home');}
+    refreshAfterLiveState();liveApplyingRemote=false;updateLiveStatusUI();
+  }catch{liveApplyingRemote=false;toast('Dati live non validi',4200);}
+}
+function sendHostState(conn,type='state'){
+  if(!conn?.open)return;
+  try{conn.send({type,revision:liveRevision,state:sharedStateSnapshot()});}catch{}
+}
+function broadcastLiveState(){liveHostConnections.forEach(conn=>sendHostState(conn));updateLiveStatusUI();}
+function handleHostLiveMessage(conn,data){
+  if(conn._coppariRole!=='manager'||data?.type!=='state-update')return;
+  if(+data.baseRevision!==liveRevision){sendHostState(conn,'conflict');return;}
+  try{
+    if(JSON.stringify(data.state).length>2000000)throw new Error('too-large');
+    const clean=normalizeState(data.state);createSnapshot('Prima di una modifica da gestore live');liveApplyingRemote=true;
+    Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,clean);liveRevision++;
+    state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};persistStateLocally();
+    refreshAfterLiveState();liveApplyingRemote=false;broadcastLiveState();
+  }catch{liveApplyingRemote=false;sendHostState(conn,'conflict');}
+}
+function attachHostConnection(conn,role){
+  conn._coppariRole=role;liveHostConnections.set(conn.peer,conn);
+  conn.on('open',()=>{sendHostState(conn);updateLiveStatusUI();});
+  conn.on('data',data=>handleHostLiveMessage(conn,data));
+  conn.on('close',()=>{liveHostConnections.delete(conn.peer);updateLiveStatusUI();});
+  conn.on('error',()=>{liveHostConnections.delete(conn.peer);updateLiveStatusUI();});
+}
+function acceptLiveConnection(conn){
+  const requested=conn.metadata?.role==='manager'?'manager':'viewer',authorized=requested!=='manager'||cleanLiveSecret(conn.metadata?.secret)===liveSecret;
+  if(!authorized){conn.on('open',()=>{try{conn.send({type:'error',message:'Link gestore non valido'});}catch{}conn.close();});return;}
+  attachHostConnection(conn,requested);
+}
+async function startLiveHost({resume=false}={}){
+  if(liveRole&&liveRole!=='host')return false;
+  let config=readLiveHostConfig();if(!config){config={roomId:`coppari-${randomLiveToken(15)}`,secret:randomLiveToken(24),active:true};writeLiveHostConfig(config);}
+  liveRole='host';liveRoomId=config.roomId;liveSecret=config.secret;liveConnecting=true;liveRevision=liveRevision||Date.now();liveErrorMessage='';updateLiveStatusUI();
+  try{
+    const Peer=await loadPeerLibrary();closeLiveTransport();liveRole='host';liveRoomId=config.roomId;liveSecret=config.secret;
+    return await new Promise((resolve,reject)=>{
+      let settled=false;const peer=new Peer(liveRoomId,{debug:1});livePeer=peer;
+      peer.on('open',()=>{liveConnected=true;liveConnecting=false;writeLiveHostConfig(config);updateLiveStatusUI();if(!settled){settled=true;resolve(true);}});
+      peer.on('connection',acceptLiveConnection);
+      peer.on('disconnected',()=>{liveConnected=false;updateLiveStatusUI();liveReconnectTimer=setTimeout(()=>{try{peer.reconnect();}catch{}},1800);});
+      peer.on('close',()=>{liveConnected=false;updateLiveStatusUI();});
+      peer.on('error',error=>{liveConnected=false;liveErrorMessage=error?.type==='unavailable-id'?'La diretta è già aperta in un’altra scheda':'Connessione live non disponibile';updateLiveStatusUI();if(!settled){settled=true;reject(error);}});
+    });
+  }catch(error){liveConnecting=false;if(!resume)toast(liveErrorMessage||'Impossibile avviare la diretta',4200);updateLiveStatusUI();return false;}
+}
+function handleLiveClientMessage(data){
+  if(data?.type==='state')applyLiveClientState(data.state,data.revision);
+  else if(data?.type==='conflict'){applyLiveClientState(data.state,data.revision,true);toast('Aggiornato da un altro gestore: ripeti l’ultima modifica',4200);}
+  else if(data?.type==='error'){liveErrorMessage=safeText(data.message||'Accesso live non autorizzato',160);liveConnecting=true;liveConnected=false;render();}
+}
+function scheduleLiveReconnect(){
+  clearTimeout(liveReconnectTimer);if(!liveRoomId||liveRole==='host')return;
+  liveReconnectTimer=setTimeout(()=>connectToLiveHost(),2200);
+}
+async function connectToLiveHost(){
+  if(!liveRoomId||!['viewer','manager'].includes(liveRole))return;
+  liveConnecting=!liveHasState;liveConnected=false;liveErrorMessage='';render();
+  try{
+    const Peer=await loadPeerLibrary();try{liveConnection?.close();livePeer?.destroy();}catch{}
+    const peer=new Peer(undefined,{debug:1});livePeer=peer;
+    peer.on('open',()=>{
+      const conn=peer.connect(liveRoomId,{reliable:true,serialization:'json',metadata:{role:liveRole,secret:liveRole==='manager'?liveSecret:null}});liveConnection=conn;
+      conn.on('open',()=>{liveConnected=true;updateLiveStatusUI();});
+      conn.on('data',handleLiveClientMessage);
+      conn.on('close',()=>{liveConnected=false;updateLiveStatusUI();if(liveRole==='manager'){liveConnecting=true;render();}scheduleLiveReconnect();});
+      conn.on('error',()=>{liveConnected=false;updateLiveStatusUI();scheduleLiveReconnect();});
+    });
+    peer.on('error',error=>{liveConnected=false;liveErrorMessage=error?.type==='peer-unavailable'?'Il telefono principale non è raggiungibile':'Errore di collegamento live';if(!liveHasState){liveConnecting=true;render();}updateLiveStatusUI();scheduleLiveReconnect();});
+    peer.on('disconnected',()=>{liveConnected=false;updateLiveStatusUI();scheduleLiveReconnect();});
+    setTimeout(()=>{if(!liveHasState&&!liveConnected){liveErrorMessage='Il telefono principale non risponde. Verifica che Copparì sia aperto e online.';liveConnecting=true;render();}},12000);
+  }catch{liveErrorMessage='Impossibile caricare la connessione WebRTC';liveConnecting=true;render();}
+}
+function sendLiveManagerUpdate(){
+  if(liveRole!=='manager'||!liveConnection?.open)return false;
+  const baseRevision=liveRevision;liveRevision++;
+  try{liveConnection.send({type:'state-update',baseRevision,revision:liveRevision,state:sharedStateSnapshot()});return true;}
+  catch{liveRevision=baseRevision;liveConnected=false;scheduleLiveReconnect();return false;}
+}
+function spectatorLiveBarHtml(){
+  return `<div class="spectator-live-bar ${liveConnected?'':'offline'}"><span class="live-dot"></span><span>${liveConnected?'Diretta collegata · aggiornamento automatico':'Connessione interrotta · ultimo aggiornamento visibile'}</span></div>`;
+}
+function publicMatchRow(m){
+  const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live',pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';
+  return `<div class="match"><div class="stage-label">${stageLabel(m)} · ${esc(matchDisplayTime(m))}${live?' · ● IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div></div>`;
+}
+function renderSpectatorHome(){
+  setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Diretta pubblica · sola lettura');
+  if(!state.settings.configured){view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">Copparì Live</div><h2>Il torneo è in preparazione</h2><p class="note">La pagina si aggiornerà automaticamente quando il gestore completerà la configurazione.</p></div>`;return;}
+  const played=playedMatches().length,total=Math.max(state.matches.length,totalGamesExpected()),goals=playedMatches().reduce((sum,m)=>sum+(+m.homeScore||0)+(+m.awayScore||0),0),next=nextScheduledMatch(),table=standings();
+  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">${esc(state.settings.edition)} · Copparì Live</div><h2>${esc(state.settings.name)}</h2><p class="note">Segui risultati, classifica e premi dal telefono del gestore.</p></div><div class="grid cols-4" style="margin-top:16px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',next?next.status==='live'?'In campo':'In programma':'Concluso')}</div>${next?`<div class="card next-match-card" style="margin-top:16px"><div class="next-match-stage">${next.status==='live'?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${stageLabel(next)}</div><div class="next-match-teams"><div class="next-match-team">${esc(teamById(next.homeTeamId)?.name||'?')}</div><div class="next-match-vs">${next.status==='live'?`<strong style="font-size:24px">${refScore(next)}</strong>`:'VS'}</div><div class="next-match-team">${esc(teamById(next.awayTeamId)?.name||'?')}</div></div></div>`:''}<div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Classifica live</h3>${table.length?`<div class="leaderboard">${table.map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}</div></div>`;
+}
+function renderSpectatorCalendar(){
+  setHeader('Partite','Calendario e risultati in diretta');
+  const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?stageLabel(m):m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
+  view.innerHTML=`${spectatorLiveBarHtml()}${Object.keys(groups).length?Object.entries(groups).map(([label,matches])=>`<div class="round-block"><div class="round-title">${esc(label)}</div><div class="match-list">${matches.map(publicMatchRow).join('')}</div></div>`).join(''):'<div class="empty"><strong>Calendario in preparazione</strong>Le partite appariranno automaticamente.</div>'}`;
+}
+function liveShareCardHtml(){
+  if(liveRole==='host')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Diretta attiva</h3><p class="note"><strong>${hostConnectionCount()}</strong> dispositivi collegati. Tieni Copparì aperto e il telefono online.</p></div><div class="live-share-actions"><button class="primary" id="openLiveShare">Gestisci link</button></div></div>`;
+  if(liveRole==='manager')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Gestore collegato</h3><p class="note">Le modifiche vengono inviate al telefono principale. Evitate modifiche contemporanee.</p></div><div class="live-share-actions"><button class="ghost" id="openLiveShare">Info diretta</button></div></div>`;
+  return `<div class="card live-share-card"><span class="live-share-icon">↗</span><div><h3>Fai seguire il torneo a tutti</h3><p class="note">Crea un link pubblico in sola lettura e un link gestore. Nessun account richiesto.</p></div><div class="live-share-actions"><button class="primary" id="startLiveFromHome">Avvia diretta</button></div></div>`;
+}
+function liveModalHtml(){
+  if(!liveRole)return `<div data-live-modal><div class="kicker">Condivisione senza account</div><h2 style="margin-top:6px">Avvia la diretta P2P</h2><p class="modal-subtitle">Questo telefono diventa il punto centrale del torneo. Deve restare online con Copparì aperto.</p><div class="notice info"><span>●</span><span>Il link pubblico è in sola lettura. Chi riceve il link gestore può invece modificare risultati e arbitraggio.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveNow">Avvia e crea i link</button></div></div>`;
+  const links=liveLinks(),status=liveRole==='host'?`Diretta attiva · <strong id="liveConnectedCount">${hostConnectionCount()}</strong> collegati`:liveRole==='manager'?'Collegato come gestore':'Collegato come spettatore';
+  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione diretta tramite WebRTC. Il telefono principale deve restare online.</p>${liveRole!=='viewer'?`<div class="live-link-box"><label>Link pubblico · sola lettura</label><div class="live-link-row"><input readonly value="${esc(links.viewer)}"><button class="ghost" id="copyViewerLink">Copia</button><button class="primary" id="shareViewerLink">Condividi</button></div></div><div class="live-link-box"><label>Link gestore · può modificare</label><div class="live-link-row"><input readonly value="${esc(links.manager)}"><button class="ghost" id="copyManagerLink">Copia</button></div><div class="note">Invialo solo agli organizzatori: chiunque lo possieda può cambiare il torneo.</div></div>`:'<div class="notice info"><span>👁</span><span>Questa pagina è in sola lettura e si aggiorna automaticamente.</span></div>'}<div class="notice warn" style="margin-top:14px"><span>!</span><span>Senza un database online la diretta non è disponibile quando il telefono principale è chiuso, offline o irraggiungibile dalla rete.</span></div><div class="modal-actions">${liveRole==='host'?'<button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
+}
+function bindLiveModalActions(){
+  modal.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>closeModal());
+  document.getElementById('startLiveNow')?.addEventListener('click',async()=>{const button=document.getElementById('startLiveNow');button.disabled=true;button.textContent='Avvio…';const ok=await startLiveHost();if(ok){modal.innerHTML=liveModalHtml();bindLiveModalActions();}else{button.disabled=false;button.textContent='Riprova';}});
+  document.getElementById('copyViewerLink')?.addEventListener('click',()=>copyLiveLink(liveLinks().viewer,'Link pubblico copiato'));
+  document.getElementById('copyManagerLink')?.addEventListener('click',()=>copyLiveLink(liveLinks().manager,'Link gestore copiato'));
+  document.getElementById('shareViewerLink')?.addEventListener('click',()=>shareLiveViewerLink());
+  document.getElementById('stopLiveNow')?.addEventListener('click',stopLiveHost);
+}
+function openLiveShareModal(){openModal(liveModalHtml());bindLiveModalActions();}
+async function copyLiveLink(link,message){try{await navigator.clipboard.writeText(link);toast(message);}catch{const input=document.createElement('textarea');input.value=link;input.style.position='fixed';input.style.opacity='0';document.body.appendChild(input);input.select();document.execCommand('copy');input.remove();toast(message);}}
+async function shareLiveViewerLink(){const link=liveLinks().viewer;if(navigator.share){try{await navigator.share({title:`Diretta ${state.settings.name}`,text:'Segui il torneo Copparì in diretta',url:link});return;}catch(error){if(error?.name==='AbortError')return;}}copyLiveLink(link,'Link pubblico copiato');}
+async function stopLiveHost(){
+  if(liveRole!=='host'||!confirm('Terminare la diretta? Tutti i dispositivi collegati perderanno la connessione.'))return;
+  closeLiveTransport();storageRemove(LIVE_CONFIG_KEY);liveRole=null;liveRoomId=null;liveSecret=null;liveRevision=0;closeModal(true);render();toast('Diretta terminata');
+}
+function initLiveSharing(){
+  const join=parseLiveJoinFromLocation();
+  if(join){liveRole=join.role;liveRoomId=join.roomId;liveSecret=join.secret;liveConnecting=true;liveHasState=false;connectToLiveHost();return true;}
+  const host=readLiveHostConfig();if(host){liveRole='host';liveRoomId=host.roomId;liveSecret=host.secret;startLiveHost({resume:true});}
+  return false;
+}
 
 function setupPreviewValues(){
   const name=(document.getElementById('setupName')?.value||'Copparì').trim().slice(0,80)||'Copparì';
@@ -1002,6 +1268,7 @@ function renderHome(){
   view.innerHTML=`
     <div class="card manager-hero"><div class="kicker">${esc(state.settings.edition)} · inizio ${esc(state.settings.startTime||'00:00')}${state.settings.venue?` · ${esc(state.settings.venue)}`:''}</div><h2>${esc(state.settings.name)}</h2><div class="note">${played} concluse · ${Math.max(0,totalExpected-played)} da giocare${state.settings.organizer?` · gestore ${esc(state.settings.organizer)}`:''}</div><div class="progress-track" style="margin-top:14px;background:#2b4735"><div class="progress-fill" style="width:${progress}%;background:var(--brand-2)"></div></div><div class="manager-hero-actions"><button class="secondary" id="heroGuide">? Guida gestore</button><button class="ghost" style="color:white;border-color:#52705c" id="heroBackup">↓ Esporta backup</button><button class="ghost" style="color:white;border-color:#52705c" id="heroShare">↗ Copia riepilogo</button></div></div>
     ${iosInstallBannerHtml()}
+    ${liveShareCardHtml()}
     <div class="grid cols-4" style="margin-top:16px">${metric('Partecipanti',`${activePlayers().length}/${state.settings.targetPlayers}`,'attivi')}${metric('Squadre',`${state.teams.length}/${state.settings.teamCount}`,`${state.settings.rosterSize} per rosa`)}${metric('Partite',`${played}/${Math.max(state.matches.length,totalExpected)}`,'concluse')}${metric('Gol',goals,'registrati')}</div>
     <div class="control-grid">
       <div class="card soft"><div class="kicker">Prossimo passo consigliato</div><div class="next-action" style="margin-top:12px"><span class="next-action-icon">${action.icon}</span><div><strong>${esc(action.title)}</strong><p>${esc(action.text)}</p></div><button class="primary" id="nextActionBtn">${esc(action.label)}</button></div>${snap?`<div class="notice info" style="margin-top:14px"><span>↶</span><span><strong>Rete di sicurezza attiva.</strong> Ultimo punto di ripristino: ${esc(snap.label)}.</span><button class="ghost" id="quickUndo">Ripristina</button></div>`:''}</div>
@@ -1018,6 +1285,8 @@ function renderHome(){
   document.getElementById('heroGuide').onclick=()=>openManagerGuide(false);
   document.getElementById('heroBackup').onclick=exportBackup;
   document.getElementById('heroShare').onclick=shareSummary;
+  document.getElementById('openLiveShare')?.addEventListener('click',openLiveShareModal);
+  document.getElementById('startLiveFromHome')?.addEventListener('click',openLiveShareModal);
   view.querySelectorAll('[data-ios-guide]').forEach(button=>button.onclick=openIOSGuide);
   document.getElementById('quickUndo')?.addEventListener('click',restoreLastSnapshot);
   document.getElementById('nextActionBtn').onclick=()=>action.referee?openRefereeMode(action.referee):navigate(action.view);
@@ -1728,7 +1997,7 @@ function openIOSGuide(){
 }
 function openManagerGuide(initial=false){
   const localWarning=isLocalFileMode()?'<div class="notice warn" style="margin-top:10px"><span>!</span><span>Se hai ricevuto solo il file HTML e iOS lo mostra in anteprima, per il torneo è preferibile un link web aperto direttamente in Safari.</span></div>':'';
-  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> importa l'ultimo backup JSON.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione con ↗, stampa le schermate utili ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
+  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Condivisione live</strong></summary><ol class="note"><li>Da Panoramica tocca “Avvia diretta”.</li><li>Invia il link pubblico a chi deve solo seguire risultati e classifiche.</li><li>Invia il link gestore soltanto agli organizzatori autorizzati.</li><li>Lascia aperto Copparì sul telefono principale: senza account esterno è questo dispositivo a tenere online la diretta.</li><li>Evitate di modificare contemporaneamente la stessa partita da due telefoni.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> importa l'ultimo backup JSON.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione con ↗, stampa le schermate utili ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
   document.getElementById('closeGuide').onclick=()=>{storageSet(GUIDE_KEY,'1');closeModal(true);};
 }
 function openRefereeQuickGuide(){
@@ -1770,15 +2039,18 @@ document.getElementById('nav').addEventListener('click',e=>{const b=e.target.clo
 document.getElementById('menuBtn').onclick=()=>sidebar.classList.toggle('open');
 document.getElementById('mobileNav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)return navigate(b.dataset.view);if(e.target.closest('[data-menu-open]'))sidebar.classList.add('open');});
 document.getElementById('guideBtn').onclick=()=>openManagerGuide(false);
+document.getElementById('liveShareBtn').onclick=openLiveShareModal;
 document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importInput').onchange=importBackup;
 document.getElementById('shareBtn').onclick=shareSummary;
 document.getElementById('printBtn').onclick=()=>window.print();
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&activeRefereeMatchId)requestRefereeWakeLock();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;if(activeRefereeMatchId)requestRefereeWakeLock();if(liveRole==='host'&&livePeer?.disconnected){try{livePeer.reconnect();}catch{}}else if(['viewer','manager'].includes(liveRole)&&!liveConnected)connectToLiveHost();});
+window.addEventListener('online',()=>{if(liveRole==='host'&&livePeer?.disconnected){try{livePeer.reconnect();}catch{}}else if(['viewer','manager'].includes(liveRole)&&!liveConnected)connectToLiveHost();});
 window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY)toast('I dati sono cambiati in un’altra scheda: ricarica per allinearli',4200);});
+const joiningLiveSession=initLiveSharing();
 render();
 updateSaveIndicator();
-setTimeout(maybeShowInitialGuide,250);
+if(!joiningLiveSession)setTimeout(maybeShowInitialGuide,250);
 
 </script>
 </body>
