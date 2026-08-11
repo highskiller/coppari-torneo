@@ -11,6 +11,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Copparì" />
   <meta name="format-detection" content="telephone=no" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/coppari-icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png" />
+  <link rel="preload" as="image" type="image/webp" href="./assets/coppari-logo.webp" />
   <title>Copparì — Cabina di regia</title>
   <style>
 :root {
@@ -37,7 +40,8 @@ button:disabled { opacity: .45; cursor: not-allowed; filter: none !important; }
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 250px 1fr; }
 .sidebar { position: sticky; top: 0; height: 100vh; background: #101b14; color: white; padding: 22px 16px; display: flex; flex-direction: column; z-index: 20; }
 .brand { display: flex; gap: 12px; align-items: center; padding: 0 8px 24px; }
-.brand-mark { width: 42px; height: 42px; border-radius: 13px; background: var(--brand-2); color: #152019; display: grid; place-items: center; font-weight: 900; font-size: 22px; }
+.brand-mark { width: 42px; height: 42px; display: grid; place-items: center; flex:0 0 auto; }
+.brand-mark img { display:block; width:100%; height:100%; object-fit:contain; }
 .brand strong { display:block; font-size: 20px; }
 .brand span { display:block; color: #9eaa9f; font-size: 12px; margin-top: 2px; }
 .nav { display: grid; gap: 7px; }
@@ -225,7 +229,7 @@ tr:last-child td { border-bottom:0; }
 .setup-brand { display:flex; align-items:center; gap:16px; margin:18px 0 20px; }
 .setup-brand h1 { margin:2px 0 5px; font-size:32px; }
 .setup-brand p { margin:0; color:var(--muted); }
-.brand-mark.large { width:58px; height:58px; border-radius:18px; font-size:27px; flex:0 0 auto; }
+.brand-mark.large { width:82px; height:82px; }
 .setup-card { padding:22px; }
 .setup-preview { margin-top:18px; padding:14px; border-radius:14px; background:#f7f8f4; border:1px solid var(--line); }
 .setup-preview-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
@@ -329,7 +333,8 @@ button:active:not(:disabled) { transform:translateY(1px) scale(.985); }
 .app-shell { grid-template-columns:272px minmax(0,1fr); }
 .sidebar { width:272px; padding:24px 18px; background:linear-gradient(180deg,#13251a 0%,#0d1b12 100%); }
 .brand { padding:0 8px 26px; }
-.brand-mark { background:linear-gradient(145deg,#e5f99b,#cbe956); box-shadow:0 8px 22px rgba(210,239,111,.2); }
+.brand-mark { width:54px; height:54px; filter:drop-shadow(0 8px 13px rgba(0,0,0,.24)); }
+.brand-mark.large { width:82px; height:82px; filter:drop-shadow(0 10px 18px rgba(21,32,25,.22)); }
 .nav-item { min-height:46px; font-weight:720; }
 .nav-item .nav-icon { width:22px; text-align:center; font-size:16px; }
 .nav-item.active { background:#233b2b; box-shadow:inset 3px 0 0 var(--brand-2); }
@@ -511,10 +516,10 @@ tr:hover td { background:#fbfcf8; }
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
       <div class="brand">
-        <div class="brand-mark">C</div>
+        <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v3.2</span>
+          <span>cabina di regia · v3.2.1</span>
         </div>
       </div>
 
@@ -571,7 +576,7 @@ tr:hover td { background:#fbfcf8; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.2';
+const APP_VERSION = '3.2.1';
 const STORAGE_KEY = 'coppari.v3';
 const HISTORY_KEY = 'coppari.v3.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
@@ -584,7 +589,13 @@ const teamPalette = ['#315b43','#934848','#385d7c','#9c7837','#6a4f86','#2f7471'
 const defaultTeamNames = [
   'Atletico Pasticciotto','Real Frisa','US Rustico','Sporting Negramaro',
   'Dinamo Puccia','FC Messapia','Virtus Tarallo','ASD Primitivo',
-  'Olympique Frisella','Borussia Bombetta','Real Santu Ronzu','Atletico Salento'
+  'Olympique Frisella','Borussia Bombetta','Real Santu Ronzu','Atletico Salento',
+  'Inter Pittule','AC Ciciri e Tria','Deportivo Cupeta','Lokomotiv Municeddhi',
+  'Paris Saint Pitta','Manchester Turcinieddhi','Sporting Quataru','Real Fucazza',
+  'Dinamo Caffè in Ghiaccio','US Sagne ’Ncannulate','Virtus Pezzetti','Borussia Paparine',
+  'Atletico Lu Sule','FC Salentu Meu','Olympique Spumone','Leicester Purpette',
+  'Arsenal Cùcuzze','Bayer Fave e Cicore','Celtic Cozze Piccinne','Ajax Pummitori',
+  'Benfica Parmigiana','AS Lu Mare','Galatasaray Galatina','West Ham Pummitoru'
 ];
 
 function storageAvailable(type='localStorage'){
@@ -657,6 +668,11 @@ function activePlayers(){ return state.players.filter(p=>p.active!==false); }
 function groupMatches(){ return state.matches.filter(m=>(m.stage||'group')==='group'); }
 function knockoutMatches(){ return state.matches.filter(isKnockoutMatch); }
 function defaultTeamName(i){ return defaultTeamNames[i] || `Squadra ${i+1}`; }
+function drawTeamNames(count){
+  const pool=[...defaultTeamNames];
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  return Array.from({length:count},(_,i)=>pool[i]||defaultTeamName(i));
+}
 function teamColor(i){ return teamPalette[i % teamPalette.length]; }
 
 function rosterCompatibility(total, rosterSize){
@@ -1144,7 +1160,7 @@ function renderSetup(){
   const s=state.settings;
   view.innerHTML=`
     <div class="setup-wrap">
-      <div class="setup-brand"><div class="brand-mark large">C</div><div style="flex:1"><div class="kicker">Configurazione guidata</div><h1>Prepara il tuo torneo</h1><p>In pochi minuti avrai partecipanti, formula, orari e fase finale sotto controllo.</p></div><button class="ghost" id="setupGuide">? Guida gestore</button></div>
+      <div class="setup-brand"><div class="brand-mark large"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="82" height="82" /></div><div style="flex:1"><div class="kicker">Configurazione guidata</div><h1>Prepara il tuo torneo</h1><p>In pochi minuti avrai partecipanti, formula, orari e fase finale sotto controllo.</p></div><button class="ghost" id="setupGuide">? Guida gestore</button></div>
       ${iosInstallBannerHtml()}
       <div class="card setup-card">
         <div class="step-tabs"><div class="step-tab active">1 · Identità</div><div class="step-tab active">2 · Partecipanti</div><div class="step-tab active">3 · Formula</div><div class="step-tab active">4 · Tempi</div></div>
@@ -1391,7 +1407,8 @@ function autoBalanceTeams(){
   if(state.matches.length&&!confirm('Rigenerando le squadre verranno cancellati calendario, risultati e statistiche. Continuare?'))return;
   createSnapshot(state.teams.length?'Prima di rigenerare le squadre':'Prima di generare le squadre');
   state.matches=[];
-  state.teams=Array.from({length:count},(_,i)=>({id:uid('t'),name:defaultTeamName(i),color:teamColor(i),captainId:null}));
+  const generatedNames=drawTeamNames(count);
+  state.teams=Array.from({length:count},(_,i)=>({id:uid('t'),name:generatedNames[i],color:teamColor(i),captainId:null}));
   active.forEach(p=>p.teamId=null);
   const buckets=state.teams.map((t,i)=>({team:t,capacity:capacities[i],score:0,players:[],keepers:0,roles:{POR:0,DIF:0,CEN:0,ATT:0}}));
   const tieBreak=new Map(active.map(p=>[p.id,Math.random()]));
