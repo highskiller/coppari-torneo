@@ -538,7 +538,7 @@ tr:hover td { background:#fbfcf8; }
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v3.3</span>
+          <span>cabina di regia · v3.3.1</span>
         </div>
       </div>
 
@@ -595,11 +595,12 @@ tr:hover td { background:#fbfcf8; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.3';
+const APP_VERSION = '3.3.1';
 const STORAGE_KEY = 'coppari.v3';
 const HISTORY_KEY = 'coppari.v3.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
 const LIVE_CONFIG_KEY = 'coppari.v3.live';
+const WAKE_PREF_KEY = 'coppari.v3.keep-screen-awake';
 const PUBLIC_APP_URL = 'https://highskiller.github.io/coppari-torneo/';
 const PEERJS_URL = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js';
 const PEERJS_INTEGRITY = 'sha384-x0YgkOr/3UOZP2CRDxGW9e0Q+2Qjyr3uJrm4xU32Y7ZCNAo7Cc7bjhrZMi/dwczu';
@@ -644,7 +645,8 @@ const state = loadState();
 let currentView = sessionGet('coppari.currentView') || 'home';
 let modalReturnFocus = null;
 let activeRefereeMatchId = null;
-let refereeWakeLock = null;
+let screenWakeLock = null;
+let screenWakeLockPending = null;
 let refGuardArm = null;
 let feedbackAudioContext = null;
 let liveRole = null;
@@ -971,7 +973,7 @@ function closeLiveTransport(){
   clearTimeout(liveReconnectTimer);liveReconnectTimer=null;
   liveHostConnections.forEach(conn=>{try{conn.close();}catch{}});liveHostConnections.clear();
   try{liveConnection?.close();}catch{}liveConnection=null;
-  try{livePeer?.destroy();}catch{}livePeer=null;liveConnected=false;
+  try{livePeer?.destroy();}catch{}livePeer=null;liveConnected=false;syncScreenWakeLock();
 }
 function hostConnectionCount(){return [...liveHostConnections.values()].filter(conn=>conn.open).length;}
 function updateLiveStatusUI(){
@@ -984,6 +986,7 @@ function updateLiveStatusUI(){
   if(button)button.textContent=liveRole==='host'?`● Live · ${hostConnectionCount()} collegati`:liveRole==='manager'?'● Gestione live':liveRole==='referee'?'● Arbitraggio live':liveRole==='viewer'?'● Info diretta':'● Condivisione live';
   updateSaveIndicator();
   const count=document.getElementById('liveConnectedCount');if(count)count.textContent=String(hostConnectionCount());
+  syncScreenWakeLock();
 }
 function liveWaitingMessage(){return liveErrorMessage||'Connessione al telefono che sta gestendo il torneo…';}
 function renderLiveWaiting(){
@@ -1161,13 +1164,18 @@ function liveAccessHtml(links){
   if(liveRole==='referee')return '<div class="notice info"><span>⚑</span><span>Accesso Arbitro: puoi modificare soltanto partite e referti. Il resto del torneo è in sola lettura.</span></div>';
   return '<div class="notice info"><span>👁</span><span>Questa pagina è in sola lettura e si aggiorna automaticamente.</span></div>';
 }
+function screenWakeControlHtml(){
+  const checked=keepScreenAwakeEnabled()?'checked':'',disabled=screenWakeLockSupported()?'':'disabled';
+  return `<label class="roster-row" style="margin-top:14px"><span class="grow"><strong>Mantieni schermo acceso durante la Live</strong><span class="note" data-wake-status>${esc(screenWakeStatus())}</span></span><input type="checkbox" data-wake-toggle ${checked} ${disabled}></label><p class="note">Vale solo su questo dispositivo. Consuma più batteria: durante il torneo è consigliato collegarlo alla corrente.</p>`;
+}
 function liveModalHtml(){
-  if(!liveRole)return `<div data-live-modal><div class="kicker">Condivisione senza account</div><h2 style="margin-top:6px">Avvia la diretta P2P</h2><p class="modal-subtitle">Questo telefono diventa il punto centrale del torneo. Deve restare online con Copparì aperto.</p><div class="notice info"><span>●</span><span>Verranno creati tre accessi: pubblico in sola lettura, arbitro limitato a partite e referti, gestore con controllo completo.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveNow">Avvia e crea i link</button></div></div>`;
+  if(!liveRole)return `<div data-live-modal><div class="kicker">Condivisione senza account</div><h2 style="margin-top:6px">Avvia la diretta P2P</h2><p class="modal-subtitle">Questo telefono diventa il punto centrale del torneo. Deve restare online con Copparì aperto.</p><div class="notice info"><span>●</span><span>Verranno creati tre accessi: pubblico in sola lettura, arbitro limitato a partite e referti, gestore con controllo completo.</span></div>${screenWakeControlHtml()}<div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveNow">Avvia e crea i link</button></div></div>`;
   const links=liveLinks(),status=liveRole==='host'?`Diretta attiva · <strong id="liveConnectedCount">${hostConnectionCount()}</strong> collegati`:liveRole==='manager'?'Collegato come gestore':liveRole==='referee'?'Collegato come arbitro':'Collegato come spettatore';
-  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione diretta tramite WebRTC. Il telefono principale deve restare online.</p>${liveAccessHtml(links)}<div class="notice warn" style="margin-top:14px"><span>!</span><span>Senza un database online la diretta non è disponibile quando il telefono principale è chiuso, offline o irraggiungibile dalla rete.</span></div><div class="modal-actions">${liveRole==='host'?'<button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
+  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione diretta tramite WebRTC. Il telefono principale deve restare online.</p>${liveAccessHtml(links)}${['host','referee'].includes(liveRole)?screenWakeControlHtml():''}<div class="notice warn" style="margin-top:14px"><span>!</span><span>Senza un database online la diretta non è disponibile quando il telefono principale è chiuso, offline o irraggiungibile dalla rete.</span></div><div class="modal-actions">${liveRole==='host'?'<button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
 }
 function bindLiveModalActions(){
   modal.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>closeModal());
+  bindScreenWakeControls(modal);
   document.getElementById('startLiveNow')?.addEventListener('click',async()=>{const button=document.getElementById('startLiveNow');button.disabled=true;button.textContent='Avvio…';const ok=await startLiveHost();if(ok){modal.innerHTML=liveModalHtml();bindLiveModalActions();}else{button.disabled=false;button.textContent='Riprova';}});
   document.getElementById('copyViewerLink')?.addEventListener('click',()=>copyLiveLink(liveLinks().viewer,'Link pubblico copiato'));
   document.getElementById('copyManagerLink')?.addEventListener('click',()=>copyLiveLink(liveLinks().manager,'Link gestore copiato'));
@@ -1697,8 +1705,55 @@ function playRefFeedback(kind='confirm'){
   if(!state.settings.soundFeedback)return;
   try{feedbackAudioContext=feedbackAudioContext||new (window.AudioContext||window.webkitAudioContext)();const osc=feedbackAudioContext.createOscillator(),gain=feedbackAudioContext.createGain();osc.type='sine';osc.frequency.value=kind==='alert'?760:kind==='event'?520:620;gain.gain.setValueAtTime(.0001,feedbackAudioContext.currentTime);gain.gain.exponentialRampToValueAtTime(.09,feedbackAudioContext.currentTime+.01);gain.gain.exponentialRampToValueAtTime(.0001,feedbackAudioContext.currentTime+(kind==='alert'?.3:.1));osc.connect(gain).connect(feedbackAudioContext.destination);osc.start();osc.stop(feedbackAudioContext.currentTime+(kind==='alert'?.32:.12));}catch{}
 }
-async function requestRefereeWakeLock(){try{if('wakeLock'in navigator&&!refereeWakeLock)refereeWakeLock=await navigator.wakeLock.request('screen');}catch{refereeWakeLock=null;}}
-async function releaseRefereeWakeLock(){try{await refereeWakeLock?.release();}catch{}refereeWakeLock=null;}
+function keepScreenAwakeEnabled(){return storageGet(WAKE_PREF_KEY)!=='0';}
+function screenWakeLockSupported(){return 'wakeLock' in navigator&&typeof navigator.wakeLock?.request==='function';}
+function shouldKeepScreenAwake(){
+  if(!keepScreenAwakeEnabled()||document.visibilityState!=='visible')return false;
+  return !!activeRefereeMatchId || (liveConnected&&['host','referee'].includes(liveRole));
+}
+function screenWakeStatus(){
+  if(!screenWakeLockSupported())return 'Non supportato da questo browser';
+  if(!keepScreenAwakeEnabled())return 'Disattivato su questo dispositivo';
+  if(screenWakeLock&&!screenWakeLock.released)return 'Attivo · lo schermo resta acceso';
+  if(shouldKeepScreenAwake())return screenWakeLockPending?'Attivazione in corso…':'Non disponibile · controlla batteria e risparmio energetico';
+  return liveRole||activeRefereeMatchId?'Pronto · si attiva quando serve':'Pronto per Live e arbitraggio';
+}
+function updateScreenWakeUI(){
+  document.querySelectorAll('[data-wake-toggle]').forEach(input=>{input.checked=keepScreenAwakeEnabled();input.disabled=!screenWakeLockSupported();});
+  document.querySelectorAll('[data-wake-status]').forEach(el=>{el.textContent=screenWakeStatus();});
+}
+async function syncScreenWakeLock({notify=false}={}){
+  if(!screenWakeLockSupported()){
+    updateScreenWakeUI();if(notify)toast('Schermo sempre acceso non supportato da questo browser',4200);return false;
+  }
+  if(!shouldKeepScreenAwake()){
+    const lock=screenWakeLock;screenWakeLock=null;
+    if(lock&&!lock.released){try{await lock.release();}catch{}}
+    updateScreenWakeUI();return false;
+  }
+  if(screenWakeLock&&!screenWakeLock.released){updateScreenWakeUI();return true;}
+  if(screenWakeLockPending)return screenWakeLockPending;
+  screenWakeLockPending=(async()=>{
+    try{
+      const lock=await navigator.wakeLock.request('screen');screenWakeLock=lock;
+      lock.addEventListener?.('release',()=>{if(screenWakeLock===lock)screenWakeLock=null;updateScreenWakeUI();});
+      if(!shouldKeepScreenAwake()){screenWakeLock=null;try{await lock.release();}catch{}return false;}
+      return true;
+    }catch{screenWakeLock=null;if(notify)toast('Impossibile mantenere lo schermo acceso: controlla il risparmio energetico',4200);return false;}
+    finally{screenWakeLockPending=null;updateScreenWakeUI();}
+  })();
+  return screenWakeLockPending;
+}
+function setKeepScreenAwake(enabled,{notify=true}={}){
+  storageSet(WAKE_PREF_KEY,enabled?'1':'0');syncScreenWakeLock({notify:notify&&enabled});updateScreenWakeUI();
+  if(notify)toast(enabled?'Schermo sempre acceso attivato':'Schermo sempre acceso disattivato');
+}
+function bindScreenWakeControls(root=document){
+  root.querySelectorAll('[data-wake-toggle]').forEach(input=>input.addEventListener('change',()=>setKeepScreenAwake(input.checked)));
+  updateScreenWakeUI();
+}
+async function requestRefereeWakeLock(){return syncScreenWakeLock();}
+async function releaseRefereeWakeLock(){return syncScreenWakeLock();}
 function phaseTargetSeconds(phase){if(phase==='halftime')return Math.max(0,+state.settings.halftimeMinutes||0)*60;if(phase==='first'||phase==='second')return Math.max(1,(+state.settings.matchMinutes||20)*60/Math.max(1,+state.settings.periods||2));return 0;}
 function ensureReferee(m){
   if(!Array.isArray(m.events))m.events=[];
@@ -2092,12 +2147,13 @@ function renderSettings(){
   view.innerHTML=`
     <div class="grid cols-2">
       <div class="card"><div class="kicker">Identità</div><h3>Il tuo torneo</h3><div class="form-grid"><div class="field"><label>Nome torneo</label><input id="setName" maxlength="80" value="${esc(s.name)}"></div><div class="field"><label>Edizione</label><input id="setEdition" maxlength="80" value="${esc(s.edition)}"></div><div class="field"><label>Luogo</label><input id="setVenue" maxlength="120" value="${esc(s.venue||'')}" placeholder="Facoltativo"></div><div class="field"><label>Gestore</label><input id="setOrganizer" maxlength="120" value="${esc(s.organizer||'')}" placeholder="Facoltativo"></div></div></div>
-      <div class="card"><div class="kicker">Modalità arbitro</div><h3>Protezione e feedback</h3><div class="form-grid"><div class="field full"><label>Protezione tocchi involontari</label><select id="setTouchGuard"><option value="1" ${s.touchGuard?'selected':''}>Attiva · doppio tocco intenzionale</option><option value="0" ${!s.touchGuard?'selected':''}>Disattiva · tocco singolo</option></select></div><label class="roster-row"><span class="grow"><strong>Vibrazione</strong><span class="note">Conferma eventi e fine tempo, se supportata</span></span><input id="setHaptic" type="checkbox" ${s.hapticFeedback?'checked':''}></label><label class="roster-row"><span class="grow"><strong>Suono</strong><span class="note">Avviso al tempo regolamentare</span></span><input id="setSound" type="checkbox" ${s.soundFeedback?'checked':''}></label></div><div class="notice info" style="margin-top:12px"><span>🔒</span><span>Con la protezione attiva, un tocco isolato non modifica mai punteggio, cartellini, timer o stato della partita.</span></div></div>
+      <div class="card"><div class="kicker">Modalità arbitro e Live</div><h3>Protezione e feedback</h3><div class="form-grid"><div class="field full"><label>Protezione tocchi involontari</label><select id="setTouchGuard"><option value="1" ${s.touchGuard?'selected':''}>Attiva · doppio tocco intenzionale</option><option value="0" ${!s.touchGuard?'selected':''}>Disattiva · tocco singolo</option></select></div><label class="roster-row"><span class="grow"><strong>Vibrazione</strong><span class="note">Conferma eventi e fine tempo, se supportata</span></span><input id="setHaptic" type="checkbox" ${s.hapticFeedback?'checked':''}></label><label class="roster-row"><span class="grow"><strong>Suono</strong><span class="note">Avviso al tempo regolamentare</span></span><input id="setSound" type="checkbox" ${s.soundFeedback?'checked':''}></label></div>${screenWakeControlHtml()}<div class="notice info" style="margin-top:12px"><span>🔒</span><span>Con la protezione attiva, un tocco isolato non modifica mai punteggio, cartellini, timer o stato della partita.</span></div></div>
     </div>
     <div class="card" style="margin-top:16px"><div class="kicker">Formula</div><h3>Struttura e tempi</h3><div class="form-grid"><div class="field"><label>N° partecipanti</label><input type="number" min="10" max="200" id="setTarget" value="${s.targetPlayers}"></div><div class="field"><label>Giocatori per rosa</label><input type="number" min="5" max="20" id="setRoster" value="${s.rosterSize}"></div><div class="field"><label>Formula torneo</label><select id="setFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Girone + eliminazione diretta</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div><div class="field"><label>Girone</label><select id="setMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div><div class="field"><label>Finale 3° posto</label><select id="setBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div><div class="field"><label>Ora inizio</label><input id="setStartTime" type="time" value="${s.startTime||'00:00'}"></div><div class="field"><label>Durata totale di gioco (min)</label><input type="number" min="2" max="120" id="setMinutes" value="${s.matchMinutes}"></div><div class="field"><label>Intervallo (min)</label><input type="number" min="0" max="30" id="setHalftime" value="${s.halftimeMinutes}"></div><div class="field"><label>Cambio campo (min)</label><input type="number" min="0" max="60" id="setChange" value="${s.changeMinutes}"></div><div class="field"><label>Punti vittoria</label><input type="number" id="setWin" value="${s.pointsWin}"></div><div class="field"><label>Punti pareggio</label><input type="number" id="setDraw" value="${s.pointsDraw}"></div><div class="field"><label>Punti sconfitta</label><input type="number" id="setLoss" value="${s.pointsLoss}"></div></div><div id="settingsPreview" style="margin-top:14px">${settingsPreviewHtml()}</div><div class="modal-actions"><button class="ghost" id="rerunSetup">Riapri configurazione guidata</button><button class="primary" id="saveSettings">Salva impostazioni</button></div></div>
     <div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Guida del gestore</h3><p class="note">Procedura completa prima, durante e dopo il torneo, inclusa la gestione delle emergenze.</p><button class="ghost" id="settingsGuide">Apri la guida</button></div><div class="card"><h3>Backup e ripristino</h3><p class="note">I dati restano su questo dispositivo. Esporta un file prima dell’inizio e durante la serata.</p><div class="button-row"><button class="ghost" id="exportBtn2">Esporta backup</button><label class="ghost file-label">Importa backup<input type="file" id="importInput2" accept="application/json" hidden></label>${snap?`<button class="ghost" id="restoreSnapshot">↶ ${esc(snap.label)}</button>`:''}</div></div></div>
     <div class="card danger-zone" style="margin-top:16px"><h3>Zona sensibile</h3><p class="note">L’azzeramento cancella torneo, squadre, partite e statistiche da questo dispositivo. Prima viene comunque creato un punto di ripristino.</p><button class="danger-outline" id="resetAllBtn">Azzera tutti i dati</button></div>`;
   ['setName','setEdition','setVenue','setOrganizer','setTarget','setRoster','setFormat','setMode','setBronze','setStartTime','setMinutes','setHalftime','setChange','setWin','setDraw','setLoss','setTouchGuard','setHaptic','setSound'].forEach(id=>document.getElementById(id)?.addEventListener('input',updateSettingsPreview));
+  bindScreenWakeControls(view);
   updateSettingsPreview();
   document.getElementById('saveSettings').onclick=()=>{
     const next=readSettingsForm();
@@ -2149,6 +2205,7 @@ function openManagerGuide(initial=false){
   const liveGuideDetails=[...modal.querySelectorAll('details')].find(item=>item.querySelector('summary')?.textContent.trim()==='Condivisione live');
   if(liveGuideDetails)liveGuideDetails.innerHTML=`<summary><strong>Condivisione live · istruzioni complete</strong></summary><div class="notice info" style="margin:12px 0"><span>●</span><span><strong>Il telefono principale è la sorgente ufficiale.</strong> Conserva il torneo e distribuisce ogni aggiornamento agli altri dispositivi, senza account o database esterni.</span></div><h4>1 · Avvia dal telefono principale</h4><ol class="note"><li>Completa almeno la configurazione iniziale, poi da Panoramica tocca “Avvia diretta”.</li><li>Lascia Copparì aperto e il telefono collegato a Internet; evita di bloccare lo schermo durante la gestione.</li><li>Esporta un backup prima del torneo e dopo le modifiche più importanti.</li></ol><h4>2 · Scegli il link corretto</h4><ul class="note"><li><strong>Link pubblico:</strong> è sempre in sola lettura. Mostra risultati, calendario, classifica e premi; chi lo apre non può cambiare i dati.</li><li><strong>Link gestore:</strong> offre controllo completo. Chi lo possiede può modificare partecipanti, squadre, calendario, configurazione, risultati e arbitraggio.</li><li><strong>Aprire o sfogliare una schermata non cambia nulla.</strong> Una modifica arriva al telefono principale soltanto quando viene confermata con comandi come Salva, Genera, Elimina, Sposta o Termina partita.</li></ul><h4>3 · Durante il torneo</h4><ol class="note"><li>Controlla l’indicatore Live nella barra: mostra collegamento e dispositivi connessi.</li><li>Assegna preferibilmente una partita o un compito a ciascun gestore; evitate di modificare contemporaneamente la stessa parte del torneo.</li><li>Se due gestori partono dalla stessa versione, Copparì conserva la prima modifica ricevuta, riallinea l’altro dispositivo e gli chiede di ripetere l’ultima operazione.</li><li>Se il collegamento del gestore cade, le modifiche vengono bloccate finché non avviene la riconnessione. Il pubblico mantiene visibile l’ultimo aggiornamento.</li></ol><h4>4 · Chiusura e sicurezza</h4><ul class="note"><li>“Termina diretta” scollega tutti, ma non cancella il torneo salvato sul telefono principale.</li><li>Tratta il link gestore come una password. Se viene condiviso per errore, termina la diretta e avviala di nuovo per creare link nuovi.</li><li>Se il telefono principale viene chiuso o va offline, nessuno può aggiornare o raggiungere la diretta finché Copparì non viene riaperto sullo stesso dispositivo.</li></ul>`;
   if(liveGuideDetails)liveGuideDetails.innerHTML=liveGuideDetails.innerHTML
+    .replace('<li>Lascia Copparì aperto e il telefono collegato a Internet; evita di bloccare lo schermo durante la gestione.</li>','<li>Lascia Copparì aperto e il telefono collegato a Internet.</li><li>Attiva “Mantieni schermo acceso durante la Live” sul telefono principale e su quello dell’arbitro. La scelta vale solo sul dispositivo in cui viene impostata.</li><li>La protezione non può impedire il blocco manuale e può essere sospesa dal risparmio energetico o dalla batteria scarica; collega i telefoni alla corrente.</li>')
     .replace('<li><strong>Link gestore:</strong>','<li><strong>Link arbitro:</strong> può aprire le partite, usare il timer, registrare gol, assist, cartellini e MVP e chiudere il referto. Non può modificare partecipanti, squadre, calendario o configurazione.</li><li><strong>Link gestore:</strong>')
     .replace('<li>Assegna preferibilmente una partita o un compito a ciascun gestore; evitate di modificare contemporaneamente la stessa parte del torneo.</li>','<li>Consegna il link arbitro a chi dirige il campo e il link gestore a chi coordina il torneo.</li><li>Dopo una partita il gestore può compilare e pubblicare le Copparigelle mentre l’arbitro avvia quella successiva: referto e pagelle vengono sincronizzati separatamente e non si sovrascrivono.</li>')
     .replace('Tratta il link gestore come una password.','Tratta i link gestore e arbitro come password.');
@@ -2198,7 +2255,7 @@ document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importInput').onchange=importBackup;
 document.getElementById('shareBtn').onclick=shareSummary;
 document.getElementById('printBtn').onclick=()=>window.print();
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;if(activeRefereeMatchId)requestRefereeWakeLock();if(liveRole==='host'&&livePeer?.disconnected){try{livePeer.reconnect();}catch{}}else if(['viewer','manager','referee'].includes(liveRole)&&!liveConnected)connectToLiveHost();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){updateScreenWakeUI();return;}syncScreenWakeLock();if(liveRole==='host'&&livePeer?.disconnected){try{livePeer.reconnect();}catch{}}else if(['viewer','manager','referee'].includes(liveRole)&&!liveConnected)connectToLiveHost();});
 window.addEventListener('online',()=>{if(liveRole==='host'&&livePeer?.disconnected){try{livePeer.reconnect();}catch{}}else if(['viewer','manager','referee'].includes(liveRole)&&!liveConnected)connectToLiveHost();});
 window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY)toast('I dati sono cambiati in un’altra scheda: ricarica per allinearli',4200);});
 const joiningLiveSession=initLiveSharing();
