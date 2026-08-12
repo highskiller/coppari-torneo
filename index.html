@@ -100,6 +100,8 @@ tr:last-child td { border-bottom:0; }
 .field label { font-size:12px; font-weight:800; color:var(--muted); }
 .field input, .field select { width:100%; border:1px solid var(--line); background:white; color:var(--ink); border-radius:10px; padding:10px 11px; outline:none; }
 .field input:focus, .field select:focus { border-color:#91aa97; box-shadow: 0 0 0 3px rgba(37,77,53,.09); }
+.team-name-random { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:stretch; }
+.team-name-random .dice-name { min-width:48px; padding:9px 12px; font-size:20px; line-height:1; }
 
 .team-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:16px; }
 .team-card { position:relative; overflow:hidden; }
@@ -595,9 +597,9 @@ tr:hover td { background:#fbfcf8; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.3.1';
-const STORAGE_KEY = 'coppari.v3';
-const HISTORY_KEY = 'coppari.v3.history';
+const APP_VERSION = '3.4.0';
+const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
+const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
 const LIVE_CONFIG_KEY = 'coppari.v3.live';
 const WAKE_PREF_KEY = 'coppari.v3.keep-screen-awake';
@@ -681,7 +683,7 @@ function safeText(v='',max=120){return String(v??'').replace(/[\u0000-\u001F\u00
 function safeId(v,prefix='id'){const cleaned=String(v??'').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,100);return cleaned||uid(prefix);}
 function safeRef(v){return v===null||v===undefined||v===''?null:safeId(v,'ref');}
 function safeColor(v,fallback='#315b43'){return /^#[0-9a-f]{6}$/i.test(String(v||''))?String(v):fallback;}
-function roleLabel(role){ return ({POR:'Portiere',DIF:'Difensore',CEN:'Centrocampista',ATT:'Attaccante'}[role] || role); }
+function roleLabel(role){ return ({TBD:'Da definire',POR:'Portiere',DIF:'Difensore',CEN:'Centrocampista',ATT:'Attaccante'}[role] || role); }
 function teamById(id){ return state.teams.find(t=>t.id===id); }
 function playerById(id){ return state.players.find(p=>p.id===id); }
 function teamPlayers(teamId){ return state.players.filter(p=>p.teamId===teamId && p.active!==false); }
@@ -718,8 +720,6 @@ function rosterDistribution(total=state.settings.targetPlayers, teamCount=state.
 }
 function legsCount(settings=state.settings){ return settings.scheduleMode==='double'?2:1; }
 function groupGamesExpected(teamCount=state.settings.teamCount, settings=state.settings){ if(settings.tournamentFormat==='knockout') return 0; return teamCount>1 ? (teamCount*(teamCount-1)/2)*legsCount(settings) : 0; }
-function roundsPerLeg(teamCount=state.settings.teamCount){ if(teamCount<2)return 0; return teamCount%2===0?teamCount-1:teamCount; }
-function groupRoundsExpected(teamCount=state.settings.teamCount, settings=state.settings){ return settings.tournamentFormat==='knockout'?0:roundsPerLeg(teamCount)*legsCount(settings); }
 function knockoutBracketSize(teamCount=state.settings.teamCount, settings=state.settings){
   if((!settings.playoffs && settings.tournamentFormat!=='knockout') || teamCount<2) return 0;
   let size=1;
@@ -775,7 +775,8 @@ function stageLabel(m){
     return size?knockoutMatchLabel(size,m.slot):'Fase finale';
   }
   const leg = legsCount()===2 ? (m.leg===2?' · Ritorno':' · Andata') : '';
-  return `Giornata ${m.round}${leg}`;
+  const slot=groupMatches().findIndex(x=>x.id===m.id)+1;
+  return `Partita ${Math.max(1,slot)}${leg}`;
 }
 function matchOperationalMinutes(settings=state.settings){ return Math.max(0,+settings.matchMinutes||0)+Math.max(0,+settings.halftimeMinutes||0); }
 function estimatedTournamentMinutes(settings=state.settings){
@@ -804,13 +805,50 @@ function emptyState(){
   };
 }
 
+function decidedTeamsState(){
+  const seeded=emptyState();
+  Object.assign(seeded.settings,{
+    targetPlayers:25,
+    rosterSize:5,
+    teamCount:5,
+    scheduleMode:'single',
+    tournamentFormat:'groups_ko',
+    startTime:'00:00',
+    configured:true
+  });
+  seeded.teams=[
+    {id:'t_decisa_1',name:'Squadra 1',color:teamColor(0),captainId:null},
+    {id:'t_decisa_2',name:'Squadra 2',color:teamColor(1),captainId:null},
+    {id:'t_decisa_3',name:'Squadra 3',color:teamColor(2),captainId:null},
+    {id:'t_decisa_4',name:'Squadra 4',color:teamColor(3),captainId:null},
+    {id:'t_decisa_5',name:'Squadra 5',color:teamColor(4),captainId:null}
+  ];
+  const rosters=[
+    ['Greco','Valerio','Fra Rom','Gregorio 2','Jacopo S. (GK)'],
+    ['Francesco Alfarano','Gue','Gregorio','Jacopo Romano','Zango'],
+    ['Bako','Giorgio T','Denny','Luca Pisanò','Kun'],
+    ['Mirko','Lorenzo Bove','Pippo','Pier','Marco Toma'],
+    ['Ricky','Parì','Ciliberti','Giorgio Romano','Tommy']
+  ];
+  seeded.players=rosters.flatMap((names,teamIndex)=>names.map((name,playerIndex)=>({
+    id:`p_decisa_${teamIndex+1}_${playerIndex+1}`,
+    name,
+    role:name==='Jacopo S. (GK)'?'POR':'TBD',
+    rating:3,
+    teamId:seeded.teams[teamIndex].id,
+    active:true
+  })));
+  seeded.meta.preloadedRoster='squadre-decise-2026';
+  return seeded;
+}
+
 function normalizeState(data){
   const fresh=emptyState();
   const merged={...fresh,...(data||{}),settings:{...fresh.settings,...((data||{}).settings||{})}};
   if(!merged.settings.rosterSize) merged.settings.rosterSize=6;
   if(!['single','double'].includes(merged.settings.scheduleMode)) merged.settings.scheduleMode='single';
   if(!['league','groups_ko','knockout'].includes(merged.settings.tournamentFormat)) merged.settings.tournamentFormat=merged.settings.playoffs?'groups_ko':'league';
-  merged.settings.startTime=/^\d{2}:\d{2}$/.test(merged.settings.startTime||'')?merged.settings.startTime:'00:00';
+  merged.settings.startTime='00:00';
   merged.settings.periods=clamp(+merged.settings.periods||2,1,4);
   if(typeof merged.settings.playoffs!=='boolean') merged.settings.playoffs=true;
   if(typeof merged.settings.touchGuard!=='boolean') merged.settings.touchGuard=true;
@@ -831,7 +869,7 @@ function normalizeState(data){
   merged.settings.teamCount=calcTeamCount(merged.settings.targetPlayers,merged.settings.rosterSize);
   if(merged.settings.configured && !merged.settings.teamCount) merged.settings.configured=false;
   merged.teams=(Array.isArray(merged.teams)?merged.teams:[]).slice(0,200).map((t,i)=>({id:safeId(t?.id,'t'),name:safeText(t?.name||defaultTeamName(i),80)||defaultTeamName(i),color:safeColor(t?.color,teamColor(i)),captainId:safeRef(t?.captainId)}));
-  merged.players=(Array.isArray(merged.players)?merged.players:[]).slice(0,500).map(p=>({id:safeId(p?.id,'p'),name:safeText(p?.name||'Giocatore',80)||'Giocatore',role:['POR','DIF','CEN','ATT'].includes(p?.role)?p.role:'CEN',rating:clamp(+p?.rating||3,1,5),teamId:safeRef(p?.teamId),active:p?.active!==false}));
+  merged.players=(Array.isArray(merged.players)?merged.players:[]).slice(0,500).map(p=>({id:safeId(p?.id,'p'),name:safeText(p?.name||'Giocatore',80)||'Giocatore',role:['TBD','POR','DIF','CEN','ATT'].includes(p?.role)?p.role:'TBD',rating:clamp(+p?.rating||3,1,5),teamId:safeRef(p?.teamId),active:p?.active!==false}));
   merged.matches=(Array.isArray(merged.matches)?merged.matches:[]).slice(0,2000).map(m=>{
     const rawStage=String(m?.stage||'group'),stage=/^(group|prelim|bronze|final|semi|quarter|round16|round32|round\d+)$/.test(rawStage)?rawStage:'group';
     const status=['scheduled','live','played'].includes(m?.status)?m.status:'scheduled';
@@ -848,11 +886,8 @@ function normalizeState(data){
 }
 function loadState(){
   try {
-    let raw=storageGet(STORAGE_KEY);
-    if(!raw){
-      for(const key of LEGACY_KEYS){ const legacy=storageGet(key); if(legacy){raw=legacy;break;} }
-    }
-    if(!raw) return emptyState();
+    const raw=storageGet(STORAGE_KEY);
+    if(!raw) return decidedTeamsState();
     return normalizeState(JSON.parse(raw));
   } catch { return emptyState(); }
 }
@@ -1135,7 +1170,7 @@ function renderSpectatorHome(){
 }
 function renderSpectatorCalendar(){
   setHeader('Partite','Calendario e risultati in diretta');
-  const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?stageLabel(m):m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
+  const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?'Sequenza continua dalle 00:00':m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
   view.innerHTML=`${spectatorLiveBarHtml()}${Object.keys(groups).length?Object.entries(groups).map(([label,matches])=>`<div class="round-block"><div class="round-title">${esc(label)}</div><div class="match-list">${matches.map(publicMatchRow).join('')}</div></div>`).join(''):'<div class="empty"><strong>Calendario in preparazione</strong>Le partite appariranno automaticamente.</div>'}`;
   view.querySelectorAll('[data-ratings-match]').forEach(button=>button.onclick=()=>openRatingsModal(button.dataset.ratingsMatch,true));
 }
@@ -1213,7 +1248,7 @@ function setupPreviewValues(){
   const compatibility=rosterCompatibility(total,roster);
   const teams=compatibility.teams;
   const sizes=rosterDistribution(total,teams);
-  const startTime=document.getElementById('setupStartTime')?.value||'00:00';
+  const startTime='00:00';
   const periods=2;
   const settings={targetPlayers:total,rosterSize:roster,teamCount:teams,scheduleMode:mode,tournamentFormat,playoffs,bronzeFinal:false,startTime,periods,matchMinutes:minutes,halftimeMinutes:halftime,changeMinutes:change};
   const bracket=knockoutBracketSize(teams,settings);
@@ -1272,7 +1307,7 @@ function renderSetup(){
           <div class="field"><label>Formula torneo</label><select id="setupFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Girone + eliminazione diretta</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div>
           <div class="field"><label>Girone (se previsto)</label><select id="setupMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div>
           <div class="field"><label>Finale 3° posto</label><select id="setupBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div>
-          <div class="field"><label>Ora inizio torneo</label><input id="setupStartTime" type="time" value="${s.startTime||'00:00'}"></div><div class="field"><label>Tempi</label><input value="2 tempi" disabled><small>Modalità arbitro ottimizzata per 1° tempo, intervallo e 2° tempo.</small></div><div class="field"><label>Durata totale di gioco / partita (min)</label><input id="setupMinutes" type="number" min="2" max="120" value="${s.matchMinutes}"><small>Esclude la pausa tra 1° e 2° tempo.</small></div>
+          <div class="field"><label>Inizio torneo</label><input id="setupStartTime" type="time" value="00:00" disabled><small>La sequenza delle partite parte a mezzanotte e prosegue fino alla fine.</small></div><div class="field"><label>Tempi</label><input value="2 tempi" disabled><small>Modalità arbitro ottimizzata per 1° tempo, intervallo e 2° tempo.</small></div><div class="field"><label>Durata totale di gioco / partita (min)</label><input id="setupMinutes" type="number" min="2" max="120" value="${s.matchMinutes}"><small>Esclude la pausa tra 1° e 2° tempo.</small></div>
           <div class="field"><label>Pausa tra 1° e 2° tempo (min)</label><input id="setupHalftime" type="number" min="0" max="30" value="${s.halftimeMinutes}"></div>
           <div class="field"><label>Tempo tra due partite (min)</label><input id="setupChange" type="number" min="0" max="60" value="${s.changeMinutes}"></div>
         </div>
@@ -1447,20 +1482,20 @@ function renderPlayers(){
   search?.addEventListener('input',filterPlayers);document.getElementById('clearPlayerSearch')?.addEventListener('click',()=>{search.value='';filterPlayers();search.focus();});
 }
 function openBulkPlayersModal(){
-  openModal(`<h2>Incolla partecipanti</h2><p class="modal-subtitle">Un nome per riga. Facoltativo: <strong>Nome; Ruolo; Livello</strong> (es. Luca; ATT; 4).</p><textarea class="bulk-area" id="bulkNames" placeholder="Luca; ATT; 4\nMarco; POR; 3\nAndrea"></textarea><div class="notice info" style="margin-top:10px"><span>i</span><span>I nomi già presenti vengono ignorati. Ruolo predefinito: Centrocampista; livello: 3.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="saveBulk">Aggiungi lista</button></div>`);
+  openModal(`<h2>Incolla partecipanti</h2><p class="modal-subtitle">Un nome per riga. Facoltativo: <strong>Nome; Ruolo; Livello</strong> (es. Luca; ATT; 4).</p><textarea class="bulk-area" id="bulkNames" placeholder="Luca; ATT; 4\nMarco; POR; 3\nAndrea"></textarea><div class="notice info" style="margin-top:10px"><span>i</span><span>I nomi già presenti vengono ignorati. Ruolo predefinito: Da definire; livello: 3.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="saveBulk">Aggiungi lista</button></div>`);
   document.getElementById('saveBulk').onclick=()=>{
     const rows=document.getElementById('bulkNames').value.split(/\n+/).map(x=>x.trim()).filter(Boolean);
     if(!rows.length)return toast('Incolla almeno un nome');
-    const roleMap={PORTIERE:'POR',POR:'POR',DIFENSORE:'DIF',DIF:'DIF',CENTROCAMPISTA:'CEN',CEN:'CEN',ATTACCANTE:'ATT',ATT:'ATT'};
+    const roleMap={'DA DEFINIRE':'TBD',TBD:'TBD',PORTIERE:'POR',POR:'POR',DIFENSORE:'DIF',DIF:'DIF',CENTROCAMPISTA:'CEN',CEN:'CEN',ATTACCANTE:'ATT',ATT:'ATT'};
     const existing=new Set(state.players.map(p=>p.name.toLowerCase())); let added=0;
     createSnapshot('Prima dell’importazione partecipanti');
-    rows.forEach(row=>{const [rawName,rawRole='',rawRating='']=row.split(/[;\t]/).map(x=>x.trim());const name=rawName?.slice(0,80);if(name&&!existing.has(name.toLowerCase())){state.players.push({id:uid('p'),name,role:roleMap[rawRole.toUpperCase()]||'CEN',rating:clamp(+rawRating||3,1,5),teamId:null,active:true});existing.add(name.toLowerCase());added++;}});
+    rows.forEach(row=>{const [rawName,rawRole='',rawRating='']=row.split(/[;\t]/).map(x=>x.trim());const name=rawName?.slice(0,80);if(name&&!existing.has(name.toLowerCase())){state.players.push({id:uid('p'),name,role:roleMap[rawRole.toUpperCase()]||'TBD',rating:clamp(+rawRating||3,1,5),teamId:null,active:true});existing.add(name.toLowerCase());added++;}});
     save();closeModal();renderPlayers();toast(`${added} partecipanti aggiunti`);
   };
 }
 function openPlayerModal(id=null){
-  const p=id?playerById(id):{name:'',role:'CEN',rating:3,teamId:null,active:true};
-  openModal(`<h2>${id?'Modifica':'Nuovo'} giocatore</h2><div class="form-grid"><div class="field full"><label>Nome</label><input id="pName" value="${esc(p.name)}" placeholder="Nome o soprannome"></div><div class="field"><label>Ruolo</label><select id="pRole">${['POR','DIF','CEN','ATT'].map(r=>`<option ${p.role===r?'selected':''} value="${r}">${roleLabel(r)}</option>`).join('')}</select></div><div class="field"><label>Livello (1-5)</label><select id="pRating">${[1,2,3,4,5].map(n=>`<option ${p.rating===n?'selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label>Stato</label><select id="pActive"><option value="1" ${p.active!==false?'selected':''}>Attivo</option><option value="0" ${p.active===false?'selected':''}>Non attivo</option></select></div></div>${p.teamId?`<p class="note">Squadra attuale: <strong>${esc(teamById(p.teamId)?.name||'—')}</strong>. Per cambiare squadra usa “Scambia giocatori”, così le rose restano sempre uguali.</p>`:''}<div class="modal-actions">${id?'<button class="danger" id="deletePlayer">Elimina</button>':''}<button class="ghost" data-close>Chiudi</button><button class="primary" id="savePlayer">Salva</button></div>`);
+  const p=id?playerById(id):{name:'',role:'TBD',rating:3,teamId:null,active:true};
+  openModal(`<h2>${id?'Modifica':'Nuovo'} giocatore</h2><div class="form-grid"><div class="field full"><label>Nome</label><input id="pName" value="${esc(p.name)}" placeholder="Nome o soprannome"></div><div class="field"><label>Ruolo</label><select id="pRole">${['TBD','POR','DIF','CEN','ATT'].map(r=>`<option ${p.role===r?'selected':''} value="${r}">${roleLabel(r)}</option>`).join('')}</select></div><div class="field"><label>Livello (1-5)</label><select id="pRating">${[1,2,3,4,5].map(n=>`<option ${p.rating===n?'selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label>Stato</label><select id="pActive"><option value="1" ${p.active!==false?'selected':''}>Attivo</option><option value="0" ${p.active===false?'selected':''}>Non attivo</option></select></div></div>${p.teamId?`<p class="note">Squadra attuale: <strong>${esc(teamById(p.teamId)?.name||'—')}</strong>. Per cambiare squadra usa “Scambia giocatori”, così le rose restano sempre uguali.</p>`:''}<div class="modal-actions">${id?'<button class="danger" id="deletePlayer">Elimina</button>':''}<button class="ghost" data-close>Chiudi</button><button class="primary" id="savePlayer">Salva</button></div>`);
   document.getElementById('savePlayer').onclick=()=>{ const name=document.getElementById('pName').value.trim();if(!name)return toast('Inserisci il nome');if(state.players.some(x=>x.id!==id&&x.name.trim().toLowerCase()===name.toLowerCase()))return toast('Esiste già un partecipante con questo nome'); const active=document.getElementById('pActive').value==='1'; if(id&&p.teamId&&!active&&!confirm('Disattivandolo la sua rosa risulterà incompleta. Continuare?'))return; const data={name:name.slice(0,80),role:document.getElementById('pRole').value,rating:+document.getElementById('pRating').value,active};createSnapshot(id?`Prima della modifica di ${p.name}`:'Prima di aggiungere un partecipante'); if(id)Object.assign(p,data);else state.players.push({id:uid('p'),teamId:null,...data});save();closeModal();renderPlayers();toast('Partecipante salvato'); };
   document.getElementById('deletePlayer')?.addEventListener('click',()=>{if(!confirm(p.teamId?'Eliminare questo partecipante? La squadra resterà incompleta finché non rigeneri le rose o inserisci un sostituto.':'Eliminare questo partecipante?'))return;createSnapshot(`Prima di eliminare ${p.name}`);state.teams.forEach(t=>{if(t.captainId===id)t.captainId=null;});state.players=state.players.filter(x=>x.id!==id);state.matches.forEach(m=>{m.stats=(m.stats||[]).filter(s=>s.playerId!==id);m.events=(m.events||[]).filter(e=>e.playerId!==id);m.ratings=(m.ratings||[]).filter(r=>r.playerId!==id);if(m.mvpPlayerId===id)m.mvpPlayerId=null;});save();closeModal();renderPlayers();toast('Partecipante eliminato');});
 }
@@ -1468,9 +1503,9 @@ function openPlayerModal(id=null){
 function renderTeams(){
   const expected=state.settings.rosterSize;
   setHeader('Squadre',`${state.settings.teamCount} rose · ${expected} giocatori ciascuna`);
-  const cards=state.teams.map((t,i)=>{const roster=teamPlayers(t.id),cap=playerById(t.captainId),avg=roster.length?(roster.reduce((s,p)=>s+p.rating,0)/roster.length).toFixed(1):'—';const ok=roster.length===expected;return `<div class="card team-card" style="--team:${t.color||teamColor(i)}"><div class="team-accent"></div><h3>${esc(t.name)}</h3><div class="team-meta">${roster.length}/${expected} giocatori · livello medio ${avg}${cap?` · capitano ${esc(cap.name)}`:''} ${ok?'<span class="badge green">Rosa completa</span>':'<span class="badge red">Da rigenerare</span>'}</div><div class="roster">${roster.map(p=>`<div class="roster-row"><span class="badge">${p.role}</span><span class="grow">${esc(p.name)}${t.captainId===p.id?' ©':''}</span><span class="rating">${'★'.repeat(p.rating)}</span></div>`).join('')||'<div class="note">Nessun giocatore</div>'}</div><div style="margin-top:12px"><button class="ghost full" data-edit-team="${t.id}">Nome / capitano</button></div></div>`;}).join('');
+  const cards=state.teams.map((t,i)=>{const roster=teamPlayers(t.id),cap=playerById(t.captainId),avg=roster.length?(roster.reduce((s,p)=>s+p.rating,0)/roster.length).toFixed(1):'—';const ok=roster.length===expected;return `<div class="card team-card" style="--team:${t.color||teamColor(i)}"><div class="team-accent"></div><h3>${esc(t.name)}</h3><div class="team-meta">${roster.length}/${expected} giocatori · livello medio ${avg}${cap?` · capitano ${esc(cap.name)}`:''} ${ok?'<span class="badge green">Rosa completa</span>':'<span class="badge red">Da rigenerare</span>'}</div><div class="roster">${roster.map(p=>`<div class="roster-row"><span class="badge">${esc(roleLabel(p.role))}</span><span class="grow">${esc(p.name)}${t.captainId===p.id?' ©':''}</span><span class="rating">${'★'.repeat(p.rating)}</span></div>`).join('')||'<div class="note">Nessun giocatore</div>'}</div><div style="margin-top:12px"><button class="ghost full" data-edit-team="${t.id}">Nome / capitano</button></div></div>`;}).join('');
   const complete=state.teams.length===state.settings.teamCount && state.teams.every(t=>teamPlayers(t.id).length===expected);
-  view.innerHTML=`<div class="section-head"><h2>Le ${state.settings.teamCount} squadre</h2><div class="actions"><button class="secondary" id="autoTeams">⚖ Genera equilibrate</button>${state.teams.length?'<button class="ghost" id="manualRosters">Gestisci assegnazioni</button>':''}${complete?'<button class="ghost" id="swapPlayers">⇄ Scambia</button>':''}</div></div><div class="card" style="margin-bottom:16px"><div class="target-line"><span>Partecipanti attivi</span><strong>${activePlayers().length}/${state.settings.targetPlayers}</strong></div><p class="note">Obiettivo: <strong>${state.settings.teamCount} squadre da ${expected} giocatori</strong>. Il bilanciamento considera livello e ruolo. Il gestore può poi scambiare o riassegnare manualmente chiunque.</p>${state.teams.length&&!complete?'<div class="notice warn" style="margin-top:12px"><span>!</span><span>Almeno una rosa non ha la dimensione prevista. Puoi correggerla con “Gestisci assegnazioni” o rigenerare tutto.</span></div>':''}</div>${cards?`<div class="team-grid">${cards}</div>`:`<div class="empty"><strong>Nessuna squadra</strong>Quando hai inserito tutti i partecipanti, premi “Genera equilibrate”.</div>`}`;
+  view.innerHTML=`<div class="section-head"><h2>Le ${state.settings.teamCount} squadre</h2><div class="actions"><button class="${state.teams.length?'ghost':'secondary'}" id="autoTeams">⚖ ${state.teams.length?'Rigenera equilibrate':'Genera equilibrate'}</button>${state.teams.length?'<button class="ghost" id="manualRosters">Gestisci assegnazioni</button>':''}${complete?'<button class="ghost" id="swapPlayers">⇄ Scambia</button>':''}</div></div><div class="card" style="margin-bottom:16px"><div class="target-line"><span>Partecipanti attivi</span><strong>${activePlayers().length}/${state.settings.targetPlayers}</strong></div><p class="note">Le <strong>${state.settings.teamCount} squadre da ${expected} giocatori</strong> sono già assegnate. Il gestore può rinominarle, scambiare o riassegnare manualmente i partecipanti.</p>${state.teams.length&&!complete?'<div class="notice warn" style="margin-top:12px"><span>!</span><span>Almeno una rosa non ha la dimensione prevista. Puoi correggerla con “Gestisci assegnazioni” o rigenerare tutto.</span></div>':''}</div>${cards?`<div class="team-grid">${cards}</div>`:`<div class="empty"><strong>Nessuna squadra</strong>Quando hai inserito tutti i partecipanti, premi “Genera equilibrate”.</div>`}`;
   document.getElementById('autoTeams').onclick=autoBalanceTeams;
   document.getElementById('manualRosters')?.addEventListener('click',openRosterManagerModal);
   document.getElementById('swapPlayers')?.addEventListener('click',openSwapPlayersModal);
@@ -1479,7 +1514,16 @@ function renderTeams(){
 function openTeamModal(id){
   const t=teamById(id); if(!t)return;
   const roster=teamPlayers(id);
-  openModal(`<h2>Gestisci squadra</h2><div class="form-grid"><div class="field full"><label>Nome squadra</label><input id="tName" value="${esc(t.name)}" placeholder="Es. Atletico Pasticciotto"></div><div class="field"><label>Colore</label><input id="tColor" type="color" value="${t.color||teamColor(state.teams.indexOf(t))}"></div><div class="field"><label>Capitano</label><select id="tCaptain"><option value="">Da scegliere</option>${roster.map(p=>`<option value="${p.id}" ${t.captainId===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div></div><p class="note">La rosa contiene ${roster.length}/${state.settings.rosterSize} giocatori. Gli spostamenti singoli sono bloccati per mantenere tutte le squadre della stessa dimensione.</p><div class="modal-actions"><button class="ghost" data-close>Chiudi</button><button class="primary" id="saveTeam">Salva</button></div>`);
+  openModal(`<h2>Gestisci squadra</h2><div class="form-grid"><div class="field full"><label>Nome squadra</label><div class="team-name-random"><input id="tName" value="${esc(t.name)}" placeholder="Es. Atletico Pasticciotto"><button class="ghost dice-name" id="randomTeamName" type="button" title="Genera un nome simpatico" aria-label="Genera un nome simpatico casuale">🎲</button></div><small>Premi il dado per proporre un nome simpatico; puoi modificarlo prima di salvare.</small></div><div class="field"><label>Colore</label><input id="tColor" type="color" value="${t.color||teamColor(state.teams.indexOf(t))}"></div><div class="field"><label>Capitano</label><select id="tCaptain"><option value="">Da scegliere</option>${roster.map(p=>`<option value="${p.id}" ${t.captainId===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div></div><p class="note">La rosa contiene ${roster.length}/${state.settings.rosterSize} giocatori. Gli spostamenti singoli sono bloccati per mantenere tutte le squadre della stessa dimensione.</p><div class="modal-actions"><button class="ghost" data-close>Chiudi</button><button class="primary" id="saveTeam">Salva</button></div>`);
+  document.getElementById('randomTeamName').onclick=()=>{
+    const input=document.getElementById('tName');
+    const used=new Set(state.teams.filter(x=>x.id!==id).map(x=>x.name.trim().toLocaleLowerCase('it')));
+    const current=input.value.trim().toLocaleLowerCase('it');
+    const available=defaultTeamNames.filter(name=>{const key=name.toLocaleLowerCase('it');return key!==current&&!used.has(key);});
+    const pool=available.length?available:defaultTeamNames.filter(name=>name.toLocaleLowerCase('it')!==current);
+    input.value=pool[Math.floor(Math.random()*pool.length)]||defaultTeamName(state.teams.indexOf(t));
+    input.focus();input.select();
+  };
   document.getElementById('saveTeam').onclick=()=>{const name=document.getElementById('tName').value.trim();if(!name)return toast('Inserisci il nome squadra');createSnapshot(`Prima di modificare ${t.name}`);t.name=name.slice(0,80);t.color=document.getElementById('tColor').value;t.captainId=document.getElementById('tCaptain').value||null;save();closeModal();renderTeams();toast('Squadra salvata');};
 }
 function openRosterManagerModal(){
@@ -1502,13 +1546,13 @@ function autoBalanceTeams(){
   if(count<2)return toast('Configurazione squadre non valida');
   if(active.length!==count*state.settings.rosterSize)return toast('Il numero di partecipanti non permette rose tutte uguali');
   const capacities=Array(count).fill(state.settings.rosterSize);
-  if(state.matches.length&&!confirm('Rigenerando le squadre verranno cancellati calendario, risultati e statistiche. Continuare?'))return;
+  if((state.teams.length||state.matches.length)&&!confirm('Rigenerare le squadre sostituirà le rose decise e cancellerà calendario, risultati e statistiche. Continuare?'))return;
   createSnapshot(state.teams.length?'Prima di rigenerare le squadre':'Prima di generare le squadre');
   state.matches=[];
   const generatedNames=drawTeamNames(count);
   state.teams=Array.from({length:count},(_,i)=>({id:uid('t'),name:generatedNames[i],color:teamColor(i),captainId:null}));
   active.forEach(p=>p.teamId=null);
-  const buckets=state.teams.map((t,i)=>({team:t,capacity:capacities[i],score:0,players:[],keepers:0,roles:{POR:0,DIF:0,CEN:0,ATT:0}}));
+  const buckets=state.teams.map((t,i)=>({team:t,capacity:capacities[i],score:0,players:[],keepers:0,roles:{TBD:0,POR:0,DIF:0,CEN:0,ATT:0}}));
   const tieBreak=new Map(active.map(p=>[p.id,Math.random()]));
   const sorted=[...active].sort((a,b)=>{
     if(a.role==='POR'&&b.role!=='POR')return -1;
@@ -1537,7 +1581,7 @@ function autoBalanceTeams(){
 }
 
 function clockAdd(base,mins){const [h,m]=String(base||'00:00').split(':').map(Number);const x=(h*60+m+mins)%(24*60);return `${String(Math.floor(x/60)).padStart(2,'0')}:${String(x%60).padStart(2,'0')}`;}
-function matchSlotTime(index){return clockAdd(state.settings.startTime||'00:00',index*(matchOperationalMinutes()+Math.max(0,+state.settings.changeMinutes||0)));}
+function matchSlotTime(index){return clockAdd('00:00',index*(matchOperationalMinutes()+Math.max(0,+state.settings.changeMinutes||0)));}
 function matchDisplayTime(m){if(!m.date)return matchSlotTime(state.matches.indexOf(m));const d=new Date(m.date);if(Number.isNaN(d.getTime()))return matchSlotTime(state.matches.indexOf(m));return d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
 function formatLabel(){return state.settings.tournamentFormat==='knockout'?'Eliminazione diretta':state.settings.tournamentFormat==='league'?'Girone':'Girone + eliminazione diretta';}
 function seedDirectKnockout(){
@@ -1558,11 +1602,11 @@ function seedDirectKnockout(){
   return true;
 }
 function renderCalendar(){
-  setHeader('Calendario',`${formatMode()}${state.settings.playoffs?' + fase finale automatica':''}`); syncKnockout(false);
-  const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?stageLabel(m):m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
+  setHeader('Calendario',`Sequenza continua dalle 00:00 · ${formatMode()}${state.settings.playoffs?' + fase finale automatica':''}`); syncKnockout(false);
+  const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?'Sequenza continua dalle 00:00':m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
   const ordered=[...Object.entries(groups)];
   const ko=knockoutGamesExpected();
-  view.innerHTML=`<div class="section-head"><h2>Partite <span class="badge">${state.matches.length}</span></h2><div class="actions">${state.settings.playoffs?'<button class="ghost" id="syncPlayoffs">Aggiorna playoff</button>':''}${state.teams.length>=2?'<button class="ghost" id="addMatch">+ Partita manuale</button>':''}<button class="secondary" id="genCalendar">Genera calendario</button></div></div><div class="schedule-summary"><span class="status-chip">${groupGamesExpected()} girone</span><span class="status-chip">${groupRoundsExpected()} giornate</span><span class="status-chip">${formatMode()}</span>${ko?`<span class="status-chip">${ko} playoff</span>`:'<span class="status-chip">vince la classifica</span>'}</div>${ordered.length?ordered.map(([label,matches])=>`<div class="round-block"><div class="round-title">${label}</div><div class="match-list">${matches.map(matchRow).join('')}</div></div>`).join(''):`<div class="empty"><strong>Calendario non ancora generato</strong>Servono ${state.settings.teamCount} squadre. Verranno create ${groupGamesExpected()} partite di girone su ${groupRoundsExpected()} giornate.</div>`}`;
+  view.innerHTML=`<div class="section-head"><h2>Partite <span class="badge">${state.matches.length}</span></h2><div class="actions">${state.settings.playoffs?'<button class="ghost" id="syncPlayoffs">Aggiorna playoff</button>':''}${state.teams.length>=2?'<button class="ghost" id="addMatch">+ Partita manuale</button>':''}<button class="secondary" id="genCalendar">Genera calendario</button></div></div><div class="schedule-summary"><span class="status-chip">${groupGamesExpected()} partite di girone</span><span class="status-chip">inizio 00:00</span><span class="status-chip">fine stimata ${clockAdd('00:00',estimatedTournamentMinutes())}</span><span class="status-chip">${formatMode()}</span>${ko?`<span class="status-chip">${ko} playoff</span>`:'<span class="status-chip">vince la classifica</span>'}</div>${ordered.length?ordered.map(([label,matches])=>`<div class="round-block"><div class="round-title">${label}</div><div class="match-list">${matches.map(matchRow).join('')}</div></div>`).join(''):`<div class="empty"><strong>Calendario non ancora generato</strong>Servono ${state.settings.teamCount} squadre. Verranno create ${groupGamesExpected()} partite consecutive a partire dalle 00:00.</div>`}`;
   document.getElementById('genCalendar').onclick=generateCalendar;
   document.getElementById('addMatch')?.addEventListener('click',openCreateMatchModal);
   document.getElementById('syncPlayoffs')?.addEventListener('click',()=>{syncKnockout(true);renderCalendar();});
@@ -1575,7 +1619,7 @@ function openCreateMatchModal(){
   if(state.teams.length<2)return toast('Servono almeno due squadre');
   const options=state.teams.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
   const nextRound=Math.max(0,...groupMatches().map(m=>+m.round||0))+1;
-  openModal(`<h2>Aggiungi partita</h2><p class="modal-subtitle">Controllo manuale per recuperi, variazioni o calendari personalizzati.</p><div class="form-grid"><div class="field"><label>Squadra di casa</label><select id="newHome"><option value="">Scegli…</option>${options}</select></div><div class="field"><label>Squadra ospite</label><select id="newAway"><option value="">Scegli…</option>${options}</select></div><div class="field"><label>Giornata</label><input id="newRound" type="number" min="1" value="${nextRound}"></div><div class="field"><label>Data / ora (facoltativa)</label><input id="newDate" type="datetime-local"></div></div><div class="notice info" style="margin-top:12px"><span>i</span><span>La partita manuale entra nel girone e quindi aggiorna classifica e statistiche.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="saveNewMatch">Aggiungi partita</button></div>`);
+  openModal(`<h2>Aggiungi partita</h2><p class="modal-subtitle">Controllo manuale per recuperi, variazioni o calendari personalizzati.</p><div class="form-grid"><div class="field"><label>Squadra di casa</label><select id="newHome"><option value="">Scegli…</option>${options}</select></div><div class="field"><label>Squadra ospite</label><select id="newAway"><option value="">Scegli…</option>${options}</select></div><div class="field"><label>Posizione nella sequenza</label><input id="newRound" type="number" min="1" value="${nextRound}"></div><div class="field"><label>Data / ora (facoltativa)</label><input id="newDate" type="datetime-local"></div></div><div class="notice info" style="margin-top:12px"><span>i</span><span>La partita manuale entra nella sequenza del girone e aggiorna classifica e statistiche.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="saveNewMatch">Aggiungi partita</button></div>`);
   document.getElementById('saveNewMatch').onclick=()=>{const home=document.getElementById('newHome').value,away=document.getElementById('newAway').value;if(!home||!away)return toast('Scegli entrambe le squadre');if(home===away)return toast('Le squadre devono essere diverse');createSnapshot('Prima di aggiungere una partita');state.matches.push({id:uid('m'),stage:'group',leg:1,round:Math.max(1,+document.getElementById('newRound').value||nextRound),homeTeamId:home,awayTeamId:away,date:document.getElementById('newDate').value,status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null,manual:true});save();closeModal();renderCalendar();toast('Partita aggiunta');};
 }
 function createRoundRobinLeg(teamIds){
@@ -1593,17 +1637,57 @@ function createRoundRobinLeg(teamIds){
   }
   return rounds;
 }
+function findNoConsecutiveOrder(pairs,previousPair=null){
+  if(pairs.length>15)return null;
+  const used=Array(pairs.length).fill(false),path=[];
+  const disjoint=(a,b)=>!a||!b||!a.some(team=>b.includes(team));
+  function visit(last){
+    if(path.length===pairs.length)return true;
+    const candidates=[];
+    for(let i=0;i<pairs.length;i++)if(!used[i]&&disjoint(last,pairs[i])){
+      let onward=0;
+      for(let j=0;j<pairs.length;j++)if(i!==j&&!used[j]&&disjoint(pairs[i],pairs[j]))onward++;
+      candidates.push({i,onward});
+    }
+    candidates.sort((a,b)=>a.onward-b.onward||a.i-b.i);
+    for(const {i} of candidates){
+      used[i]=true;path.push(pairs[i]);
+      if(visit(pairs[i]))return true;
+      path.pop();used[i]=false;
+    }
+    return false;
+  }
+  return visit(previousPair)?path:null;
+}
+function createContinuousLeg(teamIds,previousPair=null,reverseFixtures=false){
+  const pending=createRoundRobinLeg(teamIds).flat().map(([a,b])=>reverseFixtures?[b,a]:[a,b]);
+  const exact=findNoConsecutiveOrder(pending,previousPair);
+  if(exact)return exact;
+  const sequence=[],lastPlayed=new Map();
+  while(pending.length){
+    const slot=sequence.length,previous=sequence.length?sequence[sequence.length-1]:previousPair,blocked=new Set(previous||[]);
+    const ranked=pending.map((pair,index)=>{
+      const conflict=pair.some(team=>blocked.has(team))?1:0;
+      const idle=pair.map(team=>lastPlayed.has(team)?slot-lastPlayed.get(team):slot+2);
+      const future=pending.reduce((count,next,nextIndex)=>count+(nextIndex!==index&&!next.some(team=>pair.includes(team))?1:0),0);
+      return {pair,index,conflict,minIdle:Math.min(...idle),sumIdle:idle[0]+idle[1],future};
+    }).sort((a,b)=>a.conflict-b.conflict||b.minIdle-a.minIdle||b.sumIdle-a.sumIdle||b.future-a.future||a.index-b.index);
+    const pick=ranked[0];pending.splice(pick.index,1);sequence.push(pick.pair);pick.pair.forEach(team=>lastPlayed.set(team,slot));
+  }
+  return sequence;
+}
 function generateCalendar(){
   if(state.teams.length!==state.settings.teamCount)return toast(`Servono esattamente ${state.settings.teamCount} squadre`);
   if(state.settings.tournamentFormat==='knockout'){if(state.teams.some(t=>teamPlayers(t.id).length!==state.settings.rosterSize))return toast(`Ogni squadra deve avere esattamente ${state.settings.rosterSize} giocatori`);if(state.matches.length&&!confirm('Rigenerare il tabellone cancellerà risultati e statistiche. Continuare?'))return;createSnapshot(state.matches.length?'Prima di rigenerare il tabellone':'Prima di generare il tabellone');if(seedDirectKnockout()){save();renderCalendar();toast('Tabellone eliminazione diretta creato');}return;}
   if(state.teams.some(t=>teamPlayers(t.id).length!==state.settings.rosterSize))return toast(`Ogni squadra deve avere esattamente ${state.settings.rosterSize} giocatori`);
   if(state.matches.length&&!confirm('Rigenerare il calendario cancellerà risultati e statistiche. Continuare?'))return;
   createSnapshot(state.matches.length?'Prima di rigenerare il calendario':'Prima di generare il calendario');
-  const firstLeg=createRoundRobinLeg(state.teams.map(t=>t.id)); const matches=[];
-  firstLeg.forEach((pairs,r)=>pairs.forEach(([home,away])=>matches.push({id:uid('m'),stage:'group',leg:1,round:r+1,homeTeamId:home,awayTeamId:away,date:'',status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null})));
+  const teamIds=state.teams.map(t=>t.id),firstLeg=createContinuousLeg(teamIds),matches=[];
+  firstLeg.forEach(([home,away],slot)=>matches.push({id:uid('m'),stage:'group',leg:1,round:slot+1,homeTeamId:home,awayTeamId:away,date:'',status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null}));
   if(state.settings.scheduleMode==='double'){
     const offset=firstLeg.length;
-    firstLeg.forEach((pairs,r)=>pairs.forEach(([home,away])=>matches.push({id:uid('m'),stage:'group',leg:2,round:offset+r+1,homeTeamId:away,awayTeamId:home,date:'',status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null})));
+    const secondLeg=createContinuousLeg(teamIds,firstLeg[firstLeg.length-1],true);
+    secondLeg.forEach(([home,away],slot)=>matches.push({id:uid('m'),stage:'group',leg:2,round:offset+slot+1,homeTeamId:home,awayTeamId:away,date:'',status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null}));
   }
   state.matches=matches;save();renderCalendar();toast(`Calendario creato: ${matches.length} partite`);
 }
@@ -1647,7 +1731,7 @@ function syncKnockout(showToast=false){
     }
     return;
   }
-  const firstKoRound=groupRoundsExpected()+1;
+  const firstKoRound=groupMatches().length+1;
   if(!bracket || table.length<bracket) return;
 
   const regulationKos=()=>state.matches.filter(m=>isKnockoutMatch(m)&&m.stage!=='bronze');
@@ -2118,7 +2202,7 @@ function readSettingsForm(){
     venue:document.getElementById('setVenue').value.trim().slice(0,120),organizer:document.getElementById('setOrganizer').value.trim().slice(0,120),
     targetPlayers,rosterSize,teamCount,
     scheduleMode:document.getElementById('setMode').value,tournamentFormat,playoffs,
-    startTime:document.getElementById('setStartTime').value||'00:00',periods:2,
+    startTime:'00:00',periods:2,
     bronzeFinal:document.getElementById('setBronze').value==='1',
     matchMinutes:clamp(+document.getElementById('setMinutes').value||20,2,120),
     halftimeMinutes:clamp(numOr(document.getElementById('setHalftime').value,2),0,30),
@@ -2149,7 +2233,7 @@ function renderSettings(){
       <div class="card"><div class="kicker">Identità</div><h3>Il tuo torneo</h3><div class="form-grid"><div class="field"><label>Nome torneo</label><input id="setName" maxlength="80" value="${esc(s.name)}"></div><div class="field"><label>Edizione</label><input id="setEdition" maxlength="80" value="${esc(s.edition)}"></div><div class="field"><label>Luogo</label><input id="setVenue" maxlength="120" value="${esc(s.venue||'')}" placeholder="Facoltativo"></div><div class="field"><label>Gestore</label><input id="setOrganizer" maxlength="120" value="${esc(s.organizer||'')}" placeholder="Facoltativo"></div></div></div>
       <div class="card"><div class="kicker">Modalità arbitro e Live</div><h3>Protezione e feedback</h3><div class="form-grid"><div class="field full"><label>Protezione tocchi involontari</label><select id="setTouchGuard"><option value="1" ${s.touchGuard?'selected':''}>Attiva · doppio tocco intenzionale</option><option value="0" ${!s.touchGuard?'selected':''}>Disattiva · tocco singolo</option></select></div><label class="roster-row"><span class="grow"><strong>Vibrazione</strong><span class="note">Conferma eventi e fine tempo, se supportata</span></span><input id="setHaptic" type="checkbox" ${s.hapticFeedback?'checked':''}></label><label class="roster-row"><span class="grow"><strong>Suono</strong><span class="note">Avviso al tempo regolamentare</span></span><input id="setSound" type="checkbox" ${s.soundFeedback?'checked':''}></label></div>${screenWakeControlHtml()}<div class="notice info" style="margin-top:12px"><span>🔒</span><span>Con la protezione attiva, un tocco isolato non modifica mai punteggio, cartellini, timer o stato della partita.</span></div></div>
     </div>
-    <div class="card" style="margin-top:16px"><div class="kicker">Formula</div><h3>Struttura e tempi</h3><div class="form-grid"><div class="field"><label>N° partecipanti</label><input type="number" min="10" max="200" id="setTarget" value="${s.targetPlayers}"></div><div class="field"><label>Giocatori per rosa</label><input type="number" min="5" max="20" id="setRoster" value="${s.rosterSize}"></div><div class="field"><label>Formula torneo</label><select id="setFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Girone + eliminazione diretta</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div><div class="field"><label>Girone</label><select id="setMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div><div class="field"><label>Finale 3° posto</label><select id="setBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div><div class="field"><label>Ora inizio</label><input id="setStartTime" type="time" value="${s.startTime||'00:00'}"></div><div class="field"><label>Durata totale di gioco (min)</label><input type="number" min="2" max="120" id="setMinutes" value="${s.matchMinutes}"></div><div class="field"><label>Intervallo (min)</label><input type="number" min="0" max="30" id="setHalftime" value="${s.halftimeMinutes}"></div><div class="field"><label>Cambio campo (min)</label><input type="number" min="0" max="60" id="setChange" value="${s.changeMinutes}"></div><div class="field"><label>Punti vittoria</label><input type="number" id="setWin" value="${s.pointsWin}"></div><div class="field"><label>Punti pareggio</label><input type="number" id="setDraw" value="${s.pointsDraw}"></div><div class="field"><label>Punti sconfitta</label><input type="number" id="setLoss" value="${s.pointsLoss}"></div></div><div id="settingsPreview" style="margin-top:14px">${settingsPreviewHtml()}</div><div class="modal-actions"><button class="ghost" id="rerunSetup">Riapri configurazione guidata</button><button class="primary" id="saveSettings">Salva impostazioni</button></div></div>
+    <div class="card" style="margin-top:16px"><div class="kicker">Formula</div><h3>Struttura e tempi</h3><div class="form-grid"><div class="field"><label>N° partecipanti</label><input type="number" min="10" max="200" id="setTarget" value="${s.targetPlayers}"></div><div class="field"><label>Giocatori per rosa</label><input type="number" min="5" max="20" id="setRoster" value="${s.rosterSize}"></div><div class="field"><label>Formula torneo</label><select id="setFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Girone + eliminazione diretta</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div><div class="field"><label>Girone</label><select id="setMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div><div class="field"><label>Finale 3° posto</label><select id="setBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div><div class="field"><label>Inizio torneo</label><input id="setStartTime" type="time" value="00:00" disabled><small>Le partite proseguono in sequenza fino alla fine.</small></div><div class="field"><label>Durata totale di gioco (min)</label><input type="number" min="2" max="120" id="setMinutes" value="${s.matchMinutes}"></div><div class="field"><label>Intervallo (min)</label><input type="number" min="0" max="30" id="setHalftime" value="${s.halftimeMinutes}"></div><div class="field"><label>Cambio campo (min)</label><input type="number" min="0" max="60" id="setChange" value="${s.changeMinutes}"></div><div class="field"><label>Punti vittoria</label><input type="number" id="setWin" value="${s.pointsWin}"></div><div class="field"><label>Punti pareggio</label><input type="number" id="setDraw" value="${s.pointsDraw}"></div><div class="field"><label>Punti sconfitta</label><input type="number" id="setLoss" value="${s.pointsLoss}"></div></div><div id="settingsPreview" style="margin-top:14px">${settingsPreviewHtml()}</div><div class="modal-actions"><button class="ghost" id="rerunSetup">Riapri configurazione guidata</button><button class="primary" id="saveSettings">Salva impostazioni</button></div></div>
     <div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Guida del gestore</h3><p class="note">Procedura completa prima, durante e dopo il torneo, inclusa la gestione delle emergenze.</p><button class="ghost" id="settingsGuide">Apri la guida</button></div><div class="card"><h3>Backup e ripristino</h3><p class="note">I dati restano su questo dispositivo. Esporta un file prima dell’inizio e durante la serata.</p><div class="button-row"><button class="ghost" id="exportBtn2">Esporta backup</button><label class="ghost file-label">Importa backup<input type="file" id="importInput2" accept="application/json" hidden></label>${snap?`<button class="ghost" id="restoreSnapshot">↶ ${esc(snap.label)}</button>`:''}</div></div></div>
     <div class="card danger-zone" style="margin-top:16px"><h3>Zona sensibile</h3><p class="note">L’azzeramento cancella torneo, squadre, partite e statistiche da questo dispositivo. Prima viene comunque creato un punto di ripristino.</p><button class="danger-outline" id="resetAllBtn">Azzera tutti i dati</button></div>`;
   ['setName','setEdition','setVenue','setOrganizer','setTarget','setRoster','setFormat','setMode','setBronze','setStartTime','setMinutes','setHalftime','setChange','setWin','setDraw','setLoss','setTouchGuard','setHaptic','setSound'].forEach(id=>document.getElementById(id)?.addEventListener('input',updateSettingsPreview));
