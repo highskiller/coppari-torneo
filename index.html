@@ -597,16 +597,17 @@ tr:hover td { background:#fbfcf8; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.4.1';
+const APP_VERSION = '3.5.0';
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
 const LIVE_CONFIG_KEY = 'coppari.v3.live';
 const WAKE_PREF_KEY = 'coppari.v3.keep-screen-awake';
 const PUBLIC_APP_URL = 'https://highskiller.github.io/coppari-torneo/';
-const PEERJS_URL = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js';
-const PEERJS_INTEGRITY = 'sha384-x0YgkOr/3UOZP2CRDxGW9e0Q+2Qjyr3uJrm4xU32Y7ZCNAo7Cc7bjhrZMi/dwczu';
-const PEERJS_OPTIONS = Object.freeze({host:'0.peerjs.com',port:443,path:'/',key:'peerjs',secure:true,pingInterval:5000,debug:1});
+const SUPABASE_URL = 'https://lndqbduvyzjehkeetywt.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_VVYN8s9nVaZQR_jiC5s3GA_p8LKZZbk';
+const SUPABASE_JS_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js';
+const SUPABASE_JS_INTEGRITY = 'sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKgvar';
 const LEGACY_KEYS = ['coppari.v2','coppari.v1.6','coppari.v1.5','coppari.v1.3','coppari.v1.2','coppari.v1.1','coppari.v1'];
 const teamPalette = ['#315b43','#934848','#385d7c','#9c7837','#6a4f86','#2f7471','#a05d37','#536b34','#7d4567','#596275','#8b6a28','#3d6d91'];
 const defaultTeamNames = [
@@ -656,20 +657,21 @@ let liveRole = null;
 let liveRoomId = null;
 let liveSecret = null;
 let liveRefereeSecret = null;
-let livePeer = null;
-let liveConnection = null;
+let liveSupabaseClient = null;
+let liveChannel = null;
 let liveConnected = false;
 let liveConnecting = false;
 let liveHasState = false;
+let liveEnded = false;
 let liveApplyingRemote = false;
 let liveRevision = 0;
 let liveErrorMessage = '';
 let liveReconnectTimer = null;
-let liveConnectionTimer = null;
 let liveTransportGeneration = 0;
 let liveReconnectAttempts = 0;
-let peerLibraryPromise = null;
-const liveHostConnections = new Map();
+let livePresenceCount = 0;
+let liveLibraryPromise = null;
+let liveWriteQueue = Promise.resolve();
 
 const view = document.getElementById('view');
 const pageTitle = document.getElementById('pageTitle');
@@ -904,19 +906,19 @@ function save(options={}){
   state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};
   if(liveRole==='manager'){
     if(liveApplyingRemote)return true;
-    if(!liveConnected){toast('Collegamento live interrotto: attendi la riconnessione',4200);return false;}
+    if(!liveConnected||liveEnded){toast(liveEnded?'La diretta è terminata':'Collegamento live interrotto: attendi la riconnessione',4200);return false;}
     sendLiveManagerUpdate();updateSaveIndicator();return true;
   }
   if(liveRole==='referee'){
     if(liveApplyingRemote)return true;
-    if(!liveConnected){toast('Collegamento arbitrale interrotto: attendi la riconnessione',4200);return false;}
+    if(!liveConnected||liveEnded){toast(liveEnded?'La diretta è terminata':'Collegamento arbitrale interrotto: attendi la riconnessione',4200);return false;}
     const matchId=options.matchId||activeRefereeMatchId;if(!matchId){toast('Il link arbitro può modificare soltanto un referto',4200);return false;}
     sendLiveRefereeMatchUpdate(matchId);updateSaveIndicator();return true;
   }
   if(!storageReady){toast('Salvataggio non disponibile: apri l’app in Safari',4200);return false;}
   try{
     if(!persistStateLocally())throw new Error('storage');
-    if(liveRole==='host'&&!liveApplyingRemote){liveRevision++;broadcastLiveState();}
+    if(liveRole==='host'&&!liveApplyingRemote)sendLiveManagerUpdate();
     updateSaveIndicator();return true;
   }catch(error){toast('Spazio esaurito: esporta subito un backup');return false;}
 }
@@ -976,14 +978,14 @@ function render(){
 }
 function metric(label,value,sub=''){ return `<div class="card"><div class="metric-label">${label}</div><div class="metric">${value}</div>${sub?`<div class="note">${sub}</div>`:''}</div>`; }
 
-function cleanLiveRoomId(value){const text=String(value||'').trim();return /^[a-z0-9-]{12,80}$/i.test(text)?text:null;}
+function cleanLiveRoomId(value){const text=String(value||'').trim();return /^coppari-[a-z0-9_-]{20,80}$/i.test(text)?text:null;}
 function cleanLiveSecret(value){const text=String(value||'').trim();return /^[a-z0-9_-]{20,120}$/i.test(text)?text:null;}
 function randomLiveToken(bytes=18){
   const data=new Uint8Array(bytes);crypto.getRandomValues(data);
   return btoa(String.fromCharCode(...data)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
 function readLiveHostConfig(){
-  try{const raw=JSON.parse(storageGet(LIVE_CONFIG_KEY)||'null');const roomId=cleanLiveRoomId(raw?.roomId),secret=cleanLiveSecret(raw?.secret),refereeSecret=cleanLiveSecret(raw?.refereeSecret);return roomId&&secret&&raw?.active?{roomId,secret,refereeSecret,transportVersion:+raw.transportVersion||1,active:true}:null;}catch{return null;}
+  try{const raw=JSON.parse(storageGet(LIVE_CONFIG_KEY)||'null');const roomId=cleanLiveRoomId(raw?.roomId),secret=cleanLiveSecret(raw?.secret),refereeSecret=cleanLiveSecret(raw?.refereeSecret);return roomId&&secret&&refereeSecret&&raw?.active?{roomId,secret,refereeSecret,transportVersion:+raw.transportVersion||1,active:true}:null;}catch{return null;}
 }
 function writeLiveHostConfig(config){return storageSet(LIVE_CONFIG_KEY,JSON.stringify(config));}
 function parseLiveJoinFromLocation(){
@@ -997,48 +999,61 @@ function liveLinks(){
   return {viewer:`${base.toString()}#view`,manager:liveSecret?`${base.toString()}#manage=${encodeURIComponent(liveSecret)}`:'',referee:liveRefereeSecret?`${base.toString()}#referee=${encodeURIComponent(liveRefereeSecret)}`:''};
 }
 function sharedStateSnapshot(){return JSON.parse(JSON.stringify(state));}
-function loadPeerLibrary(){
-  if(window.Peer)return Promise.resolve(window.Peer);
-  if(peerLibraryPromise)return peerLibraryPromise;
-  peerLibraryPromise=new Promise((resolve,reject)=>{
-    const script=document.createElement('script');script.src=PEERJS_URL;script.integrity=PEERJS_INTEGRITY;script.crossOrigin='anonymous';script.referrerPolicy='no-referrer';
-    script.onload=()=>window.Peer?resolve(window.Peer):reject(new Error('PeerJS non disponibile'));
-    script.onerror=()=>reject(new Error('Impossibile caricare il collegamento WebRTC'));
+function loadLiveLibrary(){
+  if(window.supabase?.createClient)return Promise.resolve(window.supabase);
+  if(liveLibraryPromise)return liveLibraryPromise;
+  liveLibraryPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');script.src=SUPABASE_JS_URL;script.integrity=SUPABASE_JS_INTEGRITY;script.crossOrigin='anonymous';script.referrerPolicy='no-referrer';
+    script.onload=()=>window.supabase?.createClient?resolve(window.supabase):reject(new Error('Supabase non disponibile'));
+    script.onerror=()=>reject(new Error('Impossibile caricare Supabase'));
     document.head.appendChild(script);
   });
-  return peerLibraryPromise;
+  return liveLibraryPromise;
 }
-function createLivePeer(Peer,id){
-  const options={...PEERJS_OPTIONS,config:{iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun2.l.google.com:19302']}],iceCandidatePoolSize:4,sdpSemantics:'unified-plan'}};
-  return id?new Peer(id,options):new Peer(options);
+async function getLiveClient(){
+  if(liveSupabaseClient)return liveSupabaseClient;
+  const library=await loadLiveLibrary();
+  liveSupabaseClient=library.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:10}}});
+  return liveSupabaseClient;
+}
+async function liveRpc(name,args){
+  const client=await getLiveClient(),{data,error}=await client.rpc(name,args);
+  if(error)throw error;
+  return Array.isArray(data)?data[0]||null:data;
+}
+function liveErrorText(error){
+  const text=String(error?.message||error||'');
+  if(error?.code==='PGRST202'||/schema cache|could not find the function/i.test(text))return 'Supabase non è ancora configurato: esegui lo script coppari_live.sql nel SQL Editor.';
+  if(/LIVE_ROOM_NOT_FOUND/i.test(text))return 'Questa diretta non esiste o il link non è valido.';
+  if(/LIVE_ACCESS_DENIED|LIVE_SECRET_INVALID/i.test(text))return 'Il link gestore o arbitro non è valido.';
+  if(/LIVE_ENDED/i.test(text))return 'La diretta è stata terminata dal gestore.';
+  if(/LIVE_ROOM_TAKEN/i.test(text))return 'Impossibile creare la stanza Live. Riprova per generarne una nuova.';
+  if(/failed to fetch|network|timeout/i.test(text))return 'Supabase non è raggiungibile. Controlla la connessione Internet.';
+  return 'Servizio Live temporaneamente non disponibile.';
 }
 function closeLiveTransport(){
-  liveTransportGeneration++;
-  clearTimeout(liveReconnectTimer);liveReconnectTimer=null;clearTimeout(liveConnectionTimer);liveConnectionTimer=null;
-  liveHostConnections.forEach(conn=>{try{conn.close();}catch{}});liveHostConnections.clear();
-  try{liveConnection?.close();}catch{}liveConnection=null;
-  try{livePeer?.destroy();}catch{}livePeer=null;liveConnected=false;syncScreenWakeLock();
+  liveTransportGeneration++;clearTimeout(liveReconnectTimer);liveReconnectTimer=null;
+  const channel=liveChannel;liveChannel=null;if(channel&&liveSupabaseClient)liveSupabaseClient.removeChannel(channel).catch(()=>{});
+  liveConnected=false;livePresenceCount=0;syncScreenWakeLock();
 }
-function hostConnectionCount(){return [...liveHostConnections.values()].filter(conn=>conn.open).length;}
+function hostConnectionCount(){return livePresenceCount;}
 function updateLiveStatusUI(){
   const pill=document.getElementById('liveStatusPill'),text=document.getElementById('liveStatusText'),button=document.getElementById('liveShareBtn');if(!pill||!text)return;
-  pill.hidden=!liveRole;const online=liveConnected;pill.classList.toggle('offline',!!liveRole&&!online);
-  if(liveRole==='host')text.textContent=online?`Live · ${hostConnectionCount()}`:'Live offline';
+  pill.hidden=!liveRole;const online=liveConnected&&!liveEnded;pill.classList.toggle('offline',!!liveRole&&!online);
+  if(liveEnded)text.textContent='Live conclusa';
+  else if(liveRole==='host')text.textContent=online?`Live · ${hostConnectionCount()}`:'Live offline';
   else if(liveRole==='manager')text.textContent=online?'Gestore live':'Riconnessione';
   else if(liveRole==='referee')text.textContent=online?'Arbitro live':'Riconnessione';
   else if(liveRole==='viewer')text.textContent=online?'Diretta':'Diretta offline';
   if(button)button.textContent=liveRole==='host'?`● Live · ${hostConnectionCount()} collegati`:liveRole==='manager'?'● Gestione live':liveRole==='referee'?'● Arbitraggio live':liveRole==='viewer'?'● Info diretta':'● Condivisione live';
-  updateSaveIndicator();
-  const count=document.getElementById('liveConnectedCount');if(count)count.textContent=String(hostConnectionCount());
-  syncScreenWakeLock();
+  updateSaveIndicator();const count=document.getElementById('liveConnectedCount');if(count)count.textContent=String(hostConnectionCount());syncScreenWakeLock();
 }
-function liveWaitingMessage(){return liveErrorMessage||'Connessione al telefono che sta gestendo il torneo…';}
+function liveWaitingMessage(){return liveErrorMessage||'Caricamento del torneo dal cloud…';}
 function renderLiveWaiting(){
   setSetupMode(false);setHeader('Collegamento live',liveRole==='manager'?'Accesso gestore':liveRole==='referee'?'Accesso arbitro':'Modalità spettatore');
-  view.innerHTML=`<div class="card live-wait"><div class="live-share-icon">●</div><h2>${liveErrorMessage?'Diretta non raggiungibile':'Apertura della diretta…'}</h2><p class="note">${esc(liveWaitingMessage())}</p><div class="button-row center" style="margin-top:16px"><button class="primary" id="retryLive">Riprova</button><button class="ghost" id="leaveLive">Apri Copparì locale</button></div><p class="note">Il telefono principale deve restare online con Copparì aperto.</p></div>`;
+  view.innerHTML=`<div class="card live-wait"><div class="live-share-icon">●</div><h2>${liveErrorMessage?'Diretta non raggiungibile':'Apertura della diretta…'}</h2><p class="note">${esc(liveWaitingMessage())}</p><div class="button-row center" style="margin-top:16px"><button class="primary" id="retryLive">Riprova</button><button class="ghost" id="leaveLive">Apri Copparì locale</button></div><p class="note">I dati restano online anche quando il telefono che ha avviato la diretta viene chiuso.</p></div>`;
   document.getElementById('retryLive').onclick=()=>{liveErrorMessage='';connectToLiveHost();};
-  document.getElementById('leaveLive').onclick=()=>{const url=new URL(location.href);url.searchParams.delete('live');url.hash='';location.href=url.toString();};
-  updateLiveStatusUI();
+  document.getElementById('leaveLive').onclick=()=>{const url=new URL(location.href);url.searchParams.delete('live');url.hash='';location.href=url.toString();};updateLiveStatusUI();
 }
 function refreshAfterLiveState(){
   if(activeRefereeMatchId&&['manager','referee'].includes(liveRole)&&state.matches.some(m=>m.id===activeRefereeMatchId))renderRefereeMode(activeRefereeMatchId);else render();
@@ -1046,133 +1061,91 @@ function refreshAfterLiveState(){
 function applyLiveClientState(raw,revision,force=false){
   try{
     if(JSON.stringify(raw).length>2000000)throw new Error('too-large');
-    if(!force&&Number.isFinite(+revision)&&+revision<liveRevision)return;
+    if(!force&&Number.isFinite(+revision)&&+revision<=liveRevision&&liveHasState)return;
     const clean=normalizeState(raw),first=!liveHasState;liveApplyingRemote=true;
-    Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,clean);
-    liveRevision=Math.max(0,+revision||0);liveHasState=true;liveConnecting=false;liveConnected=true;liveErrorMessage='';
-    if(first){currentView='home';sessionSet('coppari.currentView','home');}
+    Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,clean);liveRevision=Math.max(0,+revision||0);liveHasState=true;liveConnecting=false;liveErrorMessage='';
+    if(liveRole==='host')persistStateLocally();if(first){currentView='home';sessionSet('coppari.currentView','home');}
     refreshAfterLiveState();liveApplyingRemote=false;updateLiveStatusUI();
   }catch{liveApplyingRemote=false;toast('Dati live non validi',4200);}
 }
-function sendHostState(conn,type='state'){
-  if(!conn?.open)return;
-  try{conn.send({type,revision:liveRevision,state:sharedStateSnapshot()});}catch{}
+function applyLiveRow(row,force=false){
+  if(!row?.state)throw new Error('LIVE_ROOM_NOT_FOUND');
+  liveEnded=row.active===false;liveConnected=true;applyLiveClientState(row.state,row.revision,force);
 }
-function broadcastLiveState(){liveHostConnections.forEach(conn=>sendHostState(conn));updateLiveStatusUI();}
-function sanitizedRefereeMatch(raw,current){
-  const candidate=normalizeState({settings:state.settings,teams:state.teams,players:state.players,matches:[{...current,...raw,id:current.id,stage:current.stage,leg:current.leg,round:current.round,koSize:current.koSize,slot:current.slot,homeTeamId:current.homeTeamId,awayTeamId:current.awayTeamId,manual:current.manual,ratings:current.ratings,ratingsPublished:current.ratingsPublished}]}).matches[0];
-  const playerIds=new Set(state.players.filter(p=>p.teamId===current.homeTeamId||p.teamId===current.awayTeamId).map(p=>p.id)),teamIds=new Set([current.homeTeamId,current.awayTeamId]);
-  candidate.events=(candidate.events||[]).filter(e=>teamIds.has(e.teamId)&&(!e.playerId||playerIds.has(e.playerId)));
-  candidate.stats=(candidate.stats||[]).filter(s=>playerIds.has(s.playerId));
-  if(candidate.mvpPlayerId&&!playerIds.has(candidate.mvpPlayerId))candidate.mvpPlayerId=null;
-  return {...current,status:candidate.status,homeScore:candidate.homeScore,awayScore:candidate.awayScore,penHome:candidate.penHome,penAway:candidate.penAway,date:candidate.date,events:candidate.events,stats:candidate.stats,referee:candidate.referee,mvpPlayerId:candidate.mvpPlayerId};
+async function fetchLiveState(force=false){
+  const row=await liveRpc('coppari_live_read',{p_room_id:liveRoomId});applyLiveRow(row,force);return row;
 }
-function handleHostLiveMessage(conn,data){
-  if(conn._coppariRole==='referee'&&data?.type==='match-update'){
-    const index=state.matches.findIndex(m=>m.id===safeId(data?.match?.id,'invalid'));if(index<0)return sendHostState(conn,'conflict');
-    if(state.matches[index].status==='played'||JSON.stringify(data.match||{}).length>600000)return sendHostState(conn,'conflict');
-    const next=sanitizedRefereeMatch(data.match,state.matches[index]);
-    if(next.status==='played'&&next.referee?.phase!=='ended')return sendHostState(conn,'conflict');
-    if(next.status==='live'&&state.matches.some((m,i)=>i!==index&&m.status==='live'))return sendHostState(conn,'conflict');
-    try{createSnapshot('Prima di una modifica da arbitro live');liveApplyingRemote=true;state.matches[index]=next;liveRevision++;state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};syncKnockout(false);persistStateLocally();refreshAfterLiveState();liveApplyingRemote=false;broadcastLiveState();}catch{liveApplyingRemote=false;sendHostState(conn,'conflict');}
-    return;
-  }
-  if(conn._coppariRole==='manager'&&data?.type==='ratings-update'){
-    const current=state.matches.find(m=>m.id===safeId(data?.matchId,'invalid'));if(!current||current.status!=='played')return sendHostState(conn,'conflict');
-    try{const clean=normalizeState({settings:state.settings,teams:state.teams,players:state.players,matches:[{...current,ratings:data.ratings,ratingsPublished:!!data.published}]}).matches[0],allowed=new Set(state.players.filter(p=>p.teamId===current.homeTeamId||p.teamId===current.awayTeamId).map(p=>p.id));createSnapshot('Prima di aggiornare le Copparigelle');liveApplyingRemote=true;current.ratings=clean.ratings.filter(r=>allowed.has(r.playerId));current.ratingsPublished=clean.ratingsPublished&&current.ratings.length>0;liveRevision++;state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};persistStateLocally();refreshAfterLiveState();liveApplyingRemote=false;broadcastLiveState();}catch{liveApplyingRemote=false;sendHostState(conn,'conflict');}
-    return;
-  }
-  if(conn._coppariRole!=='manager'||data?.type!=='state-update')return;
-  if(+data.baseRevision!==liveRevision){sendHostState(conn,'conflict');return;}
-  try{
-    if(JSON.stringify(data.state).length>2000000)throw new Error('too-large');
-    const clean=normalizeState(data.state);createSnapshot('Prima di una modifica da gestore live');liveApplyingRemote=true;
-    Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,clean);liveRevision++;
-    state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};persistStateLocally();
-    refreshAfterLiveState();liveApplyingRemote=false;broadcastLiveState();
-  }catch{liveApplyingRemote=false;sendHostState(conn,'conflict');}
+function updateLivePresence(){
+  if(!liveChannel)return;const total=Object.values(liveChannel.presenceState()||{}).reduce((sum,entries)=>sum+(Array.isArray(entries)?entries.length:0),0);
+  livePresenceCount=Math.max(0,total-(liveRole==='host'?1:0));updateLiveStatusUI();
 }
-function attachHostConnection(conn,role){
-  conn._coppariRole=role;liveHostConnections.set(conn.peer,conn);
-  conn.on('open',()=>{sendHostState(conn);updateLiveStatusUI();});
-  conn.on('data',data=>handleHostLiveMessage(conn,data));
-  conn.on('close',()=>{liveHostConnections.delete(conn.peer);updateLiveStatusUI();});
-  conn.on('error',()=>{liveHostConnections.delete(conn.peer);updateLiveStatusUI();});
+function notifyLiveRefresh(){
+  if(!liveChannel||!liveConnected)return;
+  liveChannel.send({type:'broadcast',event:'refresh',payload:{revision:liveRevision}}).catch(()=>{});
 }
-function acceptLiveConnection(conn){
-  const requested=['manager','referee'].includes(conn.metadata?.role)?conn.metadata.role:'viewer',supplied=cleanLiveSecret(conn.metadata?.secret),authorized=requested==='manager'?supplied===liveSecret:requested==='referee'?supplied===liveRefereeSecret:true;
-  if(!authorized){conn.on('open',()=>{try{conn.send({type:'error',message:'Link gestore non valido'});}catch{}conn.close();});return;}
-  attachHostConnection(conn,requested);
+async function connectLiveChannel({fetchState=true}={}){
+  const client=await getLiveClient();closeLiveTransport();const generation=liveTransportGeneration;
+  return await new Promise((resolve,reject)=>{
+    let settled=false;const channel=client.channel(`coppari-live:${liveRoomId}`,{config:{broadcast:{self:false},presence:{key:randomLiveToken(9)},private:false}});liveChannel=channel;
+    const finishError=error=>{if(settled)return;settled=true;reject(error instanceof Error?error:new Error(String(error||'LIVE_CHANNEL_ERROR')));};
+    const timer=setTimeout(()=>finishError(new Error('LIVE_CHANNEL_TIMEOUT')),12000);
+    channel.on('broadcast',{event:'refresh'},payload=>{if(generation!==liveTransportGeneration||liveChannel!==channel)return;const revision=+payload?.payload?.revision||0;if(revision>liveRevision)fetchLiveState(true).catch(handleLiveConnectionError);});
+    channel.on('presence',{event:'sync'},()=>{if(generation===liveTransportGeneration&&liveChannel===channel)updateLivePresence();});
+    channel.subscribe(async status=>{
+      if(generation!==liveTransportGeneration||liveChannel!==channel)return;
+      if(status==='SUBSCRIBED'){
+        try{liveConnected=true;liveConnecting=false;liveReconnectAttempts=0;await channel.track({role:liveRole,onlineAt:new Date().toISOString()});if(fetchState)await fetchLiveState(true);updateLivePresence();clearTimeout(timer);if(!settled){settled=true;resolve(true);}}
+        catch(error){clearTimeout(timer);finishError(error);}
+      }else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)){
+        liveConnected=false;updateLiveStatusUI();clearTimeout(timer);finishError(new Error(status));
+      }
+    });
+  });
+}
+function handleLiveConnectionError(error){
+  liveConnected=false;liveErrorMessage=liveErrorText(error);if(!liveHasState){liveConnecting=true;render();}updateLiveStatusUI();if(!liveEnded)scheduleLiveReconnect();
 }
 async function startLiveHost({resume=false}={}){
   if(liveRole&&liveRole!=='host')return false;
   let config=readLiveHostConfig();
-  if(config&&config.transportVersion!==2)config={roomId:null,secret:config.secret,refereeSecret:config.refereeSecret,transportVersion:2,active:true};
-  if(!config)config={roomId:null,secret:randomLiveToken(24),refereeSecret:randomLiveToken(24),transportVersion:2,active:true};
-  if(!config.refereeSecret)config.refereeSecret=randomLiveToken(24);
-  liveRole='host';liveRoomId=cleanLiveRoomId(config.roomId);liveSecret=config.secret;liveRefereeSecret=config.refereeSecret;liveConnecting=true;liveRevision=liveRevision||Date.now();liveErrorMessage='';updateLiveStatusUI();
+  if(config&&config.transportVersion!==3)config={roomId:null,secret:config.secret,refereeSecret:config.refereeSecret,transportVersion:3,active:true};
+  if(!config)config={roomId:null,secret:randomLiveToken(24),refereeSecret:randomLiveToken(24),transportVersion:3,active:true};
+  if(!config.roomId)config.roomId=`coppari-${randomLiveToken(18)}`;
+  liveRole='host';liveRoomId=config.roomId;liveSecret=config.secret;liveRefereeSecret=config.refereeSecret;liveConnecting=true;liveEnded=false;liveErrorMessage='';updateLiveStatusUI();
   try{
-    const Peer=await loadPeerLibrary();closeLiveTransport();liveRole='host';liveRoomId=cleanLiveRoomId(config.roomId);liveSecret=config.secret;liveRefereeSecret=config.refereeSecret;liveConnecting=true;
-    return await new Promise((resolve,reject)=>{
-      let settled=false;const generation=liveTransportGeneration;const peer=createLivePeer(Peer,liveRoomId);livePeer=peer;
-      peer.on('open',id=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;const assigned=cleanLiveRoomId(id);if(!assigned)return reject(new Error('invalid-live-id'));config={...config,roomId:assigned,transportVersion:2,active:true};liveRoomId=assigned;liveConnected=true;liveConnecting=false;liveReconnectAttempts=0;writeLiveHostConfig(config);updateLiveStatusUI();if(!settled){settled=true;resolve(true);}});
-      peer.on('connection',acceptLiveConnection);
-      peer.on('disconnected',()=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;liveConnected=false;updateLiveStatusUI();clearTimeout(liveReconnectTimer);liveReconnectTimer=setTimeout(()=>{if(livePeer!==peer)return;try{peer.reconnect();}catch{startLiveHost({resume:true});}},1800);});
-      peer.on('close',()=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;liveConnected=false;updateLiveStatusUI();});
-      peer.on('error',error=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;if(error?.type==='webrtc'){toast('Un dispositivo non è riuscito a completare il collegamento',3600);return;}liveConnected=false;liveErrorMessage=error?.type==='unavailable-id'?'La diretta risulta ancora aperta in un’altra scheda':'Connessione al server Live non disponibile';updateLiveStatusUI();if(!settled){settled=true;reject(error);}});
-    });
-  }catch(error){liveConnecting=false;if(!resume)toast(liveErrorMessage||'Impossibile avviare la diretta',4200);updateLiveStatusUI();return false;}
-}
-function handleLiveClientMessage(data){
-  if(data?.type==='state')applyLiveClientState(data.state,data.revision);
-  else if(data?.type==='conflict'){applyLiveClientState(data.state,data.revision,true);toast(liveRole==='referee'?'Referto riallineato: ripeti l’ultima operazione':'Aggiornato da un altro gestore: ripeti l’ultima modifica',4200);}
-  else if(data?.type==='error'){liveErrorMessage=safeText(data.message||'Accesso live non autorizzato',160);liveConnecting=true;liveConnected=false;render();}
+    const row=await liveRpc('coppari_live_create',{p_room_id:liveRoomId,p_manager_secret:liveSecret,p_referee_secret:liveRefereeSecret,p_state:sharedStateSnapshot()});
+    applyLiveRow(row,true);writeLiveHostConfig(config);await connectLiveChannel({fetchState:true});return true;
+  }catch(error){liveConnecting=false;liveErrorMessage=liveErrorText(error);if(!resume)toast(liveErrorMessage,5200);updateLiveStatusUI();return false;}
 }
 function scheduleLiveReconnect(delay){
-  clearTimeout(liveReconnectTimer);if(!liveRoomId||liveRole==='host')return;
-  const attempt=liveReconnectAttempts++,wait=Number.isFinite(delay)?delay:Math.min(9000,1800*(2**Math.min(attempt,3)));
+  clearTimeout(liveReconnectTimer);if(!liveRoomId||liveEnded)return;
+  const attempt=liveReconnectAttempts++,wait=Number.isFinite(delay)?delay:Math.min(12000,1800*(2**Math.min(attempt,3)));
   liveReconnectTimer=setTimeout(()=>connectToLiveHost(),wait);
 }
 async function connectToLiveHost(){
-  if(!liveRoomId||!['viewer','manager','referee'].includes(liveRole))return;
-  const generation=++liveTransportGeneration;
-  clearTimeout(liveReconnectTimer);liveReconnectTimer=null;clearTimeout(liveConnectionTimer);liveConnectionTimer=null;
-  liveConnecting=!liveHasState;liveConnected=false;liveErrorMessage='';render();
-  try{
-    const Peer=await loadPeerLibrary();try{liveConnection?.close();livePeer?.destroy();}catch{}
-    if(generation!==liveTransportGeneration)return;
-    const peer=createLivePeer(Peer);livePeer=peer;
-    peer.on('open',()=>{
-      if(generation!==liveTransportGeneration||livePeer!==peer)return;
-      const conn=peer.connect(liveRoomId,{reliable:true,serialization:'json',metadata:{role:liveRole,secret:liveRole==='manager'?liveSecret:liveRole==='referee'?liveRefereeSecret:null}});liveConnection=conn;
-      conn.on('open',()=>{if(generation!==liveTransportGeneration||liveConnection!==conn)return;clearTimeout(liveConnectionTimer);liveConnectionTimer=null;liveConnected=true;liveReconnectAttempts=0;updateLiveStatusUI();});
-      conn.on('data',data=>{if(generation!==liveTransportGeneration||liveConnection!==conn)return;liveReconnectAttempts=0;handleLiveClientMessage(data);});
-      conn.on('close',()=>{if(generation!==liveTransportGeneration||liveConnection!==conn)return;liveConnected=false;updateLiveStatusUI();if(['manager','referee'].includes(liveRole)){liveConnecting=true;render();}scheduleLiveReconnect();});
-      conn.on('error',()=>{if(generation!==liveTransportGeneration||liveConnection!==conn)return;liveConnected=false;updateLiveStatusUI();scheduleLiveReconnect();});
-    });
-    peer.on('error',error=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;liveConnected=false;liveErrorMessage=error?.type==='peer-unavailable'?(liveReconnectAttempts<2?'Il telefono principale si sta registrando. Nuovo tentativo automatico…':'Il telefono principale non è raggiungibile. Tieni Copparì aperto sul primo telefono e riprova.'):'Errore di collegamento al server Live';if(!liveHasState){liveConnecting=true;render();}updateLiveStatusUI();scheduleLiveReconnect(error?.type==='peer-unavailable'?3200:undefined);});
-    peer.on('disconnected',()=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;liveConnected=false;updateLiveStatusUI();scheduleLiveReconnect();});
-    liveConnectionTimer=setTimeout(()=>{if(generation!==liveTransportGeneration||liveHasState||liveConnected)return;liveErrorMessage='La rete ha bloccato il collegamento diretto tra i telefoni. Tieni Copparì visibile sul telefono principale e riprova.';liveConnecting=true;render();try{peer.destroy();}catch{}scheduleLiveReconnect(4000);},12000);
-  }catch{liveErrorMessage='Impossibile caricare la connessione WebRTC';liveConnecting=true;render();}
+  if(!liveRoomId||!liveRole)return;
+  liveConnecting=!liveHasState;liveConnected=false;liveErrorMessage='';if(!liveHasState)render();
+  try{await connectLiveChannel({fetchState:true});}catch(error){handleLiveConnectionError(error);}
+}
+function queueLiveWrite(task){
+  liveWriteQueue=liveWriteQueue.then(task,task).catch(error=>{liveConnected=false;liveErrorMessage=liveErrorText(error);toast(liveErrorMessage,5200);updateLiveStatusUI();if(!liveEnded)scheduleLiveReconnect();});return true;
+}
+function handleLiveWriteResult(row,conflictMessage){
+  if(!row)throw new Error('LIVE_WRITE_FAILED');
+  if(!row.accepted){applyLiveRow(row,true);toast(conflictMessage,4600);return false;}
+  liveRevision=+row.revision||liveRevision;liveEnded=row.active===false;liveConnected=true;if(liveRole==='host')persistStateLocally();notifyLiveRefresh();updateLiveStatusUI();return true;
 }
 function sendLiveManagerUpdate(){
-  if(liveRole!=='manager'||!liveConnection?.open)return false;
-  const baseRevision=liveRevision;liveRevision++;
-  try{liveConnection.send({type:'state-update',baseRevision,revision:liveRevision,state:sharedStateSnapshot()});return true;}
-  catch{liveRevision=baseRevision;liveConnected=false;scheduleLiveReconnect();return false;}
+  if(!['host','manager'].includes(liveRole)||!liveConnected||liveEnded)return false;const snapshot=sharedStateSnapshot();
+  return queueLiveWrite(async()=>{const row=await liveRpc('coppari_live_update',{p_room_id:liveRoomId,p_manager_secret:liveSecret,p_base_revision:liveRevision,p_state:snapshot});handleLiveWriteResult(row,'Aggiornato da un altro gestore: ripeti l’ultima modifica');});
 }
 function sendLiveRefereeMatchUpdate(matchId){
-  if(liveRole!=='referee'||!liveConnection?.open)return false;const match=state.matches.find(m=>m.id===matchId);if(!match)return false;
-  try{liveConnection.send({type:'match-update',baseRevision:liveRevision,match:JSON.parse(JSON.stringify(match))});return true;}
-  catch{liveConnected=false;scheduleLiveReconnect();return false;}
+  if(liveRole!=='referee'||!liveConnected||liveEnded)return false;const match=state.matches.find(item=>item.id===matchId);if(!match)return false;const snapshot=JSON.parse(JSON.stringify(match));
+  return queueLiveWrite(async()=>{const row=await liveRpc('coppari_live_update_referee',{p_room_id:liveRoomId,p_referee_secret:liveRefereeSecret,p_base_revision:liveRevision,p_match:snapshot});if(handleLiveWriteResult(row,'Referto riallineato: ripeti l’ultima operazione'))applyLiveRow(row,true);});
 }
-function sendLiveRatingsUpdate(matchId){
-  if(liveRole!=='manager'||!liveConnection?.open)return false;const match=state.matches.find(m=>m.id===matchId);if(!match)return false;
-  try{liveConnection.send({type:'ratings-update',baseRevision:liveRevision,matchId,ratings:JSON.parse(JSON.stringify(match.ratings||[])),published:!!match.ratingsPublished});return true;}
-  catch{liveConnected=false;scheduleLiveReconnect();return false;}
-}
+function sendLiveRatingsUpdate(){return sendLiveManagerUpdate();}
 function spectatorLiveBarHtml(){
-  return `<div class="spectator-live-bar ${liveConnected?'':'offline'}"><span class="live-dot"></span><span>${liveConnected?'Diretta collegata · aggiornamento automatico':'Connessione interrotta · ultimo aggiornamento visibile'}</span></div>`;
+  return `<div class="spectator-live-bar ${liveConnected&&!liveEnded?'':'offline'}"><span class="live-dot"></span><span>${liveEnded?'Diretta conclusa · dati finali disponibili':liveConnected?'Diretta cloud collegata · aggiornamento automatico':'Connessione interrotta · ultimo aggiornamento visibile'}</span></div>`;
 }
 function publicMatchRow(m){
   const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live',pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';
@@ -1182,7 +1155,7 @@ function renderSpectatorHome(){
   setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Diretta pubblica · sola lettura');
   if(!state.settings.configured){view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">Copparì Live</div><h2>Il torneo è in preparazione</h2><p class="note">La pagina si aggiornerà automaticamente quando il gestore completerà la configurazione.</p></div>`;return;}
   const played=playedMatches().length,total=Math.max(state.matches.length,totalGamesExpected()),goals=playedMatches().reduce((sum,m)=>sum+(+m.homeScore||0)+(+m.awayScore||0),0),next=nextScheduledMatch(),table=standings();
-  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">${esc(state.settings.edition)} · Copparì Live</div><h2>${esc(state.settings.name)}</h2><p class="note">Segui risultati, classifica e premi dal telefono del gestore.</p></div><div class="grid cols-4" style="margin-top:16px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',next?next.status==='live'?'In campo':'In programma':'Concluso')}</div>${next?`<div class="card next-match-card" style="margin-top:16px"><div class="next-match-stage">${next.status==='live'?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${stageLabel(next)}</div><div class="next-match-teams"><div class="next-match-team">${esc(teamById(next.homeTeamId)?.name||'?')}</div><div class="next-match-vs">${next.status==='live'?`<strong style="font-size:24px">${refScore(next)}</strong>`:'VS'}</div><div class="next-match-team">${esc(teamById(next.awayTeamId)?.name||'?')}</div></div></div>`:''}<div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Classifica live</h3>${table.length?`<div class="leaderboard">${table.map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}</div></div>`;
+  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">${esc(state.settings.edition)} · Copparì Live</div><h2>${esc(state.settings.name)}</h2><p class="note">Risultati, classifica e premi restano disponibili nel cloud anche se il primo telefono viene chiuso.</p></div><div class="grid cols-4" style="margin-top:16px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',next?next.status==='live'?'In campo':'In programma':'Concluso')}</div>${next?`<div class="card next-match-card" style="margin-top:16px"><div class="next-match-stage">${next.status==='live'?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${stageLabel(next)}</div><div class="next-match-teams"><div class="next-match-team">${esc(teamById(next.homeTeamId)?.name||'?')}</div><div class="next-match-vs">${next.status==='live'?`<strong style="font-size:24px">${refScore(next)}</strong>`:'VS'}</div><div class="next-match-team">${esc(teamById(next.awayTeamId)?.name||'?')}</div></div></div>`:''}<div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Classifica live</h3>${table.length?`<div class="leaderboard">${table.map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}</div></div>`;
 }
 function renderSpectatorCalendar(){
   setHeader('Partite','Calendario e risultati in diretta');
@@ -1201,8 +1174,8 @@ function renderRemoteRefereeHome(){
   view.querySelectorAll('[data-ref-match]').forEach(button=>button.onclick=()=>openRefereeMode(button.dataset.refMatch));
 }
 function liveShareCardHtml(){
-  if(liveRole==='host')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Diretta attiva</h3><p class="note"><strong>${hostConnectionCount()}</strong> dispositivi collegati. Tieni Copparì aperto e il telefono online.</p></div><div class="live-share-actions"><button class="primary" id="openLiveShare">Gestisci link</button></div></div>`;
-  if(liveRole==='manager')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Gestore collegato</h3><p class="note">Ogni modifica confermata viene inviata al telefono principale. Evitate modifiche contemporanee.</p></div><div class="live-share-actions"><button class="ghost" id="openLiveShare">Info diretta</button></div></div>`;
+  if(liveRole==='host')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Diretta cloud attiva</h3><p class="note"><strong>${hostConnectionCount()}</strong> dispositivi collegati. Il torneo resta online anche chiudendo questo telefono.</p></div><div class="live-share-actions"><button class="primary" id="openLiveShare">Gestisci link</button></div></div>`;
+  if(liveRole==='manager')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Gestore collegato</h3><p class="note">Ogni modifica confermata viene salvata nel cloud. Evitate modifiche contemporanee.</p></div><div class="live-share-actions"><button class="ghost" id="openLiveShare">Info diretta</button></div></div>`;
   if(liveRole==='referee')return `<div class="card live-share-card"><span class="live-share-icon">⚑</span><div><h3>Arbitro collegato</h3><p class="note">Puoi gestire soltanto referti e arbitraggio. Le altre aree restano in sola lettura.</p></div><div class="live-share-actions"><button class="ghost" id="openLiveShare">Info accesso</button></div></div>`;
   return `<div class="card live-share-card"><span class="live-share-icon">↗</span><div><h3>Fai seguire il torneo a tutti</h3><p class="note">Crea link separati per pubblico, arbitro e gestore. Nessun account richiesto.</p></div><div class="live-share-actions"><button class="primary" id="startLiveFromHome">Avvia diretta</button></div></div>`;
 }
@@ -1220,9 +1193,9 @@ function screenWakeControlHtml(){
   return `<label class="roster-row" style="margin-top:14px"><span class="grow"><strong>Mantieni schermo acceso durante la Live</strong><span class="note" data-wake-status>${esc(screenWakeStatus())}</span></span><input type="checkbox" data-wake-toggle ${checked} ${disabled}></label><p class="note">Vale solo su questo dispositivo. Consuma più batteria: durante il torneo è consigliato collegarlo alla corrente.</p>`;
 }
 function liveModalHtml(){
-  if(!liveRole)return `<div data-live-modal><div class="kicker">Condivisione senza account</div><h2 style="margin-top:6px">Avvia la diretta P2P</h2><p class="modal-subtitle">Questo telefono diventa il punto centrale del torneo. Deve restare online con Copparì aperto.</p><div class="notice info"><span>●</span><span>Verranno creati tre accessi: pubblico in sola lettura, arbitro limitato a partite e referti, gestore con controllo completo.</span></div>${screenWakeControlHtml()}<div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveNow">Avvia e crea i link</button></div></div>`;
+  if(!liveRole)return `<div data-live-modal><div class="kicker">Condivisione senza account</div><h2 style="margin-top:6px">Avvia la diretta cloud</h2><p class="modal-subtitle">Il torneo viene salvato su Supabase e resta raggiungibile anche quando questo telefono è chiuso.</p><div class="notice info"><span>●</span><span>Verranno creati tre accessi: pubblico in sola lettura, arbitro limitato a partite e referti, gestore con controllo completo.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveNow">Avvia e crea i link</button></div></div>`;
   const links=liveLinks(),status=liveRole==='host'?`Diretta attiva · <strong id="liveConnectedCount">${hostConnectionCount()}</strong> collegati`:liveRole==='manager'?'Collegato come gestore':liveRole==='referee'?'Collegato come arbitro':'Collegato come spettatore';
-  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione diretta tramite WebRTC. Il telefono principale deve restare online.</p>${liveAccessHtml(links)}${['host','referee'].includes(liveRole)?screenWakeControlHtml():''}<div class="notice warn" style="margin-top:14px"><span>!</span><span>Senza un database online la diretta non è disponibile quando il telefono principale è chiuso, offline o irraggiungibile dalla rete.</span></div><div class="modal-actions">${liveRole==='host'?'<button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
+  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione persistente tramite Supabase Realtime.</p>${liveAccessHtml(links)}${liveRole==='referee'?screenWakeControlHtml():''}<div class="notice info" style="margin-top:14px"><span>☁</span><span>I dati restano disponibili nel cloud. Il telefono che ha creato la diretta può essere chiuso; un altro gestore autorizzato può continuare il torneo.</span></div><div class="modal-actions">${liveRole==='host'?'<button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
 }
 function bindLiveModalActions(){
   modal.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>closeModal());
@@ -1239,7 +1212,8 @@ async function copyLiveLink(link,message){try{await navigator.clipboard.writeTex
 async function shareLiveViewerLink(){const link=liveLinks().viewer;if(navigator.share){try{await navigator.share({title:`Diretta ${state.settings.name}`,text:'Segui il torneo Copparì in diretta',url:link});return;}catch(error){if(error?.name==='AbortError')return;}}copyLiveLink(link,'Link pubblico copiato');}
 async function stopLiveHost(){
   if(liveRole!=='host'||!confirm('Terminare la diretta? Tutti i dispositivi collegati perderanno la connessione.'))return;
-  closeLiveTransport();storageRemove(LIVE_CONFIG_KEY);liveRole=null;liveRoomId=null;liveSecret=null;liveRefereeSecret=null;liveRevision=0;closeModal(true);render();toast('Diretta terminata');
+  try{await liveRpc('coppari_live_stop',{p_room_id:liveRoomId,p_manager_secret:liveSecret});notifyLiveRefresh();liveEnded=true;closeLiveTransport();storageRemove(LIVE_CONFIG_KEY);liveRole=null;liveRoomId=null;liveSecret=null;liveRefereeSecret=null;liveRevision=0;closeModal(true);render();toast('Diretta terminata: i dati finali restano nel cloud');}
+  catch(error){toast(liveErrorText(error),5200);}
 }
 function initLiveSharing(){
   const join=parseLiveJoinFromLocation();
@@ -2301,14 +2275,9 @@ function openIOSGuide(){
 }
 function openManagerGuide(initial=false){
   const localWarning=isLocalFileMode()?'<div class="notice warn" style="margin-top:10px"><span>!</span><span>Se hai ricevuto solo il file HTML e iOS lo mostra in anteprima, per il torneo è preferibile un link web aperto direttamente in Safari.</span></div>':'';
-  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Condivisione live</strong></summary><ol class="note"><li>Da Panoramica tocca “Avvia diretta”.</li><li>Invia il link pubblico a chi deve solo seguire risultati e classifiche.</li><li>Invia il link gestore soltanto agli organizzatori autorizzati.</li><li>Lascia aperto Copparì sul telefono principale: senza account esterno è questo dispositivo a tenere online la diretta.</li><li>Evitate di modificare contemporaneamente la stessa partita da due telefoni.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> importa l'ultimo backup JSON.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione con ↗, stampa le schermate utili ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
+  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Condivisione live</strong></summary><ol class="note"><li>Da Panoramica tocca “Avvia diretta”.</li><li>Invia il link pubblico a chi deve solo seguire risultati e classifiche.</li><li>Invia il link gestore soltanto agli organizzatori autorizzati.</li><li>Dopo il primo salvataggio i dati restano su Supabase: il telefono che ha avviato la Live può essere chiuso.</li><li>Evitate di modificare contemporaneamente la stessa partita da due telefoni.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> apri il link gestore sul nuovo dispositivo.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione con ↗, stampa le schermate utili ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
   const liveGuideDetails=[...modal.querySelectorAll('details')].find(item=>item.querySelector('summary')?.textContent.trim()==='Condivisione live');
-  if(liveGuideDetails)liveGuideDetails.innerHTML=`<summary><strong>Condivisione live · istruzioni complete</strong></summary><div class="notice info" style="margin:12px 0"><span>●</span><span><strong>Il telefono principale è la sorgente ufficiale.</strong> Conserva il torneo e distribuisce ogni aggiornamento agli altri dispositivi, senza account o database esterni.</span></div><h4>1 · Avvia dal telefono principale</h4><ol class="note"><li>Completa almeno la configurazione iniziale, poi da Panoramica tocca “Avvia diretta”.</li><li>Lascia Copparì aperto e il telefono collegato a Internet; evita di bloccare lo schermo durante la gestione.</li><li>Esporta un backup prima del torneo e dopo le modifiche più importanti.</li></ol><h4>2 · Scegli il link corretto</h4><ul class="note"><li><strong>Link pubblico:</strong> è sempre in sola lettura. Mostra risultati, calendario, classifica e premi; chi lo apre non può cambiare i dati.</li><li><strong>Link gestore:</strong> offre controllo completo. Chi lo possiede può modificare partecipanti, squadre, calendario, configurazione, risultati e arbitraggio.</li><li><strong>Aprire o sfogliare una schermata non cambia nulla.</strong> Una modifica arriva al telefono principale soltanto quando viene confermata con comandi come Salva, Genera, Elimina, Sposta o Termina partita.</li></ul><h4>3 · Durante il torneo</h4><ol class="note"><li>Controlla l’indicatore Live nella barra: mostra collegamento e dispositivi connessi.</li><li>Assegna preferibilmente una partita o un compito a ciascun gestore; evitate di modificare contemporaneamente la stessa parte del torneo.</li><li>Se due gestori partono dalla stessa versione, Copparì conserva la prima modifica ricevuta, riallinea l’altro dispositivo e gli chiede di ripetere l’ultima operazione.</li><li>Se il collegamento del gestore cade, le modifiche vengono bloccate finché non avviene la riconnessione. Il pubblico mantiene visibile l’ultimo aggiornamento.</li></ol><h4>4 · Chiusura e sicurezza</h4><ul class="note"><li>“Termina diretta” scollega tutti, ma non cancella il torneo salvato sul telefono principale.</li><li>Tratta il link gestore come una password. Se viene condiviso per errore, termina la diretta e avviala di nuovo per creare link nuovi.</li><li>Se il telefono principale viene chiuso o va offline, nessuno può aggiornare o raggiungere la diretta finché Copparì non viene riaperto sullo stesso dispositivo.</li></ul>`;
-  if(liveGuideDetails)liveGuideDetails.innerHTML=liveGuideDetails.innerHTML
-    .replace('<li>Lascia Copparì aperto e il telefono collegato a Internet; evita di bloccare lo schermo durante la gestione.</li>','<li>Lascia Copparì aperto e il telefono collegato a Internet.</li><li>Attiva “Mantieni schermo acceso durante la Live” sul telefono principale e su quello dell’arbitro. La scelta vale solo sul dispositivo in cui viene impostata.</li><li>La protezione non può impedire il blocco manuale e può essere sospesa dal risparmio energetico o dalla batteria scarica; collega i telefoni alla corrente.</li>')
-    .replace('<li><strong>Link gestore:</strong>','<li><strong>Link arbitro:</strong> può aprire le partite, usare il timer, registrare gol, assist, cartellini e MVP e chiudere il referto. Non può modificare partecipanti, squadre, calendario o configurazione.</li><li><strong>Link gestore:</strong>')
-    .replace('<li>Assegna preferibilmente una partita o un compito a ciascun gestore; evitate di modificare contemporaneamente la stessa parte del torneo.</li>','<li>Consegna il link arbitro a chi dirige il campo e il link gestore a chi coordina il torneo.</li><li>Dopo una partita il gestore può compilare e pubblicare le Copparigelle mentre l’arbitro avvia quella successiva: referto e pagelle vengono sincronizzati separatamente e non si sovrascrivono.</li>')
-    .replace('Tratta il link gestore come una password.','Tratta i link gestore e arbitro come password.');
+  if(liveGuideDetails)liveGuideDetails.innerHTML=`<summary><strong>Condivisione live · istruzioni complete</strong></summary><div class="notice info" style="margin:12px 0"><span>☁</span><span><strong>Supabase è la sorgente ufficiale.</strong> Conserva il torneo e distribuisce ogni aggiornamento agli altri dispositivi anche quando il primo telefono è chiuso.</span></div><h4>1 · Avvia la diretta</h4><ol class="note"><li>Completa almeno la configurazione iniziale, poi da Panoramica tocca “Avvia diretta”.</li><li>Attendi la conferma “Diretta cloud attiva”, quindi condividi i link.</li><li>Esporta comunque un backup prima del torneo e dopo le modifiche più importanti.</li></ol><h4>2 · Scegli il link corretto</h4><ul class="note"><li><strong>Link pubblico:</strong> è sempre in sola lettura. Mostra risultati, calendario, classifica e premi; chi lo apre non può cambiare i dati.</li><li><strong>Link arbitro:</strong> consente soltanto partite, timer e referti.</li><li><strong>Link gestore:</strong> offre controllo completo. Conservalo come una password.</li></ul><h4>3 · Durante il torneo</h4><ol class="note"><li>Ogni modifica confermata viene salvata nel cloud e notificata agli altri dispositivi.</li><li>Il primo telefono può essere bloccato o chiuso; un altro dispositivo con il link gestore può continuare il torneo.</li><li>Se due gestori modificano la stessa revisione, Copparì conserva la prima modifica e chiede all’altro di ripetere l’operazione.</li><li>Se Internet cade, le modifiche vengono bloccate finché non avviene la riconnessione; l’ultimo stato resta disponibile.</li></ol><h4>4 · Chiusura e sicurezza</h4><ul class="note"><li>“Termina diretta” impedisce nuove modifiche, ma conserva nel cloud i dati finali in sola lettura.</li><li>Tratta i link gestore e arbitro come password. Se vengono condivisi per errore, termina la diretta e avviane una nuova.</li><li>I segreti dei link vengono verificati nel database e non sono salvati in chiaro.</li></ul>`;
   document.getElementById('closeGuide').onclick=()=>{storageSet(GUIDE_KEY,'1');closeModal(true);};
 }
 function openRefereeQuickGuide(){
@@ -2355,8 +2324,8 @@ document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importInput').onchange=importBackup;
 document.getElementById('shareBtn').onclick=shareSummary;
 document.getElementById('printBtn').onclick=()=>window.print();
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){updateScreenWakeUI();return;}syncScreenWakeLock();if(liveRole==='host'&&livePeer?.disconnected){try{livePeer.reconnect();}catch{}}else if(['viewer','manager','referee'].includes(liveRole)&&!liveConnected)connectToLiveHost();});
-window.addEventListener('online',()=>{if(liveRole==='host'&&livePeer?.disconnected){try{livePeer.reconnect();}catch{}}else if(['viewer','manager','referee'].includes(liveRole)&&!liveConnected)connectToLiveHost();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){updateScreenWakeUI();return;}syncScreenWakeLock();if(liveRole&&!liveConnected&&!liveEnded)connectToLiveHost();});
+window.addEventListener('online',()=>{if(liveRole&&!liveConnected&&!liveEnded)connectToLiveHost();});
 window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY)toast('I dati sono cambiati in un’altra scheda: ricarica per allinearli',4200);});
 const joiningLiveSession=initLiveSharing();
 render();
