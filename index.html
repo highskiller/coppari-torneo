@@ -1152,7 +1152,7 @@ async function connectToLiveHost(){
     });
     peer.on('error',error=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;liveConnected=false;liveErrorMessage=error?.type==='peer-unavailable'?(liveReconnectAttempts<2?'Il telefono principale si sta registrando. Nuovo tentativo automatico…':'Il telefono principale non è raggiungibile. Tieni Copparì aperto sul primo telefono e riprova.'):'Errore di collegamento al server Live';if(!liveHasState){liveConnecting=true;render();}updateLiveStatusUI();scheduleLiveReconnect(error?.type==='peer-unavailable'?3200:undefined);});
     peer.on('disconnected',()=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;liveConnected=false;updateLiveStatusUI();scheduleLiveReconnect();});
-    liveConnectionTimer=setTimeout(()=>{if(generation!==liveTransportGeneration||liveHasState||liveConnected)return;liveErrorMessage='I telefoni si vedono, ma la rete blocca il collegamento diretto. Tieni Copparì visibile e prova la stessa Wi‑Fi o lo stesso hotspot.';liveConnecting=true;render();try{peer.destroy();}catch{}scheduleLiveReconnect(4000);},12000);
+    liveConnectionTimer=setTimeout(()=>{if(generation!==liveTransportGeneration||liveHasState||liveConnected)return;liveErrorMessage='La rete ha bloccato il collegamento diretto tra i telefoni. Tieni Copparì visibile sul telefono principale e riprova.';liveConnecting=true;render();try{peer.destroy();}catch{}scheduleLiveReconnect(4000);},12000);
   }catch{liveErrorMessage='Impossibile caricare la connessione WebRTC';liveConnecting=true;render();}
 }
 function sendLiveManagerUpdate(){
