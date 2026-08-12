@@ -597,7 +597,7 @@ tr:hover td { background:#fbfcf8; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.5.0';
+const APP_VERSION = '3.5.1';
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
@@ -608,6 +608,7 @@ const SUPABASE_URL = 'https://lndqbduvyzjehkeetywt.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_VVYN8s9nVaZQR_jiC5s3GA_p8LKZZbk';
 const SUPABASE_JS_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js';
 const SUPABASE_JS_INTEGRITY = 'sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKgvar';
+const LIVE_ROOM_ID_PATTERN = /^coppari-[A-Za-z0-9_-]{20,80}$/;
 const LEGACY_KEYS = ['coppari.v2','coppari.v1.6','coppari.v1.5','coppari.v1.3','coppari.v1.2','coppari.v1.1','coppari.v1'];
 const teamPalette = ['#315b43','#934848','#385d7c','#9c7837','#6a4f86','#2f7471','#a05d37','#536b34','#7d4567','#596275','#8b6a28','#3d6d91'];
 const defaultTeamNames = [
@@ -1024,6 +1025,7 @@ async function liveRpc(name,args){
 function liveErrorText(error){
   const text=String(error?.message||error||'');
   if(error?.code==='PGRST202'||/schema cache|could not find the function/i.test(text))return 'Supabase non è ancora configurato: esegui lo script coppari_live.sql nel SQL Editor.';
+  if(/LIVE_ROOM_INVALID/i.test(text))return 'Identificativo Live non valido. Riprova: Copparì ne creerà automaticamente uno nuovo.';
   if(/LIVE_ROOM_NOT_FOUND/i.test(text))return 'Questa diretta non esiste o il link non è valido.';
   if(/LIVE_ACCESS_DENIED|LIVE_SECRET_INVALID/i.test(text))return 'Il link gestore o arbitro non è valido.';
   if(/LIVE_ENDED/i.test(text))return 'La diretta è stata terminata dal gestore.';
@@ -1110,7 +1112,7 @@ async function startLiveHost({resume=false}={}){
   let config=readLiveHostConfig();
   if(config&&config.transportVersion!==3)config={roomId:null,secret:config.secret,refereeSecret:config.refereeSecret,transportVersion:3,active:true};
   if(!config)config={roomId:null,secret:randomLiveToken(24),refereeSecret:randomLiveToken(24),transportVersion:3,active:true};
-  if(!config.roomId)config.roomId=`coppari-${randomLiveToken(18)}`;
+  if(!LIVE_ROOM_ID_PATTERN.test(config.roomId||''))config.roomId=`coppari-${randomLiveToken(24)}`;
   liveRole='host';liveRoomId=config.roomId;liveSecret=config.secret;liveRefereeSecret=config.refereeSecret;liveConnecting=true;liveEnded=false;liveErrorMessage='';updateLiveStatusUI();
   try{
     const row=await liveRpc('coppari_live_create',{p_room_id:liveRoomId,p_manager_secret:liveSecret,p_referee_secret:liveRefereeSecret,p_state:sharedStateSnapshot()});
