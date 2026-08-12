@@ -100,6 +100,8 @@ tr:last-child td { border-bottom:0; }
 .field label { font-size:12px; font-weight:800; color:var(--muted); }
 .field input, .field select { width:100%; border:1px solid var(--line); background:white; color:var(--ink); border-radius:10px; padding:10px 11px; outline:none; }
 .field input:focus, .field select:focus { border-color:#91aa97; box-shadow: 0 0 0 3px rgba(37,77,53,.09); }
+.team-name-random { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:stretch; }
+.team-name-random .dice-name { min-width:48px; padding:9px 12px; font-size:20px; line-height:1; }
 
 .team-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:16px; }
 .team-card { position:relative; overflow:hidden; }
@@ -595,15 +597,17 @@ tr:hover td { background:#fbfcf8; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.3.1';
-const STORAGE_KEY = 'coppari.v3';
-const HISTORY_KEY = 'coppari.v3.history';
+const APP_VERSION = '3.5.0';
+const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
+const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
 const LIVE_CONFIG_KEY = 'coppari.v3.live';
 const WAKE_PREF_KEY = 'coppari.v3.keep-screen-awake';
 const PUBLIC_APP_URL = 'https://highskiller.github.io/coppari-torneo/';
-const PEERJS_URL = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js';
-const PEERJS_INTEGRITY = 'sha384-x0YgkOr/3UOZP2CRDxGW9e0Q+2Qjyr3uJrm4xU32Y7ZCNAo7Cc7bjhrZMi/dwczu';
+const SUPABASE_URL = 'https://lndqbduvyzjehkeetywt.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_VVYN8s9nVaZQR_jiC5s3GA_p8LKZZbk';
+const SUPABASE_JS_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js';
+const SUPABASE_JS_INTEGRITY = 'sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKgvar';
 const LEGACY_KEYS = ['coppari.v2','coppari.v1.6','coppari.v1.5','coppari.v1.3','coppari.v1.2','coppari.v1.1','coppari.v1'];
 const teamPalette = ['#315b43','#934848','#385d7c','#9c7837','#6a4f86','#2f7471','#a05d37','#536b34','#7d4567','#596275','#8b6a28','#3d6d91'];
 const defaultTeamNames = [
@@ -653,17 +657,21 @@ let liveRole = null;
 let liveRoomId = null;
 let liveSecret = null;
 let liveRefereeSecret = null;
-let livePeer = null;
-let liveConnection = null;
+let liveSupabaseClient = null;
+let liveChannel = null;
 let liveConnected = false;
 let liveConnecting = false;
 let liveHasState = false;
+let liveEnded = false;
 let liveApplyingRemote = false;
 let liveRevision = 0;
 let liveErrorMessage = '';
 let liveReconnectTimer = null;
-let peerLibraryPromise = null;
-const liveHostConnections = new Map();
+let liveTransportGeneration = 0;
+let liveReconnectAttempts = 0;
+let livePresenceCount = 0;
+let liveLibraryPromise = null;
+let liveWriteQueue = Promise.resolve();
 
 const view = document.getElementById('view');
 const pageTitle = document.getElementById('pageTitle');
@@ -681,7 +689,7 @@ function safeText(v='',max=120){return String(v??'').replace(/[\u0000-\u001F\u00
 function safeId(v,prefix='id'){const cleaned=String(v??'').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,100);return cleaned||uid(prefix);}
 function safeRef(v){return v===null||v===undefined||v===''?null:safeId(v,'ref');}
 function safeColor(v,fallback='#315b43'){return /^#[0-9a-f]{6}$/i.test(String(v||''))?String(v):fallback;}
-function roleLabel(role){ return ({POR:'Portiere',DIF:'Difensore',CEN:'Centrocampista',ATT:'Attaccante'}[role] || role); }
+function roleLabel(role){ return ({TBD:'Da definire',POR:'Portiere',DIF:'Difensore',CEN:'Centrocampista',ATT:'Attaccante'}[role] || role); }
 function teamById(id){ return state.teams.find(t=>t.id===id); }
 function playerById(id){ return state.players.find(p=>p.id===id); }
 function teamPlayers(teamId){ return state.players.filter(p=>p.teamId===teamId && p.active!==false); }
@@ -718,8 +726,6 @@ function rosterDistribution(total=state.settings.targetPlayers, teamCount=state.
 }
 function legsCount(settings=state.settings){ return settings.scheduleMode==='double'?2:1; }
 function groupGamesExpected(teamCount=state.settings.teamCount, settings=state.settings){ if(settings.tournamentFormat==='knockout') return 0; return teamCount>1 ? (teamCount*(teamCount-1)/2)*legsCount(settings) : 0; }
-function roundsPerLeg(teamCount=state.settings.teamCount){ if(teamCount<2)return 0; return teamCount%2===0?teamCount-1:teamCount; }
-function groupRoundsExpected(teamCount=state.settings.teamCount, settings=state.settings){ return settings.tournamentFormat==='knockout'?0:roundsPerLeg(teamCount)*legsCount(settings); }
 function knockoutBracketSize(teamCount=state.settings.teamCount, settings=state.settings){
   if((!settings.playoffs && settings.tournamentFormat!=='knockout') || teamCount<2) return 0;
   let size=1;
@@ -775,7 +781,8 @@ function stageLabel(m){
     return size?knockoutMatchLabel(size,m.slot):'Fase finale';
   }
   const leg = legsCount()===2 ? (m.leg===2?' · Ritorno':' · Andata') : '';
-  return `Giornata ${m.round}${leg}`;
+  const slot=groupMatches().findIndex(x=>x.id===m.id)+1;
+  return `Partita ${Math.max(1,slot)}${leg}`;
 }
 function matchOperationalMinutes(settings=state.settings){ return Math.max(0,+settings.matchMinutes||0)+Math.max(0,+settings.halftimeMinutes||0); }
 function estimatedTournamentMinutes(settings=state.settings){
@@ -804,13 +811,50 @@ function emptyState(){
   };
 }
 
+function decidedTeamsState(){
+  const seeded=emptyState();
+  Object.assign(seeded.settings,{
+    targetPlayers:25,
+    rosterSize:5,
+    teamCount:5,
+    scheduleMode:'single',
+    tournamentFormat:'groups_ko',
+    startTime:'00:00',
+    configured:true
+  });
+  seeded.teams=[
+    {id:'t_decisa_1',name:'Squadra 1',color:teamColor(0),captainId:null},
+    {id:'t_decisa_2',name:'Squadra 2',color:teamColor(1),captainId:null},
+    {id:'t_decisa_3',name:'Squadra 3',color:teamColor(2),captainId:null},
+    {id:'t_decisa_4',name:'Squadra 4',color:teamColor(3),captainId:null},
+    {id:'t_decisa_5',name:'Squadra 5',color:teamColor(4),captainId:null}
+  ];
+  const rosters=[
+    ['Greco','Valerio','Fra Rom','Gregorio 2','Jacopo S. (GK)'],
+    ['Francesco Alfarano','Gue','Gregorio','Jacopo Romano','Zango'],
+    ['Bako','Giorgio T','Denny','Luca Pisanò','Kun'],
+    ['Mirko','Lorenzo Bove','Pippo','Pier','Marco Toma'],
+    ['Ricky','Parì','Ciliberti','Giorgio Romano','Tommy']
+  ];
+  seeded.players=rosters.flatMap((names,teamIndex)=>names.map((name,playerIndex)=>({
+    id:`p_decisa_${teamIndex+1}_${playerIndex+1}`,
+    name,
+    role:name==='Jacopo S. (GK)'?'POR':'TBD',
+    rating:3,
+    teamId:seeded.teams[teamIndex].id,
+    active:true
+  })));
+  seeded.meta.preloadedRoster='squadre-decise-2026';
+  return seeded;
+}
+
 function normalizeState(data){
   const fresh=emptyState();
   const merged={...fresh,...(data||{}),settings:{...fresh.settings,...((data||{}).settings||{})}};
   if(!merged.settings.rosterSize) merged.settings.rosterSize=6;
   if(!['single','double'].includes(merged.settings.scheduleMode)) merged.settings.scheduleMode='single';
   if(!['league','groups_ko','knockout'].includes(merged.settings.tournamentFormat)) merged.settings.tournamentFormat=merged.settings.playoffs?'groups_ko':'league';
-  merged.settings.startTime=/^\d{2}:\d{2}$/.test(merged.settings.startTime||'')?merged.settings.startTime:'00:00';
+  merged.settings.startTime='00:00';
   merged.settings.periods=clamp(+merged.settings.periods||2,1,4);
   if(typeof merged.settings.playoffs!=='boolean') merged.settings.playoffs=true;
   if(typeof merged.settings.touchGuard!=='boolean') merged.settings.touchGuard=true;
@@ -831,7 +875,7 @@ function normalizeState(data){
   merged.settings.teamCount=calcTeamCount(merged.settings.targetPlayers,merged.settings.rosterSize);
   if(merged.settings.configured && !merged.settings.teamCount) merged.settings.configured=false;
   merged.teams=(Array.isArray(merged.teams)?merged.teams:[]).slice(0,200).map((t,i)=>({id:safeId(t?.id,'t'),name:safeText(t?.name||defaultTeamName(i),80)||defaultTeamName(i),color:safeColor(t?.color,teamColor(i)),captainId:safeRef(t?.captainId)}));
-  merged.players=(Array.isArray(merged.players)?merged.players:[]).slice(0,500).map(p=>({id:safeId(p?.id,'p'),name:safeText(p?.name||'Giocatore',80)||'Giocatore',role:['POR','DIF','CEN','ATT'].includes(p?.role)?p.role:'CEN',rating:clamp(+p?.rating||3,1,5),teamId:safeRef(p?.teamId),active:p?.active!==false}));
+  merged.players=(Array.isArray(merged.players)?merged.players:[]).slice(0,500).map(p=>({id:safeId(p?.id,'p'),name:safeText(p?.name||'Giocatore',80)||'Giocatore',role:['TBD','POR','DIF','CEN','ATT'].includes(p?.role)?p.role:'TBD',rating:clamp(+p?.rating||3,1,5),teamId:safeRef(p?.teamId),active:p?.active!==false}));
   merged.matches=(Array.isArray(merged.matches)?merged.matches:[]).slice(0,2000).map(m=>{
     const rawStage=String(m?.stage||'group'),stage=/^(group|prelim|bronze|final|semi|quarter|round16|round32|round\d+)$/.test(rawStage)?rawStage:'group';
     const status=['scheduled','live','played'].includes(m?.status)?m.status:'scheduled';
@@ -848,11 +892,8 @@ function normalizeState(data){
 }
 function loadState(){
   try {
-    let raw=storageGet(STORAGE_KEY);
-    if(!raw){
-      for(const key of LEGACY_KEYS){ const legacy=storageGet(key); if(legacy){raw=legacy;break;} }
-    }
-    if(!raw) return emptyState();
+    const raw=storageGet(STORAGE_KEY);
+    if(!raw) return decidedTeamsState();
     return normalizeState(JSON.parse(raw));
   } catch { return emptyState(); }
 }
@@ -865,19 +906,19 @@ function save(options={}){
   state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};
   if(liveRole==='manager'){
     if(liveApplyingRemote)return true;
-    if(!liveConnected){toast('Collegamento live interrotto: attendi la riconnessione',4200);return false;}
+    if(!liveConnected||liveEnded){toast(liveEnded?'La diretta è terminata':'Collegamento live interrotto: attendi la riconnessione',4200);return false;}
     sendLiveManagerUpdate();updateSaveIndicator();return true;
   }
   if(liveRole==='referee'){
     if(liveApplyingRemote)return true;
-    if(!liveConnected){toast('Collegamento arbitrale interrotto: attendi la riconnessione',4200);return false;}
+    if(!liveConnected||liveEnded){toast(liveEnded?'La diretta è terminata':'Collegamento arbitrale interrotto: attendi la riconnessione',4200);return false;}
     const matchId=options.matchId||activeRefereeMatchId;if(!matchId){toast('Il link arbitro può modificare soltanto un referto',4200);return false;}
     sendLiveRefereeMatchUpdate(matchId);updateSaveIndicator();return true;
   }
   if(!storageReady){toast('Salvataggio non disponibile: apri l’app in Safari',4200);return false;}
   try{
     if(!persistStateLocally())throw new Error('storage');
-    if(liveRole==='host'&&!liveApplyingRemote){liveRevision++;broadcastLiveState();}
+    if(liveRole==='host'&&!liveApplyingRemote)sendLiveManagerUpdate();
     updateSaveIndicator();return true;
   }catch(error){toast('Spazio esaurito: esporta subito un backup');return false;}
 }
@@ -937,14 +978,14 @@ function render(){
 }
 function metric(label,value,sub=''){ return `<div class="card"><div class="metric-label">${label}</div><div class="metric">${value}</div>${sub?`<div class="note">${sub}</div>`:''}</div>`; }
 
-function cleanLiveRoomId(value){const text=String(value||'').trim();return /^[a-z0-9-]{12,80}$/i.test(text)?text:null;}
+function cleanLiveRoomId(value){const text=String(value||'').trim();return /^coppari-[a-z0-9_-]{20,80}$/i.test(text)?text:null;}
 function cleanLiveSecret(value){const text=String(value||'').trim();return /^[a-z0-9_-]{20,120}$/i.test(text)?text:null;}
 function randomLiveToken(bytes=18){
   const data=new Uint8Array(bytes);crypto.getRandomValues(data);
   return btoa(String.fromCharCode(...data)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
 function readLiveHostConfig(){
-  try{const raw=JSON.parse(storageGet(LIVE_CONFIG_KEY)||'null');const roomId=cleanLiveRoomId(raw?.roomId),secret=cleanLiveSecret(raw?.secret),refereeSecret=cleanLiveSecret(raw?.refereeSecret);return roomId&&secret&&raw?.active?{roomId,secret,refereeSecret,active:true}:null;}catch{return null;}
+  try{const raw=JSON.parse(storageGet(LIVE_CONFIG_KEY)||'null');const roomId=cleanLiveRoomId(raw?.roomId),secret=cleanLiveSecret(raw?.secret),refereeSecret=cleanLiveSecret(raw?.refereeSecret);return roomId&&secret&&refereeSecret&&raw?.active?{roomId,secret,refereeSecret,transportVersion:+raw.transportVersion||1,active:true}:null;}catch{return null;}
 }
 function writeLiveHostConfig(config){return storageSet(LIVE_CONFIG_KEY,JSON.stringify(config));}
 function parseLiveJoinFromLocation(){
@@ -958,43 +999,61 @@ function liveLinks(){
   return {viewer:`${base.toString()}#view`,manager:liveSecret?`${base.toString()}#manage=${encodeURIComponent(liveSecret)}`:'',referee:liveRefereeSecret?`${base.toString()}#referee=${encodeURIComponent(liveRefereeSecret)}`:''};
 }
 function sharedStateSnapshot(){return JSON.parse(JSON.stringify(state));}
-function loadPeerLibrary(){
-  if(window.Peer)return Promise.resolve(window.Peer);
-  if(peerLibraryPromise)return peerLibraryPromise;
-  peerLibraryPromise=new Promise((resolve,reject)=>{
-    const script=document.createElement('script');script.src=PEERJS_URL;script.integrity=PEERJS_INTEGRITY;script.crossOrigin='anonymous';script.referrerPolicy='no-referrer';
-    script.onload=()=>window.Peer?resolve(window.Peer):reject(new Error('PeerJS non disponibile'));
-    script.onerror=()=>reject(new Error('Impossibile caricare il collegamento WebRTC'));
+function loadLiveLibrary(){
+  if(window.supabase?.createClient)return Promise.resolve(window.supabase);
+  if(liveLibraryPromise)return liveLibraryPromise;
+  liveLibraryPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');script.src=SUPABASE_JS_URL;script.integrity=SUPABASE_JS_INTEGRITY;script.crossOrigin='anonymous';script.referrerPolicy='no-referrer';
+    script.onload=()=>window.supabase?.createClient?resolve(window.supabase):reject(new Error('Supabase non disponibile'));
+    script.onerror=()=>reject(new Error('Impossibile caricare Supabase'));
     document.head.appendChild(script);
   });
-  return peerLibraryPromise;
+  return liveLibraryPromise;
+}
+async function getLiveClient(){
+  if(liveSupabaseClient)return liveSupabaseClient;
+  const library=await loadLiveLibrary();
+  liveSupabaseClient=library.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:10}}});
+  return liveSupabaseClient;
+}
+async function liveRpc(name,args){
+  const client=await getLiveClient(),{data,error}=await client.rpc(name,args);
+  if(error)throw error;
+  return Array.isArray(data)?data[0]||null:data;
+}
+function liveErrorText(error){
+  const text=String(error?.message||error||'');
+  if(error?.code==='PGRST202'||/schema cache|could not find the function/i.test(text))return 'Supabase non è ancora configurato: esegui lo script coppari_live.sql nel SQL Editor.';
+  if(/LIVE_ROOM_NOT_FOUND/i.test(text))return 'Questa diretta non esiste o il link non è valido.';
+  if(/LIVE_ACCESS_DENIED|LIVE_SECRET_INVALID/i.test(text))return 'Il link gestore o arbitro non è valido.';
+  if(/LIVE_ENDED/i.test(text))return 'La diretta è stata terminata dal gestore.';
+  if(/LIVE_ROOM_TAKEN/i.test(text))return 'Impossibile creare la stanza Live. Riprova per generarne una nuova.';
+  if(/failed to fetch|network|timeout/i.test(text))return 'Supabase non è raggiungibile. Controlla la connessione Internet.';
+  return 'Servizio Live temporaneamente non disponibile.';
 }
 function closeLiveTransport(){
-  clearTimeout(liveReconnectTimer);liveReconnectTimer=null;
-  liveHostConnections.forEach(conn=>{try{conn.close();}catch{}});liveHostConnections.clear();
-  try{liveConnection?.close();}catch{}liveConnection=null;
-  try{livePeer?.destroy();}catch{}livePeer=null;liveConnected=false;syncScreenWakeLock();
+  liveTransportGeneration++;clearTimeout(liveReconnectTimer);liveReconnectTimer=null;
+  const channel=liveChannel;liveChannel=null;if(channel&&liveSupabaseClient)liveSupabaseClient.removeChannel(channel).catch(()=>{});
+  liveConnected=false;livePresenceCount=0;syncScreenWakeLock();
 }
-function hostConnectionCount(){return [...liveHostConnections.values()].filter(conn=>conn.open).length;}
+function hostConnectionCount(){return livePresenceCount;}
 function updateLiveStatusUI(){
   const pill=document.getElementById('liveStatusPill'),text=document.getElementById('liveStatusText'),button=document.getElementById('liveShareBtn');if(!pill||!text)return;
-  pill.hidden=!liveRole;const online=liveConnected;pill.classList.toggle('offline',!!liveRole&&!online);
-  if(liveRole==='host')text.textContent=online?`Live · ${hostConnectionCount()}`:'Live offline';
+  pill.hidden=!liveRole;const online=liveConnected&&!liveEnded;pill.classList.toggle('offline',!!liveRole&&!online);
+  if(liveEnded)text.textContent='Live conclusa';
+  else if(liveRole==='host')text.textContent=online?`Live · ${hostConnectionCount()}`:'Live offline';
   else if(liveRole==='manager')text.textContent=online?'Gestore live':'Riconnessione';
   else if(liveRole==='referee')text.textContent=online?'Arbitro live':'Riconnessione';
   else if(liveRole==='viewer')text.textContent=online?'Diretta':'Diretta offline';
   if(button)button.textContent=liveRole==='host'?`● Live · ${hostConnectionCount()} collegati`:liveRole==='manager'?'● Gestione live':liveRole==='referee'?'● Arbitraggio live':liveRole==='viewer'?'● Info diretta':'● Condivisione live';
-  updateSaveIndicator();
-  const count=document.getElementById('liveConnectedCount');if(count)count.textContent=String(hostConnectionCount());
-  syncScreenWakeLock();
+  updateSaveIndicator();const count=document.getElementById('liveConnectedCount');if(count)count.textContent=String(hostConnectionCount());syncScreenWakeLock();
 }
-function liveWaitingMessage(){return liveErrorMessage||'Connessione al telefono che sta gestendo il torneo…';}
+function liveWaitingMessage(){return liveErrorMessage||'Caricamento del torneo dal cloud…';}
 function renderLiveWaiting(){
   setSetupMode(false);setHeader('Collegamento live',liveRole==='manager'?'Accesso gestore':liveRole==='referee'?'Accesso arbitro':'Modalità spettatore');
-  view.innerHTML=`<div class="card live-wait"><div class="live-share-icon">●</div><h2>${liveErrorMessage?'Diretta non raggiungibile':'Apertura della diretta…'}</h2><p class="note">${esc(liveWaitingMessage())}</p><div class="button-row center" style="margin-top:16px"><button class="primary" id="retryLive">Riprova</button><button class="ghost" id="leaveLive">Apri Copparì locale</button></div><p class="note">Il telefono principale deve restare online con Copparì aperto.</p></div>`;
+  view.innerHTML=`<div class="card live-wait"><div class="live-share-icon">●</div><h2>${liveErrorMessage?'Diretta non raggiungibile':'Apertura della diretta…'}</h2><p class="note">${esc(liveWaitingMessage())}</p><div class="button-row center" style="margin-top:16px"><button class="primary" id="retryLive">Riprova</button><button class="ghost" id="leaveLive">Apri Copparì locale</button></div><p class="note">I dati restano online anche quando il telefono che ha avviato la diretta viene chiuso.</p></div>`;
   document.getElementById('retryLive').onclick=()=>{liveErrorMessage='';connectToLiveHost();};
-  document.getElementById('leaveLive').onclick=()=>{const url=new URL(location.href);url.searchParams.delete('live');url.hash='';location.href=url.toString();};
-  updateLiveStatusUI();
+  document.getElementById('leaveLive').onclick=()=>{const url=new URL(location.href);url.searchParams.delete('live');url.hash='';location.href=url.toString();};updateLiveStatusUI();
 }
 function refreshAfterLiveState(){
   if(activeRefereeMatchId&&['manager','referee'].includes(liveRole)&&state.matches.some(m=>m.id===activeRefereeMatchId))renderRefereeMode(activeRefereeMatchId);else render();
@@ -1002,126 +1061,91 @@ function refreshAfterLiveState(){
 function applyLiveClientState(raw,revision,force=false){
   try{
     if(JSON.stringify(raw).length>2000000)throw new Error('too-large');
-    if(!force&&Number.isFinite(+revision)&&+revision<liveRevision)return;
+    if(!force&&Number.isFinite(+revision)&&+revision<=liveRevision&&liveHasState)return;
     const clean=normalizeState(raw),first=!liveHasState;liveApplyingRemote=true;
-    Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,clean);
-    liveRevision=Math.max(0,+revision||0);liveHasState=true;liveConnecting=false;liveConnected=true;liveErrorMessage='';
-    if(first){currentView='home';sessionSet('coppari.currentView','home');}
+    Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,clean);liveRevision=Math.max(0,+revision||0);liveHasState=true;liveConnecting=false;liveErrorMessage='';
+    if(liveRole==='host')persistStateLocally();if(first){currentView='home';sessionSet('coppari.currentView','home');}
     refreshAfterLiveState();liveApplyingRemote=false;updateLiveStatusUI();
   }catch{liveApplyingRemote=false;toast('Dati live non validi',4200);}
 }
-function sendHostState(conn,type='state'){
-  if(!conn?.open)return;
-  try{conn.send({type,revision:liveRevision,state:sharedStateSnapshot()});}catch{}
+function applyLiveRow(row,force=false){
+  if(!row?.state)throw new Error('LIVE_ROOM_NOT_FOUND');
+  liveEnded=row.active===false;liveConnected=true;applyLiveClientState(row.state,row.revision,force);
 }
-function broadcastLiveState(){liveHostConnections.forEach(conn=>sendHostState(conn));updateLiveStatusUI();}
-function sanitizedRefereeMatch(raw,current){
-  const candidate=normalizeState({settings:state.settings,teams:state.teams,players:state.players,matches:[{...current,...raw,id:current.id,stage:current.stage,leg:current.leg,round:current.round,koSize:current.koSize,slot:current.slot,homeTeamId:current.homeTeamId,awayTeamId:current.awayTeamId,manual:current.manual,ratings:current.ratings,ratingsPublished:current.ratingsPublished}]}).matches[0];
-  const playerIds=new Set(state.players.filter(p=>p.teamId===current.homeTeamId||p.teamId===current.awayTeamId).map(p=>p.id)),teamIds=new Set([current.homeTeamId,current.awayTeamId]);
-  candidate.events=(candidate.events||[]).filter(e=>teamIds.has(e.teamId)&&(!e.playerId||playerIds.has(e.playerId)));
-  candidate.stats=(candidate.stats||[]).filter(s=>playerIds.has(s.playerId));
-  if(candidate.mvpPlayerId&&!playerIds.has(candidate.mvpPlayerId))candidate.mvpPlayerId=null;
-  return {...current,status:candidate.status,homeScore:candidate.homeScore,awayScore:candidate.awayScore,penHome:candidate.penHome,penAway:candidate.penAway,date:candidate.date,events:candidate.events,stats:candidate.stats,referee:candidate.referee,mvpPlayerId:candidate.mvpPlayerId};
+async function fetchLiveState(force=false){
+  const row=await liveRpc('coppari_live_read',{p_room_id:liveRoomId});applyLiveRow(row,force);return row;
 }
-function handleHostLiveMessage(conn,data){
-  if(conn._coppariRole==='referee'&&data?.type==='match-update'){
-    const index=state.matches.findIndex(m=>m.id===safeId(data?.match?.id,'invalid'));if(index<0)return sendHostState(conn,'conflict');
-    if(state.matches[index].status==='played'||JSON.stringify(data.match||{}).length>600000)return sendHostState(conn,'conflict');
-    const next=sanitizedRefereeMatch(data.match,state.matches[index]);
-    if(next.status==='played'&&next.referee?.phase!=='ended')return sendHostState(conn,'conflict');
-    if(next.status==='live'&&state.matches.some((m,i)=>i!==index&&m.status==='live'))return sendHostState(conn,'conflict');
-    try{createSnapshot('Prima di una modifica da arbitro live');liveApplyingRemote=true;state.matches[index]=next;liveRevision++;state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};syncKnockout(false);persistStateLocally();refreshAfterLiveState();liveApplyingRemote=false;broadcastLiveState();}catch{liveApplyingRemote=false;sendHostState(conn,'conflict');}
-    return;
-  }
-  if(conn._coppariRole==='manager'&&data?.type==='ratings-update'){
-    const current=state.matches.find(m=>m.id===safeId(data?.matchId,'invalid'));if(!current||current.status!=='played')return sendHostState(conn,'conflict');
-    try{const clean=normalizeState({settings:state.settings,teams:state.teams,players:state.players,matches:[{...current,ratings:data.ratings,ratingsPublished:!!data.published}]}).matches[0],allowed=new Set(state.players.filter(p=>p.teamId===current.homeTeamId||p.teamId===current.awayTeamId).map(p=>p.id));createSnapshot('Prima di aggiornare le Copparigelle');liveApplyingRemote=true;current.ratings=clean.ratings.filter(r=>allowed.has(r.playerId));current.ratingsPublished=clean.ratingsPublished&&current.ratings.length>0;liveRevision++;state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};persistStateLocally();refreshAfterLiveState();liveApplyingRemote=false;broadcastLiveState();}catch{liveApplyingRemote=false;sendHostState(conn,'conflict');}
-    return;
-  }
-  if(conn._coppariRole!=='manager'||data?.type!=='state-update')return;
-  if(+data.baseRevision!==liveRevision){sendHostState(conn,'conflict');return;}
-  try{
-    if(JSON.stringify(data.state).length>2000000)throw new Error('too-large');
-    const clean=normalizeState(data.state);createSnapshot('Prima di una modifica da gestore live');liveApplyingRemote=true;
-    Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,clean);liveRevision++;
-    state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};persistStateLocally();
-    refreshAfterLiveState();liveApplyingRemote=false;broadcastLiveState();
-  }catch{liveApplyingRemote=false;sendHostState(conn,'conflict');}
+function updateLivePresence(){
+  if(!liveChannel)return;const total=Object.values(liveChannel.presenceState()||{}).reduce((sum,entries)=>sum+(Array.isArray(entries)?entries.length:0),0);
+  livePresenceCount=Math.max(0,total-(liveRole==='host'?1:0));updateLiveStatusUI();
 }
-function attachHostConnection(conn,role){
-  conn._coppariRole=role;liveHostConnections.set(conn.peer,conn);
-  conn.on('open',()=>{sendHostState(conn);updateLiveStatusUI();});
-  conn.on('data',data=>handleHostLiveMessage(conn,data));
-  conn.on('close',()=>{liveHostConnections.delete(conn.peer);updateLiveStatusUI();});
-  conn.on('error',()=>{liveHostConnections.delete(conn.peer);updateLiveStatusUI();});
+function notifyLiveRefresh(){
+  if(!liveChannel||!liveConnected)return;
+  liveChannel.send({type:'broadcast',event:'refresh',payload:{revision:liveRevision}}).catch(()=>{});
 }
-function acceptLiveConnection(conn){
-  const requested=['manager','referee'].includes(conn.metadata?.role)?conn.metadata.role:'viewer',supplied=cleanLiveSecret(conn.metadata?.secret),authorized=requested==='manager'?supplied===liveSecret:requested==='referee'?supplied===liveRefereeSecret:true;
-  if(!authorized){conn.on('open',()=>{try{conn.send({type:'error',message:'Link gestore non valido'});}catch{}conn.close();});return;}
-  attachHostConnection(conn,requested);
+async function connectLiveChannel({fetchState=true}={}){
+  const client=await getLiveClient();closeLiveTransport();const generation=liveTransportGeneration;
+  return await new Promise((resolve,reject)=>{
+    let settled=false;const channel=client.channel(`coppari-live:${liveRoomId}`,{config:{broadcast:{self:false},presence:{key:randomLiveToken(9)},private:false}});liveChannel=channel;
+    const finishError=error=>{if(settled)return;settled=true;reject(error instanceof Error?error:new Error(String(error||'LIVE_CHANNEL_ERROR')));};
+    const timer=setTimeout(()=>finishError(new Error('LIVE_CHANNEL_TIMEOUT')),12000);
+    channel.on('broadcast',{event:'refresh'},payload=>{if(generation!==liveTransportGeneration||liveChannel!==channel)return;const revision=+payload?.payload?.revision||0;if(revision>liveRevision)fetchLiveState(true).catch(handleLiveConnectionError);});
+    channel.on('presence',{event:'sync'},()=>{if(generation===liveTransportGeneration&&liveChannel===channel)updateLivePresence();});
+    channel.subscribe(async status=>{
+      if(generation!==liveTransportGeneration||liveChannel!==channel)return;
+      if(status==='SUBSCRIBED'){
+        try{liveConnected=true;liveConnecting=false;liveReconnectAttempts=0;await channel.track({role:liveRole,onlineAt:new Date().toISOString()});if(fetchState)await fetchLiveState(true);updateLivePresence();clearTimeout(timer);if(!settled){settled=true;resolve(true);}}
+        catch(error){clearTimeout(timer);finishError(error);}
+      }else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)){
+        liveConnected=false;updateLiveStatusUI();clearTimeout(timer);finishError(new Error(status));
+      }
+    });
+  });
+}
+function handleLiveConnectionError(error){
+  liveConnected=false;liveErrorMessage=liveErrorText(error);if(!liveHasState){liveConnecting=true;render();}updateLiveStatusUI();if(!liveEnded)scheduleLiveReconnect();
 }
 async function startLiveHost({resume=false}={}){
   if(liveRole&&liveRole!=='host')return false;
-  let config=readLiveHostConfig();if(!config)config={roomId:`coppari-${randomLiveToken(15)}`,secret:randomLiveToken(24),refereeSecret:randomLiveToken(24),active:true};
-  if(!config.refereeSecret)config.refereeSecret=randomLiveToken(24);writeLiveHostConfig(config);
-  liveRole='host';liveRoomId=config.roomId;liveSecret=config.secret;liveRefereeSecret=config.refereeSecret;liveConnecting=true;liveRevision=liveRevision||Date.now();liveErrorMessage='';updateLiveStatusUI();
+  let config=readLiveHostConfig();
+  if(config&&config.transportVersion!==3)config={roomId:null,secret:config.secret,refereeSecret:config.refereeSecret,transportVersion:3,active:true};
+  if(!config)config={roomId:null,secret:randomLiveToken(24),refereeSecret:randomLiveToken(24),transportVersion:3,active:true};
+  if(!config.roomId)config.roomId=`coppari-${randomLiveToken(18)}`;
+  liveRole='host';liveRoomId=config.roomId;liveSecret=config.secret;liveRefereeSecret=config.refereeSecret;liveConnecting=true;liveEnded=false;liveErrorMessage='';updateLiveStatusUI();
   try{
-    const Peer=await loadPeerLibrary();closeLiveTransport();liveRole='host';liveRoomId=config.roomId;liveSecret=config.secret;liveRefereeSecret=config.refereeSecret;
-    return await new Promise((resolve,reject)=>{
-      let settled=false;const peer=new Peer(liveRoomId,{debug:1});livePeer=peer;
-      peer.on('open',()=>{liveConnected=true;liveConnecting=false;writeLiveHostConfig(config);updateLiveStatusUI();if(!settled){settled=true;resolve(true);}});
-      peer.on('connection',acceptLiveConnection);
-      peer.on('disconnected',()=>{liveConnected=false;updateLiveStatusUI();liveReconnectTimer=setTimeout(()=>{try{peer.reconnect();}catch{}},1800);});
-      peer.on('close',()=>{liveConnected=false;updateLiveStatusUI();});
-      peer.on('error',error=>{liveConnected=false;liveErrorMessage=error?.type==='unavailable-id'?'La diretta è già aperta in un’altra scheda':'Connessione live non disponibile';updateLiveStatusUI();if(!settled){settled=true;reject(error);}});
-    });
-  }catch(error){liveConnecting=false;if(!resume)toast(liveErrorMessage||'Impossibile avviare la diretta',4200);updateLiveStatusUI();return false;}
+    const row=await liveRpc('coppari_live_create',{p_room_id:liveRoomId,p_manager_secret:liveSecret,p_referee_secret:liveRefereeSecret,p_state:sharedStateSnapshot()});
+    applyLiveRow(row,true);writeLiveHostConfig(config);await connectLiveChannel({fetchState:true});return true;
+  }catch(error){liveConnecting=false;liveErrorMessage=liveErrorText(error);if(!resume)toast(liveErrorMessage,5200);updateLiveStatusUI();return false;}
 }
-function handleLiveClientMessage(data){
-  if(data?.type==='state')applyLiveClientState(data.state,data.revision);
-  else if(data?.type==='conflict'){applyLiveClientState(data.state,data.revision,true);toast(liveRole==='referee'?'Referto riallineato: ripeti l’ultima operazione':'Aggiornato da un altro gestore: ripeti l’ultima modifica',4200);}
-  else if(data?.type==='error'){liveErrorMessage=safeText(data.message||'Accesso live non autorizzato',160);liveConnecting=true;liveConnected=false;render();}
-}
-function scheduleLiveReconnect(){
-  clearTimeout(liveReconnectTimer);if(!liveRoomId||liveRole==='host')return;
-  liveReconnectTimer=setTimeout(()=>connectToLiveHost(),2200);
+function scheduleLiveReconnect(delay){
+  clearTimeout(liveReconnectTimer);if(!liveRoomId||liveEnded)return;
+  const attempt=liveReconnectAttempts++,wait=Number.isFinite(delay)?delay:Math.min(12000,1800*(2**Math.min(attempt,3)));
+  liveReconnectTimer=setTimeout(()=>connectToLiveHost(),wait);
 }
 async function connectToLiveHost(){
-  if(!liveRoomId||!['viewer','manager','referee'].includes(liveRole))return;
-  liveConnecting=!liveHasState;liveConnected=false;liveErrorMessage='';render();
-  try{
-    const Peer=await loadPeerLibrary();try{liveConnection?.close();livePeer?.destroy();}catch{}
-    const peer=new Peer(undefined,{debug:1});livePeer=peer;
-    peer.on('open',()=>{
-      const conn=peer.connect(liveRoomId,{reliable:true,serialization:'json',metadata:{role:liveRole,secret:liveRole==='manager'?liveSecret:liveRole==='referee'?liveRefereeSecret:null}});liveConnection=conn;
-      conn.on('open',()=>{liveConnected=true;updateLiveStatusUI();});
-      conn.on('data',handleLiveClientMessage);
-      conn.on('close',()=>{liveConnected=false;updateLiveStatusUI();if(['manager','referee'].includes(liveRole)){liveConnecting=true;render();}scheduleLiveReconnect();});
-      conn.on('error',()=>{liveConnected=false;updateLiveStatusUI();scheduleLiveReconnect();});
-    });
-    peer.on('error',error=>{liveConnected=false;liveErrorMessage=error?.type==='peer-unavailable'?'Il telefono principale non è raggiungibile':'Errore di collegamento live';if(!liveHasState){liveConnecting=true;render();}updateLiveStatusUI();scheduleLiveReconnect();});
-    peer.on('disconnected',()=>{liveConnected=false;updateLiveStatusUI();scheduleLiveReconnect();});
-    setTimeout(()=>{if(!liveHasState&&!liveConnected){liveErrorMessage='Il telefono principale non risponde. Verifica che Copparì sia aperto e online.';liveConnecting=true;render();}},12000);
-  }catch{liveErrorMessage='Impossibile caricare la connessione WebRTC';liveConnecting=true;render();}
+  if(!liveRoomId||!liveRole)return;
+  liveConnecting=!liveHasState;liveConnected=false;liveErrorMessage='';if(!liveHasState)render();
+  try{await connectLiveChannel({fetchState:true});}catch(error){handleLiveConnectionError(error);}
+}
+function queueLiveWrite(task){
+  liveWriteQueue=liveWriteQueue.then(task,task).catch(error=>{liveConnected=false;liveErrorMessage=liveErrorText(error);toast(liveErrorMessage,5200);updateLiveStatusUI();if(!liveEnded)scheduleLiveReconnect();});return true;
+}
+function handleLiveWriteResult(row,conflictMessage){
+  if(!row)throw new Error('LIVE_WRITE_FAILED');
+  if(!row.accepted){applyLiveRow(row,true);toast(conflictMessage,4600);return false;}
+  liveRevision=+row.revision||liveRevision;liveEnded=row.active===false;liveConnected=true;if(liveRole==='host')persistStateLocally();notifyLiveRefresh();updateLiveStatusUI();return true;
 }
 function sendLiveManagerUpdate(){
-  if(liveRole!=='manager'||!liveConnection?.open)return false;
-  const baseRevision=liveRevision;liveRevision++;
-  try{liveConnection.send({type:'state-update',baseRevision,revision:liveRevision,state:sharedStateSnapshot()});return true;}
-  catch{liveRevision=baseRevision;liveConnected=false;scheduleLiveReconnect();return false;}
+  if(!['host','manager'].includes(liveRole)||!liveConnected||liveEnded)return false;const snapshot=sharedStateSnapshot();
+  return queueLiveWrite(async()=>{const row=await liveRpc('coppari_live_update',{p_room_id:liveRoomId,p_manager_secret:liveSecret,p_base_revision:liveRevision,p_state:snapshot});handleLiveWriteResult(row,'Aggiornato da un altro gestore: ripeti l’ultima modifica');});
 }
 function sendLiveRefereeMatchUpdate(matchId){
-  if(liveRole!=='referee'||!liveConnection?.open)return false;const match=state.matches.find(m=>m.id===matchId);if(!match)return false;
-  try{liveConnection.send({type:'match-update',baseRevision:liveRevision,match:JSON.parse(JSON.stringify(match))});return true;}
-  catch{liveConnected=false;scheduleLiveReconnect();return false;}
+  if(liveRole!=='referee'||!liveConnected||liveEnded)return false;const match=state.matches.find(item=>item.id===matchId);if(!match)return false;const snapshot=JSON.parse(JSON.stringify(match));
+  return queueLiveWrite(async()=>{const row=await liveRpc('coppari_live_update_referee',{p_room_id:liveRoomId,p_referee_secret:liveRefereeSecret,p_base_revision:liveRevision,p_match:snapshot});if(handleLiveWriteResult(row,'Referto riallineato: ripeti l’ultima operazione'))applyLiveRow(row,true);});
 }
-function sendLiveRatingsUpdate(matchId){
-  if(liveRole!=='manager'||!liveConnection?.open)return false;const match=state.matches.find(m=>m.id===matchId);if(!match)return false;
-  try{liveConnection.send({type:'ratings-update',baseRevision:liveRevision,matchId,ratings:JSON.parse(JSON.stringify(match.ratings||[])),published:!!match.ratingsPublished});return true;}
-  catch{liveConnected=false;scheduleLiveReconnect();return false;}
-}
+function sendLiveRatingsUpdate(){return sendLiveManagerUpdate();}
 function spectatorLiveBarHtml(){
-  return `<div class="spectator-live-bar ${liveConnected?'':'offline'}"><span class="live-dot"></span><span>${liveConnected?'Diretta collegata · aggiornamento automatico':'Connessione interrotta · ultimo aggiornamento visibile'}</span></div>`;
+  return `<div class="spectator-live-bar ${liveConnected&&!liveEnded?'':'offline'}"><span class="live-dot"></span><span>${liveEnded?'Diretta conclusa · dati finali disponibili':liveConnected?'Diretta cloud collegata · aggiornamento automatico':'Connessione interrotta · ultimo aggiornamento visibile'}</span></div>`;
 }
 function publicMatchRow(m){
   const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live',pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';
@@ -1131,11 +1155,11 @@ function renderSpectatorHome(){
   setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Diretta pubblica · sola lettura');
   if(!state.settings.configured){view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">Copparì Live</div><h2>Il torneo è in preparazione</h2><p class="note">La pagina si aggiornerà automaticamente quando il gestore completerà la configurazione.</p></div>`;return;}
   const played=playedMatches().length,total=Math.max(state.matches.length,totalGamesExpected()),goals=playedMatches().reduce((sum,m)=>sum+(+m.homeScore||0)+(+m.awayScore||0),0),next=nextScheduledMatch(),table=standings();
-  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">${esc(state.settings.edition)} · Copparì Live</div><h2>${esc(state.settings.name)}</h2><p class="note">Segui risultati, classifica e premi dal telefono del gestore.</p></div><div class="grid cols-4" style="margin-top:16px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',next?next.status==='live'?'In campo':'In programma':'Concluso')}</div>${next?`<div class="card next-match-card" style="margin-top:16px"><div class="next-match-stage">${next.status==='live'?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${stageLabel(next)}</div><div class="next-match-teams"><div class="next-match-team">${esc(teamById(next.homeTeamId)?.name||'?')}</div><div class="next-match-vs">${next.status==='live'?`<strong style="font-size:24px">${refScore(next)}</strong>`:'VS'}</div><div class="next-match-team">${esc(teamById(next.awayTeamId)?.name||'?')}</div></div></div>`:''}<div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Classifica live</h3>${table.length?`<div class="leaderboard">${table.map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}</div></div>`;
+  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">${esc(state.settings.edition)} · Copparì Live</div><h2>${esc(state.settings.name)}</h2><p class="note">Risultati, classifica e premi restano disponibili nel cloud anche se il primo telefono viene chiuso.</p></div><div class="grid cols-4" style="margin-top:16px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',next?next.status==='live'?'In campo':'In programma':'Concluso')}</div>${next?`<div class="card next-match-card" style="margin-top:16px"><div class="next-match-stage">${next.status==='live'?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${stageLabel(next)}</div><div class="next-match-teams"><div class="next-match-team">${esc(teamById(next.homeTeamId)?.name||'?')}</div><div class="next-match-vs">${next.status==='live'?`<strong style="font-size:24px">${refScore(next)}</strong>`:'VS'}</div><div class="next-match-team">${esc(teamById(next.awayTeamId)?.name||'?')}</div></div></div>`:''}<div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Classifica live</h3>${table.length?`<div class="leaderboard">${table.map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}</div></div>`;
 }
 function renderSpectatorCalendar(){
   setHeader('Partite','Calendario e risultati in diretta');
-  const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?stageLabel(m):m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
+  const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?'Sequenza continua dalle 00:00':m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
   view.innerHTML=`${spectatorLiveBarHtml()}${Object.keys(groups).length?Object.entries(groups).map(([label,matches])=>`<div class="round-block"><div class="round-title">${esc(label)}</div><div class="match-list">${matches.map(publicMatchRow).join('')}</div></div>`).join(''):'<div class="empty"><strong>Calendario in preparazione</strong>Le partite appariranno automaticamente.</div>'}`;
   view.querySelectorAll('[data-ratings-match]').forEach(button=>button.onclick=()=>openRatingsModal(button.dataset.ratingsMatch,true));
 }
@@ -1150,8 +1174,8 @@ function renderRemoteRefereeHome(){
   view.querySelectorAll('[data-ref-match]').forEach(button=>button.onclick=()=>openRefereeMode(button.dataset.refMatch));
 }
 function liveShareCardHtml(){
-  if(liveRole==='host')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Diretta attiva</h3><p class="note"><strong>${hostConnectionCount()}</strong> dispositivi collegati. Tieni Copparì aperto e il telefono online.</p></div><div class="live-share-actions"><button class="primary" id="openLiveShare">Gestisci link</button></div></div>`;
-  if(liveRole==='manager')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Gestore collegato</h3><p class="note">Ogni modifica confermata viene inviata al telefono principale. Evitate modifiche contemporanee.</p></div><div class="live-share-actions"><button class="ghost" id="openLiveShare">Info diretta</button></div></div>`;
+  if(liveRole==='host')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Diretta cloud attiva</h3><p class="note"><strong>${hostConnectionCount()}</strong> dispositivi collegati. Il torneo resta online anche chiudendo questo telefono.</p></div><div class="live-share-actions"><button class="primary" id="openLiveShare">Gestisci link</button></div></div>`;
+  if(liveRole==='manager')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Gestore collegato</h3><p class="note">Ogni modifica confermata viene salvata nel cloud. Evitate modifiche contemporanee.</p></div><div class="live-share-actions"><button class="ghost" id="openLiveShare">Info diretta</button></div></div>`;
   if(liveRole==='referee')return `<div class="card live-share-card"><span class="live-share-icon">⚑</span><div><h3>Arbitro collegato</h3><p class="note">Puoi gestire soltanto referti e arbitraggio. Le altre aree restano in sola lettura.</p></div><div class="live-share-actions"><button class="ghost" id="openLiveShare">Info accesso</button></div></div>`;
   return `<div class="card live-share-card"><span class="live-share-icon">↗</span><div><h3>Fai seguire il torneo a tutti</h3><p class="note">Crea link separati per pubblico, arbitro e gestore. Nessun account richiesto.</p></div><div class="live-share-actions"><button class="primary" id="startLiveFromHome">Avvia diretta</button></div></div>`;
 }
@@ -1169,9 +1193,9 @@ function screenWakeControlHtml(){
   return `<label class="roster-row" style="margin-top:14px"><span class="grow"><strong>Mantieni schermo acceso durante la Live</strong><span class="note" data-wake-status>${esc(screenWakeStatus())}</span></span><input type="checkbox" data-wake-toggle ${checked} ${disabled}></label><p class="note">Vale solo su questo dispositivo. Consuma più batteria: durante il torneo è consigliato collegarlo alla corrente.</p>`;
 }
 function liveModalHtml(){
-  if(!liveRole)return `<div data-live-modal><div class="kicker">Condivisione senza account</div><h2 style="margin-top:6px">Avvia la diretta P2P</h2><p class="modal-subtitle">Questo telefono diventa il punto centrale del torneo. Deve restare online con Copparì aperto.</p><div class="notice info"><span>●</span><span>Verranno creati tre accessi: pubblico in sola lettura, arbitro limitato a partite e referti, gestore con controllo completo.</span></div>${screenWakeControlHtml()}<div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveNow">Avvia e crea i link</button></div></div>`;
+  if(!liveRole)return `<div data-live-modal><div class="kicker">Condivisione senza account</div><h2 style="margin-top:6px">Avvia la diretta cloud</h2><p class="modal-subtitle">Il torneo viene salvato su Supabase e resta raggiungibile anche quando questo telefono è chiuso.</p><div class="notice info"><span>●</span><span>Verranno creati tre accessi: pubblico in sola lettura, arbitro limitato a partite e referti, gestore con controllo completo.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveNow">Avvia e crea i link</button></div></div>`;
   const links=liveLinks(),status=liveRole==='host'?`Diretta attiva · <strong id="liveConnectedCount">${hostConnectionCount()}</strong> collegati`:liveRole==='manager'?'Collegato come gestore':liveRole==='referee'?'Collegato come arbitro':'Collegato come spettatore';
-  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione diretta tramite WebRTC. Il telefono principale deve restare online.</p>${liveAccessHtml(links)}${['host','referee'].includes(liveRole)?screenWakeControlHtml():''}<div class="notice warn" style="margin-top:14px"><span>!</span><span>Senza un database online la diretta non è disponibile quando il telefono principale è chiuso, offline o irraggiungibile dalla rete.</span></div><div class="modal-actions">${liveRole==='host'?'<button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
+  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione persistente tramite Supabase Realtime.</p>${liveAccessHtml(links)}${liveRole==='referee'?screenWakeControlHtml():''}<div class="notice info" style="margin-top:14px"><span>☁</span><span>I dati restano disponibili nel cloud. Il telefono che ha creato la diretta può essere chiuso; un altro gestore autorizzato può continuare il torneo.</span></div><div class="modal-actions">${liveRole==='host'?'<button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
 }
 function bindLiveModalActions(){
   modal.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>closeModal());
@@ -1188,7 +1212,8 @@ async function copyLiveLink(link,message){try{await navigator.clipboard.writeTex
 async function shareLiveViewerLink(){const link=liveLinks().viewer;if(navigator.share){try{await navigator.share({title:`Diretta ${state.settings.name}`,text:'Segui il torneo Copparì in diretta',url:link});return;}catch(error){if(error?.name==='AbortError')return;}}copyLiveLink(link,'Link pubblico copiato');}
 async function stopLiveHost(){
   if(liveRole!=='host'||!confirm('Terminare la diretta? Tutti i dispositivi collegati perderanno la connessione.'))return;
-  closeLiveTransport();storageRemove(LIVE_CONFIG_KEY);liveRole=null;liveRoomId=null;liveSecret=null;liveRefereeSecret=null;liveRevision=0;closeModal(true);render();toast('Diretta terminata');
+  try{await liveRpc('coppari_live_stop',{p_room_id:liveRoomId,p_manager_secret:liveSecret});notifyLiveRefresh();liveEnded=true;closeLiveTransport();storageRemove(LIVE_CONFIG_KEY);liveRole=null;liveRoomId=null;liveSecret=null;liveRefereeSecret=null;liveRevision=0;closeModal(true);render();toast('Diretta terminata: i dati finali restano nel cloud');}
+  catch(error){toast(liveErrorText(error),5200);}
 }
 function initLiveSharing(){
   const join=parseLiveJoinFromLocation();
@@ -1213,7 +1238,7 @@ function setupPreviewValues(){
   const compatibility=rosterCompatibility(total,roster);
   const teams=compatibility.teams;
   const sizes=rosterDistribution(total,teams);
-  const startTime=document.getElementById('setupStartTime')?.value||'00:00';
+  const startTime='00:00';
   const periods=2;
   const settings={targetPlayers:total,rosterSize:roster,teamCount:teams,scheduleMode:mode,tournamentFormat,playoffs,bronzeFinal:false,startTime,periods,matchMinutes:minutes,halftimeMinutes:halftime,changeMinutes:change};
   const bracket=knockoutBracketSize(teams,settings);
@@ -1272,7 +1297,7 @@ function renderSetup(){
           <div class="field"><label>Formula torneo</label><select id="setupFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Girone + eliminazione diretta</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div>
           <div class="field"><label>Girone (se previsto)</label><select id="setupMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div>
           <div class="field"><label>Finale 3° posto</label><select id="setupBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div>
-          <div class="field"><label>Ora inizio torneo</label><input id="setupStartTime" type="time" value="${s.startTime||'00:00'}"></div><div class="field"><label>Tempi</label><input value="2 tempi" disabled><small>Modalità arbitro ottimizzata per 1° tempo, intervallo e 2° tempo.</small></div><div class="field"><label>Durata totale di gioco / partita (min)</label><input id="setupMinutes" type="number" min="2" max="120" value="${s.matchMinutes}"><small>Esclude la pausa tra 1° e 2° tempo.</small></div>
+          <div class="field"><label>Inizio torneo</label><input id="setupStartTime" type="time" value="00:00" disabled><small>La sequenza delle partite parte a mezzanotte e prosegue fino alla fine.</small></div><div class="field"><label>Tempi</label><input value="2 tempi" disabled><small>Modalità arbitro ottimizzata per 1° tempo, intervallo e 2° tempo.</small></div><div class="field"><label>Durata totale di gioco / partita (min)</label><input id="setupMinutes" type="number" min="2" max="120" value="${s.matchMinutes}"><small>Esclude la pausa tra 1° e 2° tempo.</small></div>
           <div class="field"><label>Pausa tra 1° e 2° tempo (min)</label><input id="setupHalftime" type="number" min="0" max="30" value="${s.halftimeMinutes}"></div>
           <div class="field"><label>Tempo tra due partite (min)</label><input id="setupChange" type="number" min="0" max="60" value="${s.changeMinutes}"></div>
         </div>
@@ -1447,20 +1472,20 @@ function renderPlayers(){
   search?.addEventListener('input',filterPlayers);document.getElementById('clearPlayerSearch')?.addEventListener('click',()=>{search.value='';filterPlayers();search.focus();});
 }
 function openBulkPlayersModal(){
-  openModal(`<h2>Incolla partecipanti</h2><p class="modal-subtitle">Un nome per riga. Facoltativo: <strong>Nome; Ruolo; Livello</strong> (es. Luca; ATT; 4).</p><textarea class="bulk-area" id="bulkNames" placeholder="Luca; ATT; 4\nMarco; POR; 3\nAndrea"></textarea><div class="notice info" style="margin-top:10px"><span>i</span><span>I nomi già presenti vengono ignorati. Ruolo predefinito: Centrocampista; livello: 3.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="saveBulk">Aggiungi lista</button></div>`);
+  openModal(`<h2>Incolla partecipanti</h2><p class="modal-subtitle">Un nome per riga. Facoltativo: <strong>Nome; Ruolo; Livello</strong> (es. Luca; ATT; 4).</p><textarea class="bulk-area" id="bulkNames" placeholder="Luca; ATT; 4\nMarco; POR; 3\nAndrea"></textarea><div class="notice info" style="margin-top:10px"><span>i</span><span>I nomi già presenti vengono ignorati. Ruolo predefinito: Da definire; livello: 3.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="saveBulk">Aggiungi lista</button></div>`);
   document.getElementById('saveBulk').onclick=()=>{
     const rows=document.getElementById('bulkNames').value.split(/\n+/).map(x=>x.trim()).filter(Boolean);
     if(!rows.length)return toast('Incolla almeno un nome');
-    const roleMap={PORTIERE:'POR',POR:'POR',DIFENSORE:'DIF',DIF:'DIF',CENTROCAMPISTA:'CEN',CEN:'CEN',ATTACCANTE:'ATT',ATT:'ATT'};
+    const roleMap={'DA DEFINIRE':'TBD',TBD:'TBD',PORTIERE:'POR',POR:'POR',DIFENSORE:'DIF',DIF:'DIF',CENTROCAMPISTA:'CEN',CEN:'CEN',ATTACCANTE:'ATT',ATT:'ATT'};
     const existing=new Set(state.players.map(p=>p.name.toLowerCase())); let added=0;
     createSnapshot('Prima dell’importazione partecipanti');
-    rows.forEach(row=>{const [rawName,rawRole='',rawRating='']=row.split(/[;\t]/).map(x=>x.trim());const name=rawName?.slice(0,80);if(name&&!existing.has(name.toLowerCase())){state.players.push({id:uid('p'),name,role:roleMap[rawRole.toUpperCase()]||'CEN',rating:clamp(+rawRating||3,1,5),teamId:null,active:true});existing.add(name.toLowerCase());added++;}});
+    rows.forEach(row=>{const [rawName,rawRole='',rawRating='']=row.split(/[;\t]/).map(x=>x.trim());const name=rawName?.slice(0,80);if(name&&!existing.has(name.toLowerCase())){state.players.push({id:uid('p'),name,role:roleMap[rawRole.toUpperCase()]||'TBD',rating:clamp(+rawRating||3,1,5),teamId:null,active:true});existing.add(name.toLowerCase());added++;}});
     save();closeModal();renderPlayers();toast(`${added} partecipanti aggiunti`);
   };
 }
 function openPlayerModal(id=null){
-  const p=id?playerById(id):{name:'',role:'CEN',rating:3,teamId:null,active:true};
-  openModal(`<h2>${id?'Modifica':'Nuovo'} giocatore</h2><div class="form-grid"><div class="field full"><label>Nome</label><input id="pName" value="${esc(p.name)}" placeholder="Nome o soprannome"></div><div class="field"><label>Ruolo</label><select id="pRole">${['POR','DIF','CEN','ATT'].map(r=>`<option ${p.role===r?'selected':''} value="${r}">${roleLabel(r)}</option>`).join('')}</select></div><div class="field"><label>Livello (1-5)</label><select id="pRating">${[1,2,3,4,5].map(n=>`<option ${p.rating===n?'selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label>Stato</label><select id="pActive"><option value="1" ${p.active!==false?'selected':''}>Attivo</option><option value="0" ${p.active===false?'selected':''}>Non attivo</option></select></div></div>${p.teamId?`<p class="note">Squadra attuale: <strong>${esc(teamById(p.teamId)?.name||'—')}</strong>. Per cambiare squadra usa “Scambia giocatori”, così le rose restano sempre uguali.</p>`:''}<div class="modal-actions">${id?'<button class="danger" id="deletePlayer">Elimina</button>':''}<button class="ghost" data-close>Chiudi</button><button class="primary" id="savePlayer">Salva</button></div>`);
+  const p=id?playerById(id):{name:'',role:'TBD',rating:3,teamId:null,active:true};
+  openModal(`<h2>${id?'Modifica':'Nuovo'} giocatore</h2><div class="form-grid"><div class="field full"><label>Nome</label><input id="pName" value="${esc(p.name)}" placeholder="Nome o soprannome"></div><div class="field"><label>Ruolo</label><select id="pRole">${['TBD','POR','DIF','CEN','ATT'].map(r=>`<option ${p.role===r?'selected':''} value="${r}">${roleLabel(r)}</option>`).join('')}</select></div><div class="field"><label>Livello (1-5)</label><select id="pRating">${[1,2,3,4,5].map(n=>`<option ${p.rating===n?'selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label>Stato</label><select id="pActive"><option value="1" ${p.active!==false?'selected':''}>Attivo</option><option value="0" ${p.active===false?'selected':''}>Non attivo</option></select></div></div>${p.teamId?`<p class="note">Squadra attuale: <strong>${esc(teamById(p.teamId)?.name||'—')}</strong>. Per cambiare squadra usa “Scambia giocatori”, così le rose restano sempre uguali.</p>`:''}<div class="modal-actions">${id?'<button class="danger" id="deletePlayer">Elimina</button>':''}<button class="ghost" data-close>Chiudi</button><button class="primary" id="savePlayer">Salva</button></div>`);
   document.getElementById('savePlayer').onclick=()=>{ const name=document.getElementById('pName').value.trim();if(!name)return toast('Inserisci il nome');if(state.players.some(x=>x.id!==id&&x.name.trim().toLowerCase()===name.toLowerCase()))return toast('Esiste già un partecipante con questo nome'); const active=document.getElementById('pActive').value==='1'; if(id&&p.teamId&&!active&&!confirm('Disattivandolo la sua rosa risulterà incompleta. Continuare?'))return; const data={name:name.slice(0,80),role:document.getElementById('pRole').value,rating:+document.getElementById('pRating').value,active};createSnapshot(id?`Prima della modifica di ${p.name}`:'Prima di aggiungere un partecipante'); if(id)Object.assign(p,data);else state.players.push({id:uid('p'),teamId:null,...data});save();closeModal();renderPlayers();toast('Partecipante salvato'); };
   document.getElementById('deletePlayer')?.addEventListener('click',()=>{if(!confirm(p.teamId?'Eliminare questo partecipante? La squadra resterà incompleta finché non rigeneri le rose o inserisci un sostituto.':'Eliminare questo partecipante?'))return;createSnapshot(`Prima di eliminare ${p.name}`);state.teams.forEach(t=>{if(t.captainId===id)t.captainId=null;});state.players=state.players.filter(x=>x.id!==id);state.matches.forEach(m=>{m.stats=(m.stats||[]).filter(s=>s.playerId!==id);m.events=(m.events||[]).filter(e=>e.playerId!==id);m.ratings=(m.ratings||[]).filter(r=>r.playerId!==id);if(m.mvpPlayerId===id)m.mvpPlayerId=null;});save();closeModal();renderPlayers();toast('Partecipante eliminato');});
 }
@@ -1468,9 +1493,9 @@ function openPlayerModal(id=null){
 function renderTeams(){
   const expected=state.settings.rosterSize;
   setHeader('Squadre',`${state.settings.teamCount} rose · ${expected} giocatori ciascuna`);
-  const cards=state.teams.map((t,i)=>{const roster=teamPlayers(t.id),cap=playerById(t.captainId),avg=roster.length?(roster.reduce((s,p)=>s+p.rating,0)/roster.length).toFixed(1):'—';const ok=roster.length===expected;return `<div class="card team-card" style="--team:${t.color||teamColor(i)}"><div class="team-accent"></div><h3>${esc(t.name)}</h3><div class="team-meta">${roster.length}/${expected} giocatori · livello medio ${avg}${cap?` · capitano ${esc(cap.name)}`:''} ${ok?'<span class="badge green">Rosa completa</span>':'<span class="badge red">Da rigenerare</span>'}</div><div class="roster">${roster.map(p=>`<div class="roster-row"><span class="badge">${p.role}</span><span class="grow">${esc(p.name)}${t.captainId===p.id?' ©':''}</span><span class="rating">${'★'.repeat(p.rating)}</span></div>`).join('')||'<div class="note">Nessun giocatore</div>'}</div><div style="margin-top:12px"><button class="ghost full" data-edit-team="${t.id}">Nome / capitano</button></div></div>`;}).join('');
+  const cards=state.teams.map((t,i)=>{const roster=teamPlayers(t.id),cap=playerById(t.captainId),avg=roster.length?(roster.reduce((s,p)=>s+p.rating,0)/roster.length).toFixed(1):'—';const ok=roster.length===expected;return `<div class="card team-card" style="--team:${t.color||teamColor(i)}"><div class="team-accent"></div><h3>${esc(t.name)}</h3><div class="team-meta">${roster.length}/${expected} giocatori · livello medio ${avg}${cap?` · capitano ${esc(cap.name)}`:''} ${ok?'<span class="badge green">Rosa completa</span>':'<span class="badge red">Da rigenerare</span>'}</div><div class="roster">${roster.map(p=>`<div class="roster-row"><span class="badge">${esc(roleLabel(p.role))}</span><span class="grow">${esc(p.name)}${t.captainId===p.id?' ©':''}</span><span class="rating">${'★'.repeat(p.rating)}</span></div>`).join('')||'<div class="note">Nessun giocatore</div>'}</div><div style="margin-top:12px"><button class="ghost full" data-edit-team="${t.id}">Nome / capitano</button></div></div>`;}).join('');
   const complete=state.teams.length===state.settings.teamCount && state.teams.every(t=>teamPlayers(t.id).length===expected);
-  view.innerHTML=`<div class="section-head"><h2>Le ${state.settings.teamCount} squadre</h2><div class="actions"><button class="secondary" id="autoTeams">⚖ Genera equilibrate</button>${state.teams.length?'<button class="ghost" id="manualRosters">Gestisci assegnazioni</button>':''}${complete?'<button class="ghost" id="swapPlayers">⇄ Scambia</button>':''}</div></div><div class="card" style="margin-bottom:16px"><div class="target-line"><span>Partecipanti attivi</span><strong>${activePlayers().length}/${state.settings.targetPlayers}</strong></div><p class="note">Obiettivo: <strong>${state.settings.teamCount} squadre da ${expected} giocatori</strong>. Il bilanciamento considera livello e ruolo. Il gestore può poi scambiare o riassegnare manualmente chiunque.</p>${state.teams.length&&!complete?'<div class="notice warn" style="margin-top:12px"><span>!</span><span>Almeno una rosa non ha la dimensione prevista. Puoi correggerla con “Gestisci assegnazioni” o rigenerare tutto.</span></div>':''}</div>${cards?`<div class="team-grid">${cards}</div>`:`<div class="empty"><strong>Nessuna squadra</strong>Quando hai inserito tutti i partecipanti, premi “Genera equilibrate”.</div>`}`;
+  view.innerHTML=`<div class="section-head"><h2>Le ${state.settings.teamCount} squadre</h2><div class="actions"><button class="${state.teams.length?'ghost':'secondary'}" id="autoTeams">⚖ ${state.teams.length?'Rigenera equilibrate':'Genera equilibrate'}</button>${state.teams.length?'<button class="ghost" id="manualRosters">Gestisci assegnazioni</button>':''}${complete?'<button class="ghost" id="swapPlayers">⇄ Scambia</button>':''}</div></div><div class="card" style="margin-bottom:16px"><div class="target-line"><span>Partecipanti attivi</span><strong>${activePlayers().length}/${state.settings.targetPlayers}</strong></div><p class="note">Le <strong>${state.settings.teamCount} squadre da ${expected} giocatori</strong> sono già assegnate. Il gestore può rinominarle, scambiare o riassegnare manualmente i partecipanti.</p>${state.teams.length&&!complete?'<div class="notice warn" style="margin-top:12px"><span>!</span><span>Almeno una rosa non ha la dimensione prevista. Puoi correggerla con “Gestisci assegnazioni” o rigenerare tutto.</span></div>':''}</div>${cards?`<div class="team-grid">${cards}</div>`:`<div class="empty"><strong>Nessuna squadra</strong>Quando hai inserito tutti i partecipanti, premi “Genera equilibrate”.</div>`}`;
   document.getElementById('autoTeams').onclick=autoBalanceTeams;
   document.getElementById('manualRosters')?.addEventListener('click',openRosterManagerModal);
   document.getElementById('swapPlayers')?.addEventListener('click',openSwapPlayersModal);
@@ -1479,7 +1504,16 @@ function renderTeams(){
 function openTeamModal(id){
   const t=teamById(id); if(!t)return;
   const roster=teamPlayers(id);
-  openModal(`<h2>Gestisci squadra</h2><div class="form-grid"><div class="field full"><label>Nome squadra</label><input id="tName" value="${esc(t.name)}" placeholder="Es. Atletico Pasticciotto"></div><div class="field"><label>Colore</label><input id="tColor" type="color" value="${t.color||teamColor(state.teams.indexOf(t))}"></div><div class="field"><label>Capitano</label><select id="tCaptain"><option value="">Da scegliere</option>${roster.map(p=>`<option value="${p.id}" ${t.captainId===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div></div><p class="note">La rosa contiene ${roster.length}/${state.settings.rosterSize} giocatori. Gli spostamenti singoli sono bloccati per mantenere tutte le squadre della stessa dimensione.</p><div class="modal-actions"><button class="ghost" data-close>Chiudi</button><button class="primary" id="saveTeam">Salva</button></div>`);
+  openModal(`<h2>Gestisci squadra</h2><div class="form-grid"><div class="field full"><label>Nome squadra</label><div class="team-name-random"><input id="tName" value="${esc(t.name)}" placeholder="Es. Atletico Pasticciotto"><button class="ghost dice-name" id="randomTeamName" type="button" title="Genera un nome simpatico" aria-label="Genera un nome simpatico casuale">🎲</button></div><small>Premi il dado per proporre un nome simpatico; puoi modificarlo prima di salvare.</small></div><div class="field"><label>Colore</label><input id="tColor" type="color" value="${t.color||teamColor(state.teams.indexOf(t))}"></div><div class="field"><label>Capitano</label><select id="tCaptain"><option value="">Da scegliere</option>${roster.map(p=>`<option value="${p.id}" ${t.captainId===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div></div><p class="note">La rosa contiene ${roster.length}/${state.settings.rosterSize} giocatori. Gli spostamenti singoli sono bloccati per mantenere tutte le squadre della stessa dimensione.</p><div class="modal-actions"><button class="ghost" data-close>Chiudi</button><button class="primary" id="saveTeam">Salva</button></div>`);
+  document.getElementById('randomTeamName').onclick=()=>{
+    const input=document.getElementById('tName');
+    const used=new Set(state.teams.filter(x=>x.id!==id).map(x=>x.name.trim().toLocaleLowerCase('it')));
+    const current=input.value.trim().toLocaleLowerCase('it');
+    const available=defaultTeamNames.filter(name=>{const key=name.toLocaleLowerCase('it');return key!==current&&!used.has(key);});
+    const pool=available.length?available:defaultTeamNames.filter(name=>name.toLocaleLowerCase('it')!==current);
+    input.value=pool[Math.floor(Math.random()*pool.length)]||defaultTeamName(state.teams.indexOf(t));
+    input.focus();input.select();
+  };
   document.getElementById('saveTeam').onclick=()=>{const name=document.getElementById('tName').value.trim();if(!name)return toast('Inserisci il nome squadra');createSnapshot(`Prima di modificare ${t.name}`);t.name=name.slice(0,80);t.color=document.getElementById('tColor').value;t.captainId=document.getElementById('tCaptain').value||null;save();closeModal();renderTeams();toast('Squadra salvata');};
 }
 function openRosterManagerModal(){
@@ -1502,13 +1536,13 @@ function autoBalanceTeams(){
   if(count<2)return toast('Configurazione squadre non valida');
   if(active.length!==count*state.settings.rosterSize)return toast('Il numero di partecipanti non permette rose tutte uguali');
   const capacities=Array(count).fill(state.settings.rosterSize);
-  if(state.matches.length&&!confirm('Rigenerando le squadre verranno cancellati calendario, risultati e statistiche. Continuare?'))return;
+  if((state.teams.length||state.matches.length)&&!confirm('Rigenerare le squadre sostituirà le rose decise e cancellerà calendario, risultati e statistiche. Continuare?'))return;
   createSnapshot(state.teams.length?'Prima di rigenerare le squadre':'Prima di generare le squadre');
   state.matches=[];
   const generatedNames=drawTeamNames(count);
   state.teams=Array.from({length:count},(_,i)=>({id:uid('t'),name:generatedNames[i],color:teamColor(i),captainId:null}));
   active.forEach(p=>p.teamId=null);
-  const buckets=state.teams.map((t,i)=>({team:t,capacity:capacities[i],score:0,players:[],keepers:0,roles:{POR:0,DIF:0,CEN:0,ATT:0}}));
+  const buckets=state.teams.map((t,i)=>({team:t,capacity:capacities[i],score:0,players:[],keepers:0,roles:{TBD:0,POR:0,DIF:0,CEN:0,ATT:0}}));
   const tieBreak=new Map(active.map(p=>[p.id,Math.random()]));
   const sorted=[...active].sort((a,b)=>{
     if(a.role==='POR'&&b.role!=='POR')return -1;
@@ -1537,7 +1571,7 @@ function autoBalanceTeams(){
 }
 
 function clockAdd(base,mins){const [h,m]=String(base||'00:00').split(':').map(Number);const x=(h*60+m+mins)%(24*60);return `${String(Math.floor(x/60)).padStart(2,'0')}:${String(x%60).padStart(2,'0')}`;}
-function matchSlotTime(index){return clockAdd(state.settings.startTime||'00:00',index*(matchOperationalMinutes()+Math.max(0,+state.settings.changeMinutes||0)));}
+function matchSlotTime(index){return clockAdd('00:00',index*(matchOperationalMinutes()+Math.max(0,+state.settings.changeMinutes||0)));}
 function matchDisplayTime(m){if(!m.date)return matchSlotTime(state.matches.indexOf(m));const d=new Date(m.date);if(Number.isNaN(d.getTime()))return matchSlotTime(state.matches.indexOf(m));return d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
 function formatLabel(){return state.settings.tournamentFormat==='knockout'?'Eliminazione diretta':state.settings.tournamentFormat==='league'?'Girone':'Girone + eliminazione diretta';}
 function seedDirectKnockout(){
@@ -1558,11 +1592,11 @@ function seedDirectKnockout(){
   return true;
 }
 function renderCalendar(){
-  setHeader('Calendario',`${formatMode()}${state.settings.playoffs?' + fase finale automatica':''}`); syncKnockout(false);
-  const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?stageLabel(m):m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
+  setHeader('Calendario',`Sequenza continua dalle 00:00 · ${formatMode()}${state.settings.playoffs?' + fase finale automatica':''}`); syncKnockout(false);
+  const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?'Sequenza continua dalle 00:00':m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
   const ordered=[...Object.entries(groups)];
   const ko=knockoutGamesExpected();
-  view.innerHTML=`<div class="section-head"><h2>Partite <span class="badge">${state.matches.length}</span></h2><div class="actions">${state.settings.playoffs?'<button class="ghost" id="syncPlayoffs">Aggiorna playoff</button>':''}${state.teams.length>=2?'<button class="ghost" id="addMatch">+ Partita manuale</button>':''}<button class="secondary" id="genCalendar">Genera calendario</button></div></div><div class="schedule-summary"><span class="status-chip">${groupGamesExpected()} girone</span><span class="status-chip">${groupRoundsExpected()} giornate</span><span class="status-chip">${formatMode()}</span>${ko?`<span class="status-chip">${ko} playoff</span>`:'<span class="status-chip">vince la classifica</span>'}</div>${ordered.length?ordered.map(([label,matches])=>`<div class="round-block"><div class="round-title">${label}</div><div class="match-list">${matches.map(matchRow).join('')}</div></div>`).join(''):`<div class="empty"><strong>Calendario non ancora generato</strong>Servono ${state.settings.teamCount} squadre. Verranno create ${groupGamesExpected()} partite di girone su ${groupRoundsExpected()} giornate.</div>`}`;
+  view.innerHTML=`<div class="section-head"><h2>Partite <span class="badge">${state.matches.length}</span></h2><div class="actions">${state.settings.playoffs?'<button class="ghost" id="syncPlayoffs">Aggiorna playoff</button>':''}${state.teams.length>=2?'<button class="ghost" id="addMatch">+ Partita manuale</button>':''}<button class="secondary" id="genCalendar">Genera calendario</button></div></div><div class="schedule-summary"><span class="status-chip">${groupGamesExpected()} partite di girone</span><span class="status-chip">inizio 00:00</span><span class="status-chip">fine stimata ${clockAdd('00:00',estimatedTournamentMinutes())}</span><span class="status-chip">${formatMode()}</span>${ko?`<span class="status-chip">${ko} playoff</span>`:'<span class="status-chip">vince la classifica</span>'}</div>${ordered.length?ordered.map(([label,matches])=>`<div class="round-block"><div class="round-title">${label}</div><div class="match-list">${matches.map(matchRow).join('')}</div></div>`).join(''):`<div class="empty"><strong>Calendario non ancora generato</strong>Servono ${state.settings.teamCount} squadre. Verranno create ${groupGamesExpected()} partite consecutive a partire dalle 00:00.</div>`}`;
   document.getElementById('genCalendar').onclick=generateCalendar;
   document.getElementById('addMatch')?.addEventListener('click',openCreateMatchModal);
   document.getElementById('syncPlayoffs')?.addEventListener('click',()=>{syncKnockout(true);renderCalendar();});
@@ -1575,7 +1609,7 @@ function openCreateMatchModal(){
   if(state.teams.length<2)return toast('Servono almeno due squadre');
   const options=state.teams.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
   const nextRound=Math.max(0,...groupMatches().map(m=>+m.round||0))+1;
-  openModal(`<h2>Aggiungi partita</h2><p class="modal-subtitle">Controllo manuale per recuperi, variazioni o calendari personalizzati.</p><div class="form-grid"><div class="field"><label>Squadra di casa</label><select id="newHome"><option value="">Scegli…</option>${options}</select></div><div class="field"><label>Squadra ospite</label><select id="newAway"><option value="">Scegli…</option>${options}</select></div><div class="field"><label>Giornata</label><input id="newRound" type="number" min="1" value="${nextRound}"></div><div class="field"><label>Data / ora (facoltativa)</label><input id="newDate" type="datetime-local"></div></div><div class="notice info" style="margin-top:12px"><span>i</span><span>La partita manuale entra nel girone e quindi aggiorna classifica e statistiche.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="saveNewMatch">Aggiungi partita</button></div>`);
+  openModal(`<h2>Aggiungi partita</h2><p class="modal-subtitle">Controllo manuale per recuperi, variazioni o calendari personalizzati.</p><div class="form-grid"><div class="field"><label>Squadra di casa</label><select id="newHome"><option value="">Scegli…</option>${options}</select></div><div class="field"><label>Squadra ospite</label><select id="newAway"><option value="">Scegli…</option>${options}</select></div><div class="field"><label>Posizione nella sequenza</label><input id="newRound" type="number" min="1" value="${nextRound}"></div><div class="field"><label>Data / ora (facoltativa)</label><input id="newDate" type="datetime-local"></div></div><div class="notice info" style="margin-top:12px"><span>i</span><span>La partita manuale entra nella sequenza del girone e aggiorna classifica e statistiche.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="saveNewMatch">Aggiungi partita</button></div>`);
   document.getElementById('saveNewMatch').onclick=()=>{const home=document.getElementById('newHome').value,away=document.getElementById('newAway').value;if(!home||!away)return toast('Scegli entrambe le squadre');if(home===away)return toast('Le squadre devono essere diverse');createSnapshot('Prima di aggiungere una partita');state.matches.push({id:uid('m'),stage:'group',leg:1,round:Math.max(1,+document.getElementById('newRound').value||nextRound),homeTeamId:home,awayTeamId:away,date:document.getElementById('newDate').value,status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null,manual:true});save();closeModal();renderCalendar();toast('Partita aggiunta');};
 }
 function createRoundRobinLeg(teamIds){
@@ -1593,17 +1627,57 @@ function createRoundRobinLeg(teamIds){
   }
   return rounds;
 }
+function findNoConsecutiveOrder(pairs,previousPair=null){
+  if(pairs.length>15)return null;
+  const used=Array(pairs.length).fill(false),path=[];
+  const disjoint=(a,b)=>!a||!b||!a.some(team=>b.includes(team));
+  function visit(last){
+    if(path.length===pairs.length)return true;
+    const candidates=[];
+    for(let i=0;i<pairs.length;i++)if(!used[i]&&disjoint(last,pairs[i])){
+      let onward=0;
+      for(let j=0;j<pairs.length;j++)if(i!==j&&!used[j]&&disjoint(pairs[i],pairs[j]))onward++;
+      candidates.push({i,onward});
+    }
+    candidates.sort((a,b)=>a.onward-b.onward||a.i-b.i);
+    for(const {i} of candidates){
+      used[i]=true;path.push(pairs[i]);
+      if(visit(pairs[i]))return true;
+      path.pop();used[i]=false;
+    }
+    return false;
+  }
+  return visit(previousPair)?path:null;
+}
+function createContinuousLeg(teamIds,previousPair=null,reverseFixtures=false){
+  const pending=createRoundRobinLeg(teamIds).flat().map(([a,b])=>reverseFixtures?[b,a]:[a,b]);
+  const exact=findNoConsecutiveOrder(pending,previousPair);
+  if(exact)return exact;
+  const sequence=[],lastPlayed=new Map();
+  while(pending.length){
+    const slot=sequence.length,previous=sequence.length?sequence[sequence.length-1]:previousPair,blocked=new Set(previous||[]);
+    const ranked=pending.map((pair,index)=>{
+      const conflict=pair.some(team=>blocked.has(team))?1:0;
+      const idle=pair.map(team=>lastPlayed.has(team)?slot-lastPlayed.get(team):slot+2);
+      const future=pending.reduce((count,next,nextIndex)=>count+(nextIndex!==index&&!next.some(team=>pair.includes(team))?1:0),0);
+      return {pair,index,conflict,minIdle:Math.min(...idle),sumIdle:idle[0]+idle[1],future};
+    }).sort((a,b)=>a.conflict-b.conflict||b.minIdle-a.minIdle||b.sumIdle-a.sumIdle||b.future-a.future||a.index-b.index);
+    const pick=ranked[0];pending.splice(pick.index,1);sequence.push(pick.pair);pick.pair.forEach(team=>lastPlayed.set(team,slot));
+  }
+  return sequence;
+}
 function generateCalendar(){
   if(state.teams.length!==state.settings.teamCount)return toast(`Servono esattamente ${state.settings.teamCount} squadre`);
   if(state.settings.tournamentFormat==='knockout'){if(state.teams.some(t=>teamPlayers(t.id).length!==state.settings.rosterSize))return toast(`Ogni squadra deve avere esattamente ${state.settings.rosterSize} giocatori`);if(state.matches.length&&!confirm('Rigenerare il tabellone cancellerà risultati e statistiche. Continuare?'))return;createSnapshot(state.matches.length?'Prima di rigenerare il tabellone':'Prima di generare il tabellone');if(seedDirectKnockout()){save();renderCalendar();toast('Tabellone eliminazione diretta creato');}return;}
   if(state.teams.some(t=>teamPlayers(t.id).length!==state.settings.rosterSize))return toast(`Ogni squadra deve avere esattamente ${state.settings.rosterSize} giocatori`);
   if(state.matches.length&&!confirm('Rigenerare il calendario cancellerà risultati e statistiche. Continuare?'))return;
   createSnapshot(state.matches.length?'Prima di rigenerare il calendario':'Prima di generare il calendario');
-  const firstLeg=createRoundRobinLeg(state.teams.map(t=>t.id)); const matches=[];
-  firstLeg.forEach((pairs,r)=>pairs.forEach(([home,away])=>matches.push({id:uid('m'),stage:'group',leg:1,round:r+1,homeTeamId:home,awayTeamId:away,date:'',status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null})));
+  const teamIds=state.teams.map(t=>t.id),firstLeg=createContinuousLeg(teamIds),matches=[];
+  firstLeg.forEach(([home,away],slot)=>matches.push({id:uid('m'),stage:'group',leg:1,round:slot+1,homeTeamId:home,awayTeamId:away,date:'',status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null}));
   if(state.settings.scheduleMode==='double'){
     const offset=firstLeg.length;
-    firstLeg.forEach((pairs,r)=>pairs.forEach(([home,away])=>matches.push({id:uid('m'),stage:'group',leg:2,round:offset+r+1,homeTeamId:away,awayTeamId:home,date:'',status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null})));
+    const secondLeg=createContinuousLeg(teamIds,firstLeg[firstLeg.length-1],true);
+    secondLeg.forEach(([home,away],slot)=>matches.push({id:uid('m'),stage:'group',leg:2,round:offset+slot+1,homeTeamId:home,awayTeamId:away,date:'',status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null}));
   }
   state.matches=matches;save();renderCalendar();toast(`Calendario creato: ${matches.length} partite`);
 }
@@ -1647,7 +1721,7 @@ function syncKnockout(showToast=false){
     }
     return;
   }
-  const firstKoRound=groupRoundsExpected()+1;
+  const firstKoRound=groupMatches().length+1;
   if(!bracket || table.length<bracket) return;
 
   const regulationKos=()=>state.matches.filter(m=>isKnockoutMatch(m)&&m.stage!=='bronze');
@@ -2118,7 +2192,7 @@ function readSettingsForm(){
     venue:document.getElementById('setVenue').value.trim().slice(0,120),organizer:document.getElementById('setOrganizer').value.trim().slice(0,120),
     targetPlayers,rosterSize,teamCount,
     scheduleMode:document.getElementById('setMode').value,tournamentFormat,playoffs,
-    startTime:document.getElementById('setStartTime').value||'00:00',periods:2,
+    startTime:'00:00',periods:2,
     bronzeFinal:document.getElementById('setBronze').value==='1',
     matchMinutes:clamp(+document.getElementById('setMinutes').value||20,2,120),
     halftimeMinutes:clamp(numOr(document.getElementById('setHalftime').value,2),0,30),
@@ -2149,7 +2223,7 @@ function renderSettings(){
       <div class="card"><div class="kicker">Identità</div><h3>Il tuo torneo</h3><div class="form-grid"><div class="field"><label>Nome torneo</label><input id="setName" maxlength="80" value="${esc(s.name)}"></div><div class="field"><label>Edizione</label><input id="setEdition" maxlength="80" value="${esc(s.edition)}"></div><div class="field"><label>Luogo</label><input id="setVenue" maxlength="120" value="${esc(s.venue||'')}" placeholder="Facoltativo"></div><div class="field"><label>Gestore</label><input id="setOrganizer" maxlength="120" value="${esc(s.organizer||'')}" placeholder="Facoltativo"></div></div></div>
       <div class="card"><div class="kicker">Modalità arbitro e Live</div><h3>Protezione e feedback</h3><div class="form-grid"><div class="field full"><label>Protezione tocchi involontari</label><select id="setTouchGuard"><option value="1" ${s.touchGuard?'selected':''}>Attiva · doppio tocco intenzionale</option><option value="0" ${!s.touchGuard?'selected':''}>Disattiva · tocco singolo</option></select></div><label class="roster-row"><span class="grow"><strong>Vibrazione</strong><span class="note">Conferma eventi e fine tempo, se supportata</span></span><input id="setHaptic" type="checkbox" ${s.hapticFeedback?'checked':''}></label><label class="roster-row"><span class="grow"><strong>Suono</strong><span class="note">Avviso al tempo regolamentare</span></span><input id="setSound" type="checkbox" ${s.soundFeedback?'checked':''}></label></div>${screenWakeControlHtml()}<div class="notice info" style="margin-top:12px"><span>🔒</span><span>Con la protezione attiva, un tocco isolato non modifica mai punteggio, cartellini, timer o stato della partita.</span></div></div>
     </div>
-    <div class="card" style="margin-top:16px"><div class="kicker">Formula</div><h3>Struttura e tempi</h3><div class="form-grid"><div class="field"><label>N° partecipanti</label><input type="number" min="10" max="200" id="setTarget" value="${s.targetPlayers}"></div><div class="field"><label>Giocatori per rosa</label><input type="number" min="5" max="20" id="setRoster" value="${s.rosterSize}"></div><div class="field"><label>Formula torneo</label><select id="setFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Girone + eliminazione diretta</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div><div class="field"><label>Girone</label><select id="setMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div><div class="field"><label>Finale 3° posto</label><select id="setBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div><div class="field"><label>Ora inizio</label><input id="setStartTime" type="time" value="${s.startTime||'00:00'}"></div><div class="field"><label>Durata totale di gioco (min)</label><input type="number" min="2" max="120" id="setMinutes" value="${s.matchMinutes}"></div><div class="field"><label>Intervallo (min)</label><input type="number" min="0" max="30" id="setHalftime" value="${s.halftimeMinutes}"></div><div class="field"><label>Cambio campo (min)</label><input type="number" min="0" max="60" id="setChange" value="${s.changeMinutes}"></div><div class="field"><label>Punti vittoria</label><input type="number" id="setWin" value="${s.pointsWin}"></div><div class="field"><label>Punti pareggio</label><input type="number" id="setDraw" value="${s.pointsDraw}"></div><div class="field"><label>Punti sconfitta</label><input type="number" id="setLoss" value="${s.pointsLoss}"></div></div><div id="settingsPreview" style="margin-top:14px">${settingsPreviewHtml()}</div><div class="modal-actions"><button class="ghost" id="rerunSetup">Riapri configurazione guidata</button><button class="primary" id="saveSettings">Salva impostazioni</button></div></div>
+    <div class="card" style="margin-top:16px"><div class="kicker">Formula</div><h3>Struttura e tempi</h3><div class="form-grid"><div class="field"><label>N° partecipanti</label><input type="number" min="10" max="200" id="setTarget" value="${s.targetPlayers}"></div><div class="field"><label>Giocatori per rosa</label><input type="number" min="5" max="20" id="setRoster" value="${s.rosterSize}"></div><div class="field"><label>Formula torneo</label><select id="setFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Girone + eliminazione diretta</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div><div class="field"><label>Girone</label><select id="setMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div><div class="field"><label>Finale 3° posto</label><select id="setBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div><div class="field"><label>Inizio torneo</label><input id="setStartTime" type="time" value="00:00" disabled><small>Le partite proseguono in sequenza fino alla fine.</small></div><div class="field"><label>Durata totale di gioco (min)</label><input type="number" min="2" max="120" id="setMinutes" value="${s.matchMinutes}"></div><div class="field"><label>Intervallo (min)</label><input type="number" min="0" max="30" id="setHalftime" value="${s.halftimeMinutes}"></div><div class="field"><label>Cambio campo (min)</label><input type="number" min="0" max="60" id="setChange" value="${s.changeMinutes}"></div><div class="field"><label>Punti vittoria</label><input type="number" id="setWin" value="${s.pointsWin}"></div><div class="field"><label>Punti pareggio</label><input type="number" id="setDraw" value="${s.pointsDraw}"></div><div class="field"><label>Punti sconfitta</label><input type="number" id="setLoss" value="${s.pointsLoss}"></div></div><div id="settingsPreview" style="margin-top:14px">${settingsPreviewHtml()}</div><div class="modal-actions"><button class="ghost" id="rerunSetup">Riapri configurazione guidata</button><button class="primary" id="saveSettings">Salva impostazioni</button></div></div>
     <div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Guida del gestore</h3><p class="note">Procedura completa prima, durante e dopo il torneo, inclusa la gestione delle emergenze.</p><button class="ghost" id="settingsGuide">Apri la guida</button></div><div class="card"><h3>Backup e ripristino</h3><p class="note">I dati restano su questo dispositivo. Esporta un file prima dell’inizio e durante la serata.</p><div class="button-row"><button class="ghost" id="exportBtn2">Esporta backup</button><label class="ghost file-label">Importa backup<input type="file" id="importInput2" accept="application/json" hidden></label>${snap?`<button class="ghost" id="restoreSnapshot">↶ ${esc(snap.label)}</button>`:''}</div></div></div>
     <div class="card danger-zone" style="margin-top:16px"><h3>Zona sensibile</h3><p class="note">L’azzeramento cancella torneo, squadre, partite e statistiche da questo dispositivo. Prima viene comunque creato un punto di ripristino.</p><button class="danger-outline" id="resetAllBtn">Azzera tutti i dati</button></div>`;
   ['setName','setEdition','setVenue','setOrganizer','setTarget','setRoster','setFormat','setMode','setBronze','setStartTime','setMinutes','setHalftime','setChange','setWin','setDraw','setLoss','setTouchGuard','setHaptic','setSound'].forEach(id=>document.getElementById(id)?.addEventListener('input',updateSettingsPreview));
@@ -2201,14 +2275,9 @@ function openIOSGuide(){
 }
 function openManagerGuide(initial=false){
   const localWarning=isLocalFileMode()?'<div class="notice warn" style="margin-top:10px"><span>!</span><span>Se hai ricevuto solo il file HTML e iOS lo mostra in anteprima, per il torneo è preferibile un link web aperto direttamente in Safari.</span></div>':'';
-  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Condivisione live</strong></summary><ol class="note"><li>Da Panoramica tocca “Avvia diretta”.</li><li>Invia il link pubblico a chi deve solo seguire risultati e classifiche.</li><li>Invia il link gestore soltanto agli organizzatori autorizzati.</li><li>Lascia aperto Copparì sul telefono principale: senza account esterno è questo dispositivo a tenere online la diretta.</li><li>Evitate di modificare contemporaneamente la stessa partita da due telefoni.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> importa l'ultimo backup JSON.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione con ↗, stampa le schermate utili ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
+  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Condivisione live</strong></summary><ol class="note"><li>Da Panoramica tocca “Avvia diretta”.</li><li>Invia il link pubblico a chi deve solo seguire risultati e classifiche.</li><li>Invia il link gestore soltanto agli organizzatori autorizzati.</li><li>Dopo il primo salvataggio i dati restano su Supabase: il telefono che ha avviato la Live può essere chiuso.</li><li>Evitate di modificare contemporaneamente la stessa partita da due telefoni.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> apri il link gestore sul nuovo dispositivo.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione con ↗, stampa le schermate utili ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
   const liveGuideDetails=[...modal.querySelectorAll('details')].find(item=>item.querySelector('summary')?.textContent.trim()==='Condivisione live');
-  if(liveGuideDetails)liveGuideDetails.innerHTML=`<summary><strong>Condivisione live · istruzioni complete</strong></summary><div class="notice info" style="margin:12px 0"><span>●</span><span><strong>Il telefono principale è la sorgente ufficiale.</strong> Conserva il torneo e distribuisce ogni aggiornamento agli altri dispositivi, senza account o database esterni.</span></div><h4>1 · Avvia dal telefono principale</h4><ol class="note"><li>Completa almeno la configurazione iniziale, poi da Panoramica tocca “Avvia diretta”.</li><li>Lascia Copparì aperto e il telefono collegato a Internet; evita di bloccare lo schermo durante la gestione.</li><li>Esporta un backup prima del torneo e dopo le modifiche più importanti.</li></ol><h4>2 · Scegli il link corretto</h4><ul class="note"><li><strong>Link pubblico:</strong> è sempre in sola lettura. Mostra risultati, calendario, classifica e premi; chi lo apre non può cambiare i dati.</li><li><strong>Link gestore:</strong> offre controllo completo. Chi lo possiede può modificare partecipanti, squadre, calendario, configurazione, risultati e arbitraggio.</li><li><strong>Aprire o sfogliare una schermata non cambia nulla.</strong> Una modifica arriva al telefono principale soltanto quando viene confermata con comandi come Salva, Genera, Elimina, Sposta o Termina partita.</li></ul><h4>3 · Durante il torneo</h4><ol class="note"><li>Controlla l’indicatore Live nella barra: mostra collegamento e dispositivi connessi.</li><li>Assegna preferibilmente una partita o un compito a ciascun gestore; evitate di modificare contemporaneamente la stessa parte del torneo.</li><li>Se due gestori partono dalla stessa versione, Copparì conserva la prima modifica ricevuta, riallinea l’altro dispositivo e gli chiede di ripetere l’ultima operazione.</li><li>Se il collegamento del gestore cade, le modifiche vengono bloccate finché non avviene la riconnessione. Il pubblico mantiene visibile l’ultimo aggiornamento.</li></ol><h4>4 · Chiusura e sicurezza</h4><ul class="note"><li>“Termina diretta” scollega tutti, ma non cancella il torneo salvato sul telefono principale.</li><li>Tratta il link gestore come una password. Se viene condiviso per errore, termina la diretta e avviala di nuovo per creare link nuovi.</li><li>Se il telefono principale viene chiuso o va offline, nessuno può aggiornare o raggiungere la diretta finché Copparì non viene riaperto sullo stesso dispositivo.</li></ul>`;
-  if(liveGuideDetails)liveGuideDetails.innerHTML=liveGuideDetails.innerHTML
-    .replace('<li>Lascia Copparì aperto e il telefono collegato a Internet; evita di bloccare lo schermo durante la gestione.</li>','<li>Lascia Copparì aperto e il telefono collegato a Internet.</li><li>Attiva “Mantieni schermo acceso durante la Live” sul telefono principale e su quello dell’arbitro. La scelta vale solo sul dispositivo in cui viene impostata.</li><li>La protezione non può impedire il blocco manuale e può essere sospesa dal risparmio energetico o dalla batteria scarica; collega i telefoni alla corrente.</li>')
-    .replace('<li><strong>Link gestore:</strong>','<li><strong>Link arbitro:</strong> può aprire le partite, usare il timer, registrare gol, assist, cartellini e MVP e chiudere il referto. Non può modificare partecipanti, squadre, calendario o configurazione.</li><li><strong>Link gestore:</strong>')
-    .replace('<li>Assegna preferibilmente una partita o un compito a ciascun gestore; evitate di modificare contemporaneamente la stessa parte del torneo.</li>','<li>Consegna il link arbitro a chi dirige il campo e il link gestore a chi coordina il torneo.</li><li>Dopo una partita il gestore può compilare e pubblicare le Copparigelle mentre l’arbitro avvia quella successiva: referto e pagelle vengono sincronizzati separatamente e non si sovrascrivono.</li>')
-    .replace('Tratta il link gestore come una password.','Tratta i link gestore e arbitro come password.');
+  if(liveGuideDetails)liveGuideDetails.innerHTML=`<summary><strong>Condivisione live · istruzioni complete</strong></summary><div class="notice info" style="margin:12px 0"><span>☁</span><span><strong>Supabase è la sorgente ufficiale.</strong> Conserva il torneo e distribuisce ogni aggiornamento agli altri dispositivi anche quando il primo telefono è chiuso.</span></div><h4>1 · Avvia la diretta</h4><ol class="note"><li>Completa almeno la configurazione iniziale, poi da Panoramica tocca “Avvia diretta”.</li><li>Attendi la conferma “Diretta cloud attiva”, quindi condividi i link.</li><li>Esporta comunque un backup prima del torneo e dopo le modifiche più importanti.</li></ol><h4>2 · Scegli il link corretto</h4><ul class="note"><li><strong>Link pubblico:</strong> è sempre in sola lettura. Mostra risultati, calendario, classifica e premi; chi lo apre non può cambiare i dati.</li><li><strong>Link arbitro:</strong> consente soltanto partite, timer e referti.</li><li><strong>Link gestore:</strong> offre controllo completo. Conservalo come una password.</li></ul><h4>3 · Durante il torneo</h4><ol class="note"><li>Ogni modifica confermata viene salvata nel cloud e notificata agli altri dispositivi.</li><li>Il primo telefono può essere bloccato o chiuso; un altro dispositivo con il link gestore può continuare il torneo.</li><li>Se due gestori modificano la stessa revisione, Copparì conserva la prima modifica e chiede all’altro di ripetere l’operazione.</li><li>Se Internet cade, le modifiche vengono bloccate finché non avviene la riconnessione; l’ultimo stato resta disponibile.</li></ol><h4>4 · Chiusura e sicurezza</h4><ul class="note"><li>“Termina diretta” impedisce nuove modifiche, ma conserva nel cloud i dati finali in sola lettura.</li><li>Tratta i link gestore e arbitro come password. Se vengono condivisi per errore, termina la diretta e avviane una nuova.</li><li>I segreti dei link vengono verificati nel database e non sono salvati in chiaro.</li></ul>`;
   document.getElementById('closeGuide').onclick=()=>{storageSet(GUIDE_KEY,'1');closeModal(true);};
 }
 function openRefereeQuickGuide(){
@@ -2255,8 +2324,8 @@ document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importInput').onchange=importBackup;
 document.getElementById('shareBtn').onclick=shareSummary;
 document.getElementById('printBtn').onclick=()=>window.print();
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){updateScreenWakeUI();return;}syncScreenWakeLock();if(liveRole==='host'&&livePeer?.disconnected){try{livePeer.reconnect();}catch{}}else if(['viewer','manager','referee'].includes(liveRole)&&!liveConnected)connectToLiveHost();});
-window.addEventListener('online',()=>{if(liveRole==='host'&&livePeer?.disconnected){try{livePeer.reconnect();}catch{}}else if(['viewer','manager','referee'].includes(liveRole)&&!liveConnected)connectToLiveHost();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){updateScreenWakeUI();return;}syncScreenWakeLock();if(liveRole&&!liveConnected&&!liveEnded)connectToLiveHost();});
+window.addEventListener('online',()=>{if(liveRole&&!liveConnected&&!liveEnded)connectToLiveHost();});
 window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY)toast('I dati sono cambiati in un’altra scheda: ricarica per allinearli',4200);});
 const joiningLiveSession=initLiveSharing();
 render();
