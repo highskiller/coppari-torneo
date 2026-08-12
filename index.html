@@ -597,7 +597,7 @@ tr:hover td { background:#fbfcf8; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.4.0';
+const APP_VERSION = '3.4.1';
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
@@ -606,6 +606,7 @@ const WAKE_PREF_KEY = 'coppari.v3.keep-screen-awake';
 const PUBLIC_APP_URL = 'https://highskiller.github.io/coppari-torneo/';
 const PEERJS_URL = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js';
 const PEERJS_INTEGRITY = 'sha384-x0YgkOr/3UOZP2CRDxGW9e0Q+2Qjyr3uJrm4xU32Y7ZCNAo7Cc7bjhrZMi/dwczu';
+const PEERJS_OPTIONS = Object.freeze({host:'0.peerjs.com',port:443,path:'/',key:'peerjs',secure:true,pingInterval:5000,debug:1});
 const LEGACY_KEYS = ['coppari.v2','coppari.v1.6','coppari.v1.5','coppari.v1.3','coppari.v1.2','coppari.v1.1','coppari.v1'];
 const teamPalette = ['#315b43','#934848','#385d7c','#9c7837','#6a4f86','#2f7471','#a05d37','#536b34','#7d4567','#596275','#8b6a28','#3d6d91'];
 const defaultTeamNames = [
@@ -664,6 +665,9 @@ let liveApplyingRemote = false;
 let liveRevision = 0;
 let liveErrorMessage = '';
 let liveReconnectTimer = null;
+let liveConnectionTimer = null;
+let liveTransportGeneration = 0;
+let liveReconnectAttempts = 0;
 let peerLibraryPromise = null;
 const liveHostConnections = new Map();
 
@@ -979,7 +983,7 @@ function randomLiveToken(bytes=18){
   return btoa(String.fromCharCode(...data)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
 function readLiveHostConfig(){
-  try{const raw=JSON.parse(storageGet(LIVE_CONFIG_KEY)||'null');const roomId=cleanLiveRoomId(raw?.roomId),secret=cleanLiveSecret(raw?.secret),refereeSecret=cleanLiveSecret(raw?.refereeSecret);return roomId&&secret&&raw?.active?{roomId,secret,refereeSecret,active:true}:null;}catch{return null;}
+  try{const raw=JSON.parse(storageGet(LIVE_CONFIG_KEY)||'null');const roomId=cleanLiveRoomId(raw?.roomId),secret=cleanLiveSecret(raw?.secret),refereeSecret=cleanLiveSecret(raw?.refereeSecret);return roomId&&secret&&raw?.active?{roomId,secret,refereeSecret,transportVersion:+raw.transportVersion||1,active:true}:null;}catch{return null;}
 }
 function writeLiveHostConfig(config){return storageSet(LIVE_CONFIG_KEY,JSON.stringify(config));}
 function parseLiveJoinFromLocation(){
@@ -1004,8 +1008,13 @@ function loadPeerLibrary(){
   });
   return peerLibraryPromise;
 }
+function createLivePeer(Peer,id){
+  const options={...PEERJS_OPTIONS,config:{iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun2.l.google.com:19302']}],iceCandidatePoolSize:4,sdpSemantics:'unified-plan'}};
+  return id?new Peer(id,options):new Peer(options);
+}
 function closeLiveTransport(){
-  clearTimeout(liveReconnectTimer);liveReconnectTimer=null;
+  liveTransportGeneration++;
+  clearTimeout(liveReconnectTimer);liveReconnectTimer=null;clearTimeout(liveConnectionTimer);liveConnectionTimer=null;
   liveHostConnections.forEach(conn=>{try{conn.close();}catch{}});liveHostConnections.clear();
   try{liveConnection?.close();}catch{}liveConnection=null;
   try{livePeer?.destroy();}catch{}livePeer=null;liveConnected=false;syncScreenWakeLock();
@@ -1097,18 +1106,20 @@ function acceptLiveConnection(conn){
 }
 async function startLiveHost({resume=false}={}){
   if(liveRole&&liveRole!=='host')return false;
-  let config=readLiveHostConfig();if(!config)config={roomId:`coppari-${randomLiveToken(15)}`,secret:randomLiveToken(24),refereeSecret:randomLiveToken(24),active:true};
-  if(!config.refereeSecret)config.refereeSecret=randomLiveToken(24);writeLiveHostConfig(config);
-  liveRole='host';liveRoomId=config.roomId;liveSecret=config.secret;liveRefereeSecret=config.refereeSecret;liveConnecting=true;liveRevision=liveRevision||Date.now();liveErrorMessage='';updateLiveStatusUI();
+  let config=readLiveHostConfig();
+  if(config&&config.transportVersion!==2)config={roomId:null,secret:config.secret,refereeSecret:config.refereeSecret,transportVersion:2,active:true};
+  if(!config)config={roomId:null,secret:randomLiveToken(24),refereeSecret:randomLiveToken(24),transportVersion:2,active:true};
+  if(!config.refereeSecret)config.refereeSecret=randomLiveToken(24);
+  liveRole='host';liveRoomId=cleanLiveRoomId(config.roomId);liveSecret=config.secret;liveRefereeSecret=config.refereeSecret;liveConnecting=true;liveRevision=liveRevision||Date.now();liveErrorMessage='';updateLiveStatusUI();
   try{
-    const Peer=await loadPeerLibrary();closeLiveTransport();liveRole='host';liveRoomId=config.roomId;liveSecret=config.secret;liveRefereeSecret=config.refereeSecret;
+    const Peer=await loadPeerLibrary();closeLiveTransport();liveRole='host';liveRoomId=cleanLiveRoomId(config.roomId);liveSecret=config.secret;liveRefereeSecret=config.refereeSecret;liveConnecting=true;
     return await new Promise((resolve,reject)=>{
-      let settled=false;const peer=new Peer(liveRoomId,{debug:1});livePeer=peer;
-      peer.on('open',()=>{liveConnected=true;liveConnecting=false;writeLiveHostConfig(config);updateLiveStatusUI();if(!settled){settled=true;resolve(true);}});
+      let settled=false;const generation=liveTransportGeneration;const peer=createLivePeer(Peer,liveRoomId);livePeer=peer;
+      peer.on('open',id=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;const assigned=cleanLiveRoomId(id);if(!assigned)return reject(new Error('invalid-live-id'));config={...config,roomId:assigned,transportVersion:2,active:true};liveRoomId=assigned;liveConnected=true;liveConnecting=false;liveReconnectAttempts=0;writeLiveHostConfig(config);updateLiveStatusUI();if(!settled){settled=true;resolve(true);}});
       peer.on('connection',acceptLiveConnection);
-      peer.on('disconnected',()=>{liveConnected=false;updateLiveStatusUI();liveReconnectTimer=setTimeout(()=>{try{peer.reconnect();}catch{}},1800);});
-      peer.on('close',()=>{liveConnected=false;updateLiveStatusUI();});
-      peer.on('error',error=>{liveConnected=false;liveErrorMessage=error?.type==='unavailable-id'?'La diretta è già aperta in un’altra scheda':'Connessione live non disponibile';updateLiveStatusUI();if(!settled){settled=true;reject(error);}});
+      peer.on('disconnected',()=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;liveConnected=false;updateLiveStatusUI();clearTimeout(liveReconnectTimer);liveReconnectTimer=setTimeout(()=>{if(livePeer!==peer)return;try{peer.reconnect();}catch{startLiveHost({resume:true});}},1800);});
+      peer.on('close',()=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;liveConnected=false;updateLiveStatusUI();});
+      peer.on('error',error=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;if(error?.type==='webrtc'){toast('Un dispositivo non è riuscito a completare il collegamento',3600);return;}liveConnected=false;liveErrorMessage=error?.type==='unavailable-id'?'La diretta risulta ancora aperta in un’altra scheda':'Connessione al server Live non disponibile';updateLiveStatusUI();if(!settled){settled=true;reject(error);}});
     });
   }catch(error){liveConnecting=false;if(!resume)toast(liveErrorMessage||'Impossibile avviare la diretta',4200);updateLiveStatusUI();return false;}
 }
@@ -1117,26 +1128,31 @@ function handleLiveClientMessage(data){
   else if(data?.type==='conflict'){applyLiveClientState(data.state,data.revision,true);toast(liveRole==='referee'?'Referto riallineato: ripeti l’ultima operazione':'Aggiornato da un altro gestore: ripeti l’ultima modifica',4200);}
   else if(data?.type==='error'){liveErrorMessage=safeText(data.message||'Accesso live non autorizzato',160);liveConnecting=true;liveConnected=false;render();}
 }
-function scheduleLiveReconnect(){
+function scheduleLiveReconnect(delay){
   clearTimeout(liveReconnectTimer);if(!liveRoomId||liveRole==='host')return;
-  liveReconnectTimer=setTimeout(()=>connectToLiveHost(),2200);
+  const attempt=liveReconnectAttempts++,wait=Number.isFinite(delay)?delay:Math.min(9000,1800*(2**Math.min(attempt,3)));
+  liveReconnectTimer=setTimeout(()=>connectToLiveHost(),wait);
 }
 async function connectToLiveHost(){
   if(!liveRoomId||!['viewer','manager','referee'].includes(liveRole))return;
+  const generation=++liveTransportGeneration;
+  clearTimeout(liveReconnectTimer);liveReconnectTimer=null;clearTimeout(liveConnectionTimer);liveConnectionTimer=null;
   liveConnecting=!liveHasState;liveConnected=false;liveErrorMessage='';render();
   try{
     const Peer=await loadPeerLibrary();try{liveConnection?.close();livePeer?.destroy();}catch{}
-    const peer=new Peer(undefined,{debug:1});livePeer=peer;
+    if(generation!==liveTransportGeneration)return;
+    const peer=createLivePeer(Peer);livePeer=peer;
     peer.on('open',()=>{
+      if(generation!==liveTransportGeneration||livePeer!==peer)return;
       const conn=peer.connect(liveRoomId,{reliable:true,serialization:'json',metadata:{role:liveRole,secret:liveRole==='manager'?liveSecret:liveRole==='referee'?liveRefereeSecret:null}});liveConnection=conn;
-      conn.on('open',()=>{liveConnected=true;updateLiveStatusUI();});
-      conn.on('data',handleLiveClientMessage);
-      conn.on('close',()=>{liveConnected=false;updateLiveStatusUI();if(['manager','referee'].includes(liveRole)){liveConnecting=true;render();}scheduleLiveReconnect();});
-      conn.on('error',()=>{liveConnected=false;updateLiveStatusUI();scheduleLiveReconnect();});
+      conn.on('open',()=>{if(generation!==liveTransportGeneration||liveConnection!==conn)return;clearTimeout(liveConnectionTimer);liveConnectionTimer=null;liveConnected=true;liveReconnectAttempts=0;updateLiveStatusUI();});
+      conn.on('data',data=>{if(generation!==liveTransportGeneration||liveConnection!==conn)return;liveReconnectAttempts=0;handleLiveClientMessage(data);});
+      conn.on('close',()=>{if(generation!==liveTransportGeneration||liveConnection!==conn)return;liveConnected=false;updateLiveStatusUI();if(['manager','referee'].includes(liveRole)){liveConnecting=true;render();}scheduleLiveReconnect();});
+      conn.on('error',()=>{if(generation!==liveTransportGeneration||liveConnection!==conn)return;liveConnected=false;updateLiveStatusUI();scheduleLiveReconnect();});
     });
-    peer.on('error',error=>{liveConnected=false;liveErrorMessage=error?.type==='peer-unavailable'?'Il telefono principale non è raggiungibile':'Errore di collegamento live';if(!liveHasState){liveConnecting=true;render();}updateLiveStatusUI();scheduleLiveReconnect();});
-    peer.on('disconnected',()=>{liveConnected=false;updateLiveStatusUI();scheduleLiveReconnect();});
-    setTimeout(()=>{if(!liveHasState&&!liveConnected){liveErrorMessage='Il telefono principale non risponde. Verifica che Copparì sia aperto e online.';liveConnecting=true;render();}},12000);
+    peer.on('error',error=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;liveConnected=false;liveErrorMessage=error?.type==='peer-unavailable'?(liveReconnectAttempts<2?'Il telefono principale si sta registrando. Nuovo tentativo automatico…':'Il telefono principale non è raggiungibile. Tieni Copparì aperto sul primo telefono e riprova.'):'Errore di collegamento al server Live';if(!liveHasState){liveConnecting=true;render();}updateLiveStatusUI();scheduleLiveReconnect(error?.type==='peer-unavailable'?3200:undefined);});
+    peer.on('disconnected',()=>{if(generation!==liveTransportGeneration||livePeer!==peer)return;liveConnected=false;updateLiveStatusUI();scheduleLiveReconnect();});
+    liveConnectionTimer=setTimeout(()=>{if(generation!==liveTransportGeneration||liveHasState||liveConnected)return;liveErrorMessage='I telefoni si vedono, ma la rete blocca il collegamento diretto. Tieni Copparì visibile e prova la stessa Wi‑Fi o lo stesso hotspot.';liveConnecting=true;render();try{peer.destroy();}catch{}scheduleLiveReconnect(4000);},12000);
   }catch{liveErrorMessage='Impossibile caricare la connessione WebRTC';liveConnecting=true;render();}
 }
 function sendLiveManagerUpdate(){
