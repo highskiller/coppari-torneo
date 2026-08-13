@@ -634,6 +634,229 @@ th,td { padding:9px 11px; }
   .setup-card .form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
 }
 
+/* Copparì v3.8 — interfacce compatte e priorità per ruolo */
+.app-shell { grid-template-columns:238px minmax(0,1fr); }
+.sidebar { width:238px; padding:16px 12px; }
+.brand { gap:10px; padding:0 6px 14px; }
+.brand-mark { width:42px; height:42px; }
+.brand > div > span > span { display:inline; margin:0; color:inherit; font-size:inherit; }
+.nav-item { min-height:38px; padding:7px 10px; border-radius:10px; font-size:13px; }
+.sidebar-footer { padding-top:9px; }
+.topbar { min-height:64px; padding:11px 22px 8px; }
+.topbar h1 { font-size:23px; }
+.content { width:min(1320px,100%); padding:12px 22px 42px; }
+.grid,.team-grid { gap:10px; }
+.card { padding:14px; border-radius:15px; }
+.section-head { margin:4px 0 9px; }
+.section-head h2 { font-size:18px; }
+.primary,.secondary,.ghost,.danger,.danger-outline { min-height:38px; padding:8px 12px; font-size:13px; }
+.role-pill { display:inline-flex; align-items:center; gap:6px; min-height:34px; padding:6px 10px; border:1px solid #cbd9ca; border-radius:999px; background:#f0f7ed; color:#28543a; font-size:11px; font-weight:850; }
+.role-dot { width:7px; height:7px; border-radius:50%; background:currentColor; }
+.role-pill[data-role="viewer"] { border-color:#c8dfea; background:#edf6fb; color:#255b75; }
+.role-pill[data-role="referee"] { border-color:#ead49f; background:#fff7e5; color:#815a16; }
+.sidebar-scrim { display:none; }
+.app-shell.setup-mode + .mobile-nav { display:none !important; }
+body:has(.app-shell.setup-mode) { padding-bottom:0; }
+.mobile-only,.mobile-row-meta,.mobile-row-note { display:none; }
+.metric-grid .card { min-height:88px; display:flex; flex-direction:column; justify-content:center; }
+.metric-grid .metric { font-size:27px; }
+.metric-grid .note { margin-top:4px; }
+.manager-hero { padding:16px 18px; }
+.manager-hero h2 { font-size:clamp(23px,3vw,32px); }
+.manager-hero .progress-track { height:7px; }
+.manager-hero-actions { position:absolute; right:18px; top:15px; margin:0; }
+.manager-hero-actions .secondary { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.25); color:white; box-shadow:none; }
+.manager-hero-actions .ghost { background:rgba(255,255,255,.06); }
+.manager-hero-summary { max-width:calc(100% - 300px); }
+.next-match-card { text-align:left; }
+.next-match-card .next-match-stage { text-align:center; }
+.next-match-card .inline-meta { margin-top:8px; }
+.spectator-hero { padding:17px 18px; }
+.spectator-hero h2 { margin:5px 0 2px; font-size:clamp(23px,3.4vw,32px); }
+.spectator-hero .note { margin:0; }
+.spectator-live-bar { margin-bottom:10px; padding:8px 11px; }
+.public-priority { border-color:#cddfc9; background:linear-gradient(145deg,#fffefa,#f1f8ed); }
+.public-priority.is-live { border-color:#e8b3af; box-shadow:0 12px 36px rgba(157,52,45,.1); }
+.public-section-grid { margin-top:10px; }
+.control-grid { align-items:start; }
+.round-title { position:sticky; top:68px; z-index:3; width:max-content; padding:5px 9px; border:1px solid var(--line); border-radius:999px; background:rgba(243,245,239,.95); backdrop-filter:blur(10px); font-size:12px; }
+.match { grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) minmax(150px,auto); }
+.match .stage-label { display:flex; align-items:center; gap:6px; }
+.match-status-dot { width:7px; height:7px; border-radius:50%; background:#9aa39c; }
+.match.is-live { border-color:#dca9a5; background:#fffafa; box-shadow:0 8px 24px rgba(141,47,42,.07); }
+.match.is-live .match-status-dot { background:#d34d4d; box-shadow:0 0 0 4px rgba(211,77,77,.11); }
+.match.is-played .match-status-dot { background:#4d9861; }
+.team-card .roster { gap:5px; }
+.team-card .roster-row { min-height:36px; padding:6px 8px; }
+.roster-row .grow > .note { display:block; margin-top:2px; line-height:1.25; }
+.participants-table td:first-child { min-width:170px; }
+.standings-table td:nth-child(n+3),.standings-table th:nth-child(n+3) { text-align:center; }
+.standings-table td:nth-child(2) { white-space:normal; min-width:180px; }
+.settings-grid { align-items:start; }
+.settings-section-title { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.settings-section-title h3 { margin:2px 0 10px; }
+.stats-grid .card { min-width:0; }
+.stats-grid .leader-row { grid-template-columns:30px minmax(0,1fr) auto; padding:8px; }
+.stats-grid .leader-value { font-size:18px; }
+.stats-grid .empty { padding:22px 10px; }
+.setup-sections { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.setup-section { padding:14px; border:1px solid var(--line); border-radius:15px; background:#fbfcf8; }
+.setup-section.wide { grid-column:1/-1; }
+.setup-section-head { display:flex; align-items:center; gap:9px; margin-bottom:11px; }
+.setup-step-number { width:28px; height:28px; display:grid; place-items:center; flex:0 0 auto; border-radius:9px; background:var(--brand); color:white; font-size:12px; font-weight:900; }
+.setup-section-head h2 { margin:0; font-size:16px; }
+.setup-section-head p { margin:2px 0 0; color:var(--muted); font-size:11px; }
+.setup-card > .setup-preview { margin-top:10px; }
+.ref-hub { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:12px; padding:15px 17px; }
+.ref-hub h2 { margin:4px 0 2px; font-size:22px; }
+.ref-hub p { margin:0; }
+.ref-hub-count { display:flex; gap:7px; }
+.ref-hub-count .status-chip { min-width:68px; text-align:center; }
+.ref-legend { padding:10px 12px; margin-top:10px; }
+.ref-legend summary { display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; list-style:none; }
+.ref-legend summary::-webkit-details-marker { display:none; }
+.ref-legend summary::after { content:"Mostra"; color:var(--muted); font-size:11px; font-weight:800; }
+.ref-legend[open] summary::after { content:"Nascondi"; }
+.ref-legend .ref-legend-items { margin-top:10px; }
+.ref-control-deck { padding-top:1px; }
+.ref-team-switch { display:none; }
+.ref-team-panel { min-width:0; }
+.ref-team { border-color:#d5ddd2; }
+.ref-team-title { box-shadow:inset 5px 0 0 var(--team-color,var(--brand-2)); }
+.ref-player { min-height:48px; }
+.ref-bottom-grid .card { padding:13px; }
+.modal:not(.referee-modal) > .modal-actions { margin-bottom:-4px; }
+
+body.remote-referee-mode .sidebar [data-view="calendar"] { display:none !important; }
+body.spectator-mode #guideBtn { display:none !important; }
+body.spectator-mode .topbar-actions > .save-pill:not(.live-pill) { display:none; }
+
+@media (max-width:980px) {
+  .manager-hero-summary { max-width:calc(100% - 220px); }
+  .manager-hero-actions .secondary { display:none; }
+}
+
+@media (max-width:760px) {
+  body { padding-bottom:62px; }
+  .sidebar { width:264px; left:-276px; }
+  .sidebar.open + .sidebar-scrim { display:block; position:fixed; inset:0; z-index:19; border:0; background:rgba(8,17,11,.46); backdrop-filter:blur(2px); }
+  .topbar { min-height:56px; padding:calc(6px + env(safe-area-inset-top)) max(9px,env(safe-area-inset-right)) 5px max(9px,env(safe-area-inset-left)); }
+  .topbar-copy { flex:1; overflow:hidden; }
+  .topbar h1 { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:19px; }
+  .topbar p { max-width:none; font-size:10px; }
+  .topbar-actions { gap:4px; }
+  .role-pill { min-height:30px; padding:4px 7px; font-size:10px; }
+  .topbar-actions .live-pill { min-height:30px; max-width:78px; padding:4px 6px; font-size:9px; }
+  .content { padding:7px 9px 20px; }
+  .card { padding:11px; border-radius:13px; }
+  .primary,.secondary,.ghost,.danger,.danger-outline { min-height:42px; }
+  .mobile-only,.mobile-row-meta,.mobile-row-note { display:block; }
+  .mobile-nav { grid-template-columns:repeat(5,1fr); min-height:56px; }
+  .mobile-nav > [data-view="stats"] { display:none; }
+  body.spectator-mode .mobile-nav > [data-view="stats"],body.remote-referee-mode .mobile-nav > [data-view="stats"] { display:grid; }
+  body.spectator-mode .mobile-nav > [data-menu-open],body.remote-referee-mode .mobile-nav > [data-menu-open] { display:none; }
+  body.remote-referee-mode .mobile-nav { grid-template-columns:repeat(4,1fr); }
+  body.remote-referee-mode .mobile-nav > [data-view="calendar"] { display:none; }
+  .metric-grid { gap:6px; }
+  .metric-grid .card { min-height:70px; padding:9px; }
+  .metric-grid .metric { font-size:22px; }
+  .metric-grid .metric-label { font-size:10px; }
+  .metric-grid .note { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
+  .manager-hero { padding:13px; }
+  .manager-hero-summary { max-width:none; padding-right:0; }
+  .manager-hero-actions { position:static; margin-top:10px; }
+  .manager-hero-actions .secondary { display:inline-flex; }
+  .manager-hero-actions button { min-height:36px; }
+  .spectator-hero { padding:13px; }
+  .spectator-hero .note { font-size:11px; }
+  .spectator-live-bar { margin-bottom:7px; padding:7px 9px; font-size:10px; }
+  .public-priority { margin-top:8px !important; }
+  .public-priority .next-match-stage { font-size:9px; }
+  .round-title { top:58px; }
+  .round-block { margin-bottom:10px; }
+  .match { grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); }
+  .match .stage-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .match-actions { grid-template-columns:repeat(auto-fit,minmax(82px,1fr)); }
+  .match-actions button { min-height:38px; }
+  .team-grid { gap:8px; }
+  .team-card .team-meta { margin-bottom:8px; }
+  .team-card .roster-row { min-height:34px; }
+  .participants-table,.participants-table tbody { display:block; width:100%; }
+  .participants-table thead { display:none; }
+  .participants-table tr { display:grid; grid-template-columns:minmax(0,1fr) auto auto auto; align-items:center; gap:5px; margin:0; padding:9px; border-bottom:1px solid var(--line); }
+  .participants-table tr:last-child { border-bottom:0; }
+  .participants-table td { min-width:0 !important; padding:0; border:0; white-space:normal; }
+  .participants-table td:nth-child(2),.participants-table td:nth-child(4),.participants-table td:nth-child(5) { display:none; }
+  .participants-table td:nth-child(3) { color:#aa7718; font-size:9px; white-space:nowrap; }
+  .participants-table td:nth-child(6) .badge { padding:4px 6px; font-size:9px; }
+  .participants-table td:nth-child(7) button { min-height:34px; padding:5px 7px; font-size:10px; }
+  .mobile-row-meta { overflow:hidden; margin-top:2px; color:var(--muted); text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
+  .mobile-row-note { overflow:hidden; margin-top:1px; color:var(--muted); text-overflow:ellipsis; white-space:nowrap; font-size:9px; }
+  .standings-table th:nth-child(4),.standings-table td:nth-child(4),
+  .standings-table th:nth-child(5),.standings-table td:nth-child(5),
+  .standings-table th:nth-child(6),.standings-table td:nth-child(6),
+  .standings-table th:nth-child(7),.standings-table td:nth-child(7),
+  .standings-table th:nth-child(8),.standings-table td:nth-child(8) { display:none; }
+  .standings-table th,.standings-table td { padding:8px 5px; font-size:11px; }
+  .standings-table td:nth-child(2) { min-width:0; }
+  .standings-table td:nth-child(2) .badge { display:block; width:max-content; margin-top:3px; padding:3px 5px; font-size:8px; }
+  .settings-grid .form-grid,.settings-form-card .form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .settings-grid .field.full { grid-column:1/-1; }
+  .settings-grid { gap:8px; }
+  .settings-form-card .modal-actions { margin-top:10px; }
+  .awards-panel { padding:13px; }
+  .awards-head { margin-bottom:10px; }
+  .awards-head h2 { font-size:22px; }
+  .awards-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+  .award-card { padding:9px; border-radius:12px; }
+  .award-icon { width:30px; height:30px; margin-bottom:7px; border-radius:9px; font-size:16px; }
+  .award-name { font-size:14px; }
+  .award-value { margin-top:7px; font-size:10px; }
+  .awards-method { font-size:9px; }
+  .stats-grid .empty { padding:16px 8px; font-size:13px; }
+  .setup-sections { grid-template-columns:1fr; gap:8px; }
+  .setup-section,.setup-section.wide { grid-column:auto; padding:10px; }
+  .setup-section .form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .setup-section-head { margin-bottom:8px; }
+  .setup-card > .setup-preview { margin-top:8px; }
+  .ref-hub { grid-template-columns:1fr; padding:12px; }
+  .ref-hub h2 { font-size:19px; }
+  .ref-hub-count { display:grid; grid-template-columns:repeat(3,1fr); }
+  .ref-legend { padding:9px 10px; }
+  .ref-legend .ref-legend-item { padding:5px 7px; font-size:10px; }
+  .ref-control-deck { position:relative; }
+  .ref-scoreboard { margin:7px 0 0; padding:9px; border-radius:14px; }
+  .ref-scoreboard div { font-size:12px; }
+  .ref-scoreboard strong { font-size:29px; }
+  .ref-live-strip { display:none; }
+  .ref-timer { padding:7px 8px 6px; margin:0; }
+  .ref-timer span { font-size:27px; }
+  .ref-timer small { margin-top:2px; font-size:10px; }
+  .ref-progress { height:5px; margin-top:6px; }
+  .ref-guard-bar { margin:0 auto 7px; padding:6px 8px; font-size:10px; }
+  .ref-guard-toggle { min-height:32px; padding:4px 7px; font-size:10px; }
+  .ref-phase-actions { margin-bottom:8px; }
+  .ref-phase-actions button { min-height:40px; }
+  .ref-team-switch { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin:2px 0 7px; }
+  .ref-team-switch button { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid var(--line); border-radius:10px; background:white; color:var(--muted); font-weight:800; }
+  .ref-team-switch button.active { border-color:#789783; background:#eaf3e7; color:var(--brand); }
+  .ref-layout { display:flex; grid-template-columns:none; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; scroll-behavior:smooth; scrollbar-width:none; overscroll-behavior-x:contain; }
+  .ref-layout::-webkit-scrollbar { display:none; }
+  .ref-team-panel { flex:0 0 100%; scroll-snap-align:start; scroll-snap-stop:always; }
+  .ref-team-title { position:static; top:auto; }
+  .ref-player { min-height:46px; padding:5px 0; }
+  .ref-bottom-grid { gap:8px; margin-top:8px; }
+  .modal:not(.referee-modal) > .modal-actions { position:sticky; bottom:calc(-18px - env(safe-area-inset-bottom)); z-index:3; margin:14px -15px calc(-18px - env(safe-area-inset-bottom)); padding:10px 15px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:rgba(255,254,250,.96); backdrop-filter:blur(12px); }
+}
+
+@media (max-width:370px) {
+  .setup-section .form-grid { grid-template-columns:1fr; }
+  .settings-grid .form-grid,.settings-form-card .form-grid { grid-template-columns:1fr; }
+  .role-pill { padding-inline:5px; }
+  .role-pill .role-dot { display:none; }
+  .topbar-actions .live-pill { display:none; }
+}
+
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 }
@@ -655,22 +878,22 @@ th,td { padding:9px 11px; }
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v<span id="appVersionLabel">3.7.3</span></span>
+          <span><span id="brandModeLabel">cabina di regia</span> · v<span id="appVersionLabel">3.8.0</span></span>
         </div>
       </div>
 
       <nav class="nav" id="nav">
-        <button class="nav-item active" data-view="home"><span class="nav-icon">⌂</span><span>Panoramica</span></button>
-        <button class="nav-item" data-view="players"><span class="nav-icon">♟</span><span>Partecipanti</span></button>
-        <button class="nav-item" data-view="teams"><span class="nav-icon">◆</span><span>Squadre</span></button>
-        <button class="nav-item" data-view="calendar"><span class="nav-icon">▦</span><span>Partite</span></button>
-        <button class="nav-item" data-view="standings"><span class="nav-icon">♛</span><span>Classifica</span></button>
-        <button class="nav-item" data-view="stats"><span class="nav-icon">◎</span><span>Statistiche</span></button>
-        <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span><span>Impostazioni</span></button>
+        <button class="nav-item active" data-view="home" data-label-manager="Panoramica" data-label-viewer="Diretta" data-label-referee="Arbitra"><span class="nav-icon">⌂</span><span>Panoramica</span></button>
+        <button class="nav-item" data-view="players" data-label-manager="Partecipanti"><span class="nav-icon">♟</span><span>Partecipanti</span></button>
+        <button class="nav-item" data-view="teams" data-label-manager="Squadre" data-label-viewer="Squadre" data-label-referee="Rose"><span class="nav-icon">◆</span><span>Squadre</span></button>
+        <button class="nav-item" data-view="calendar" data-label-manager="Partite" data-label-viewer="Partite"><span class="nav-icon">▦</span><span>Partite</span></button>
+        <button class="nav-item" data-view="standings" data-label-manager="Classifica" data-label-viewer="Classifica" data-label-referee="Classifica"><span class="nav-icon">♛</span><span>Classifica</span></button>
+        <button class="nav-item" data-view="stats" data-label-manager="Statistiche" data-label-viewer="Premi" data-label-referee="Statistiche"><span class="nav-icon">◎</span><span>Statistiche</span></button>
+        <button class="nav-item" data-view="settings" data-label-manager="Impostazioni"><span class="nav-icon">⚙</span><span>Impostazioni</span></button>
       </nav>
 
       <div class="sidebar-footer">
-        <div class="sidebar-status"><strong>Salvataggio automatico</strong><span id="sidebarSaveStatus">Dati custoditi su questo dispositivo</span></div>
+        <div class="sidebar-status"><strong id="sidebarStatusTitle">Salvataggio automatico</strong><span id="sidebarSaveStatus">Dati custoditi su questo dispositivo</span></div>
         <div class="sidebar-actions">
           <button class="ghost" id="guideBtn">? Guida</button>
           <button class="ghost" id="installAppBtn" data-install-app>＋ Installa</button>
@@ -681,6 +904,8 @@ th,td { padding:9px 11px; }
       </div>
     </aside>
 
+    <button class="sidebar-scrim" id="sidebarScrim" aria-label="Chiudi menu" tabindex="-1"></button>
+
     <main class="main">
       <header class="topbar">
         <button class="menu-btn" id="menuBtn" aria-label="Apri menu">☰</button>
@@ -689,6 +914,7 @@ th,td { padding:9px 11px; }
           <p id="pageSubtitle">Gestione del torneo</p>
         </div>
         <div class="topbar-actions">
+          <span class="role-pill" id="rolePill"><span class="role-dot"></span><span id="rolePillText">Gestore</span></span>
           <span class="save-pill live-pill" id="liveStatusPill" hidden><span class="live-dot"></span><span id="liveStatusText">Live</span></span>
           <span class="save-pill"><span class="save-dot"></span><span id="saveStatus">Salvato</span></span>
         </div>
@@ -699,10 +925,11 @@ th,td { padding:9px 11px; }
   </div>
 
   <nav class="mobile-nav" id="mobileNav" aria-label="Navigazione rapida">
-    <button class="active" data-view="home"><span>⌂</span><span>Home</span></button>
-    <button data-view="calendar"><span>▦</span><span>Partite</span></button>
-    <button data-view="teams"><span>◆</span><span>Squadre</span></button>
-    <button data-view="standings"><span>♛</span><span>Classifica</span></button>
+    <button class="active" data-view="home" data-label-manager="Home" data-label-viewer="Diretta" data-label-referee="Arbitra"><span>⌂</span><span>Home</span></button>
+    <button data-view="calendar" data-label-manager="Partite" data-label-viewer="Partite"><span>▦</span><span>Partite</span></button>
+    <button data-view="teams" data-label-manager="Squadre" data-label-viewer="Squadre" data-label-referee="Rose"><span>◆</span><span>Squadre</span></button>
+    <button data-view="standings" data-label-manager="Classifica" data-label-viewer="Classifica" data-label-referee="Classifica"><span>♛</span><span>Classifica</span></button>
+    <button data-view="stats" data-label-manager="Statistiche" data-label-viewer="Premi" data-label-referee="Statistiche"><span>◎</span><span>Premi</span></button>
     <button data-menu-open><span>☰</span><span>Altro</span></button>
   </nav>
 
@@ -713,7 +940,7 @@ th,td { padding:9px 11px; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.7.3';
+const APP_VERSION = '3.8.0';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
@@ -768,6 +995,7 @@ let playerArchive = loadPlayerArchive();
 let currentView = sessionGet('coppari.currentView') || 'home';
 let modalReturnFocus = null;
 let activeRefereeMatchId = null;
+let activeRefereeTeamId = null;
 let activePublicMatchId = null;
 let screenWakeLock = null;
 let screenWakeLockPending = null;
@@ -1112,33 +1340,53 @@ function restoreLastSnapshot(){
   const history=historyEntries().filter(x=>x.id!==snap.id);storageSet(HISTORY_KEY,JSON.stringify(history));
   save();closeModal(true);render();toast('Modifica ripristinata');
 }
-function setHeader(title, subtitle){ pageTitle.textContent=title; pageSubtitle.textContent=subtitle; }
+function interfaceRole(){return liveRole==='viewer'?'viewer':liveRole==='referee'?'referee':'manager';}
+function syncRoleNavigation(){
+  const role=interfaceRole(),roleNames={manager:'Gestore',viewer:'Pubblico',referee:'Arbitro'},brandNames={manager:'cabina di regia',viewer:'diretta pubblica',referee:'console arbitro'};
+  document.body.classList.toggle('manager-mode',role==='manager');
+  document.body.classList.toggle('spectator-mode',role==='viewer');
+  document.body.classList.toggle('remote-referee-mode',role==='referee');
+  document.body.dataset.role=role;
+  const pill=document.getElementById('rolePill'),pillText=document.getElementById('rolePillText'),brandMode=document.getElementById('brandModeLabel'),sideTitle=document.getElementById('sidebarStatusTitle');
+  if(pill){pill.dataset.role=role;pill.setAttribute('aria-label',`Modalità ${roleNames[role]}`);}
+  if(pillText)pillText.textContent=roleNames[role];
+  if(brandMode)brandMode.textContent=brandNames[role];
+  if(sideTitle)sideTitle.textContent=role==='viewer'?'Diretta pubblica':role==='referee'?'Referto sincronizzato':'Salvataggio automatico';
+  document.querySelectorAll('[data-label-manager],[data-label-viewer],[data-label-referee]').forEach(button=>{
+    const label=button.dataset[`label${role[0].toUpperCase()}${role.slice(1)}`];
+    if(label){const text=button.querySelector('span:last-child');if(text)text.textContent=label;button.setAttribute('aria-label',label);}
+    button.classList.toggle('active',button.dataset.view===currentView);
+  });
+  return role;
+}
+function setHeader(title, subtitle){ pageTitle.textContent=title; pageSubtitle.textContent=subtitle;document.title=`${title} — Copparì`; }
 function setSetupMode(on){ appShell.classList.toggle('setup-mode',on); }
 function navigate(name){
   currentView=name;sessionSet('coppari.currentView',name);
   document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));
-  render(); sidebar.classList.remove('open');window.scrollTo({top:0,behavior:'smooth'});
+  render(); closeSidebar();window.scrollTo({top:0,behavior:'smooth'});
 }
 function render(){
-  document.body.classList.toggle('spectator-mode',liveRole==='viewer');
-  document.body.classList.toggle('remote-referee-mode',liveRole==='referee');
+  syncRoleNavigation();
   if((['viewer','manager','referee'].includes(liveRole)&&liveConnecting&&!liveHasState)||(['manager','referee'].includes(liveRole)&&!liveConnected)){renderLiveWaiting();return;}
   if(liveRole==='viewer'){
     setSetupMode(false);
     if(!['home','teams','calendar','standings','stats'].includes(currentView))currentView='home';
+    syncRoleNavigation();
     const spectatorRenders={home:renderSpectatorHome,teams:renderReadOnlyTeams,calendar:renderSpectatorCalendar,standings:renderStandings,stats:renderStats};
     (spectatorRenders[currentView]||renderSpectatorHome)();updateLiveStatusUI();return;
   }
   if(liveRole==='referee'){
     setSetupMode(false);
-    if(!['home','teams','calendar','standings','stats'].includes(currentView))currentView='home';
-    const refereeRenders={home:renderRemoteRefereeHome,teams:renderReadOnlyTeams,calendar:renderRemoteRefereeHome,standings:renderStandings,stats:renderStats};
+    if(!['home','teams','standings','stats'].includes(currentView))currentView='home';
+    syncRoleNavigation();
+    const refereeRenders={home:renderRemoteRefereeHome,teams:renderReadOnlyTeams,standings:renderStandings,stats:renderStats};
     (refereeRenders[currentView]||renderRemoteRefereeHome)();updateLiveStatusUI();return;
   }
   if(!state.settings.configured){ renderSetup(); return; }
   setSetupMode(false);
   const renders={home:renderHome,dashboard:renderHome,night:renderHome,players:renderPlayers,teams:renderTeams,calendar:renderCalendar,standings:renderStandings,stats:renderStats,settings:renderSettings};
-  (renders[currentView]||renderHome)();updateLiveStatusUI();
+  syncRoleNavigation();(renders[currentView]||renderHome)();updateLiveStatusUI();
 }
 function metric(label,value,sub=''){ return `<div class="card"><div class="metric-label">${label}</div><div class="metric">${value}</div>${sub?`<div class="note">${sub}</div>`:''}</div>`; }
 
@@ -1334,7 +1582,7 @@ function spectatorLiveBarHtml(){
 }
 function publicMatchRow(m){
   const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live',pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';
-  return `<div class="match"><div class="stage-label">${stageLabel(m)} · ${esc(matchDisplayTime(m))}${live?' · ● IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div><div class="match-actions"><button class="${live?'primary':'ghost'}" data-public-match="${m.id}">${live?'Segui live':'Dettagli'}</button>${played&&m.ratingsPublished&&m.ratings?.length?`<button class="ghost" data-ratings-match="${m.id}">Copparigelle</button>`:''}</div></div>`;
+  return `<div class="match ${live?'is-live':played?'is-played':'is-scheduled'}"><div class="stage-label"><span class="match-status-dot" aria-hidden="true"></span>${esc(stageLabel(m))} · ${esc(matchDisplayTime(m))}${live?' · IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div><div class="match-actions"><button class="${live?'primary':'ghost'}" data-public-match="${m.id}">${live?'Segui live':'Dettagli'}</button>${played&&m.ratingsPublished&&m.ratings?.length?`<button class="ghost" data-ratings-match="${m.id}">Copparigelle</button>`:''}</div></div>`;
 }
 function publicMatchPhase(m){return m.referee?.phase|| (m.status==='played'?'ended':m.status==='live'?'first':'not_started');}
 function publicMatchSeconds(m){
@@ -1369,10 +1617,12 @@ function renderPublicMatchDetails(id,preserveFocus=false){
 function openPublicMatchDetails(id){renderPublicMatchDetails(id,false);}
 function renderSpectatorHome(){
   setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Diretta pubblica · sola lettura');
-  if(!state.settings.configured){view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">Copparì Live</div><h2>Il torneo è in preparazione</h2><p class="note">La pagina si aggiornerà automaticamente quando il gestore completerà la configurazione.</p></div>`;return;}
+  if(!state.settings.configured){view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">Copparì Live</div><h2>Torneo in preparazione</h2><p class="note">Questa pagina si aggiorna automaticamente appena il gestore completa la configurazione.</p></div>`;return;}
   const played=playedMatches().length,total=Math.max(state.matches.length,totalGamesExpected()),goals=playedMatches().reduce((sum,m)=>sum+(+m.homeScore||0)+(+m.awayScore||0),0),liveMatch=state.matches.find(match=>match.status==='live'),next=liveMatch||nextScheduledMatch(),table=standings();
-  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">${esc(state.settings.edition)} · Copparì Live</div><h2>${esc(state.settings.name)}</h2><p class="note">Risultati, rose, classifica e premi restano disponibili nel cloud anche se il primo telefono viene chiuso.</p></div><div class="grid cols-4" style="margin-top:16px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',liveMatch?'In campo':next?'In programma':'Concluso')}</div>${next?`<div class="card next-match-card" style="margin-top:16px"><div class="next-match-stage">${next.status==='live'?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${stageLabel(next)}</div><div class="next-match-teams"><div class="next-match-team">${esc(teamById(next.homeTeamId)?.name||'?')}</div><div class="next-match-vs">${next.status==='live'?`<strong style="font-size:24px">${refScore(next)}</strong><small style="display:block;margin-top:4px">${esc(phaseLabel(publicMatchPhase(next)))}</small>`:'VS'}</div><div class="next-match-team">${esc(teamById(next.awayTeamId)?.name||'?')}</div></div><button class="${next.status==='live'?'primary':'ghost'}" data-public-match="${next.id}">${next.status==='live'?'Segui la partita':'Vedi dettagli'}</button></div>`:''}<div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Classifica live</h3>${table.length?`<div class="leaderboard">${table.map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}</div></div>`;
+  const priority=next?`<div class="card next-match-card public-priority ${next.status==='live'?'is-live':''}" style="margin-top:10px"><div class="next-match-stage">${next.status==='live'?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${esc(stageLabel(next))}</div><div class="next-match-teams"><div class="next-match-team">${esc(teamById(next.homeTeamId)?.name||'?')}</div><div class="next-match-vs">${next.status==='live'?`<strong style="font-size:24px">${refScore(next)}</strong><small style="display:block;margin-top:3px">${esc(phaseLabel(publicMatchPhase(next)))}</small>`:'VS'}</div><div class="next-match-team">${esc(teamById(next.awayTeamId)?.name||'?')}</div></div><div class="button-row center"><button class="${next.status==='live'?'primary':'ghost'}" data-public-match="${next.id}">${next.status==='live'?'Apri la diretta':'Dettagli partita'}</button></div></div>`:'';
+  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">${esc(state.settings.edition)} · Copparì Live</div><h2>${esc(state.settings.name)}</h2><p class="note">Partite, classifica e premi in un’unica diretta.</p>${state.settings.venue?`<div class="inline-meta"><span class="status-chip">⌖ ${esc(state.settings.venue)}</span></div>`:''}</div>${priority}<div class="grid cols-4 metric-grid" style="margin-top:10px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',liveMatch?'In campo':next?'In arrivo':'Concluso')}</div><div class="grid cols-2 public-section-grid"><div class="card"><div class="section-head"><h3>Classifica live</h3><button class="ghost" data-go-standings>Completa</button></div>${table.length?`<div class="leaderboard">${table.slice(0,6).map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}</div></div>`;
   view.querySelectorAll('[data-public-match]').forEach(button=>button.onclick=()=>openPublicMatchDetails(button.dataset.publicMatch));
+  view.querySelector('[data-go-standings]')?.addEventListener('click',()=>navigate('standings'));
 }
 function readOnlyRosterCardHtml(team,index=0){
   const roster=teamPlayers(team.id),captain=playerById(team.captainId);
@@ -1386,17 +1636,18 @@ function renderReadOnlyTeams(){
 function renderSpectatorCalendar(){
   setHeader('Partite','Calendario e risultati in diretta');
   const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?'Sequenza continua dalle 00:00':m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
-  view.innerHTML=`${spectatorLiveBarHtml()}${Object.keys(groups).length?Object.entries(groups).map(([label,matches])=>`<div class="round-block"><div class="round-title">${esc(label)}</div><div class="match-list">${matches.map(publicMatchRow).join('')}</div></div>`).join(''):'<div class="empty"><strong>Calendario in preparazione</strong>Le partite appariranno automaticamente.</div>'}`;
+  const live=state.matches.filter(match=>match.status==='live').length,played=playedMatches().length,scheduled=state.matches.filter(match=>match.status==='scheduled').length;
+  view.innerHTML=`${spectatorLiveBarHtml()}<div class="schedule-summary" aria-label="Riepilogo partite"><span class="status-chip">${state.matches.length} totali</span>${live?`<span class="status-chip live">● ${live} in corso</span>`:''}<span class="status-chip done">${played} concluse</span><span class="status-chip">${scheduled} da giocare</span></div>${Object.keys(groups).length?Object.entries(groups).map(([label,matches])=>`<div class="round-block"><div class="round-title">${esc(label)}</div><div class="match-list">${matches.map(publicMatchRow).join('')}</div></div>`).join(''):'<div class="empty"><strong>Calendario in preparazione</strong>Le partite appariranno automaticamente.</div>'}`;
   view.querySelectorAll('[data-public-match]').forEach(button=>button.onclick=()=>openPublicMatchDetails(button.dataset.publicMatch));
   view.querySelectorAll('[data-ratings-match]').forEach(button=>button.onclick=()=>openRatingsModal(button.dataset.ratingsMatch,true));
 }
 function remoteRefereeMatchRow(m){
   const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live',pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';
-  return `<div class="match"><div class="stage-label">${stageLabel(m)} · ${esc(matchDisplayTime(m))}${live?' · ● IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div><div class="match-actions"><button class="ghost" data-match-rosters="${m.id}">Vedi rose</button><button class="primary" data-ref-match="${m.id}">${played?'Apri referto':live?'Riprendi arbitraggio':'Avvia arbitraggio'}</button></div></div>`;
+  return `<div class="match ${live?'is-live':played?'is-played':'is-scheduled'}"><div class="stage-label"><span class="match-status-dot" aria-hidden="true"></span>${esc(stageLabel(m))} · ${esc(matchDisplayTime(m))}${live?' · IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div><div class="match-actions"><button class="ghost" data-match-rosters="${m.id}">Rose</button><button class="primary" data-ref-match="${m.id}">${played?'Apri referto':live?'Riprendi':'Avvia arbitraggio'}</button></div></div>`;
 }
 function refereeLegendHtml(){
   const cards=state.settings.cardsEnabled!==false;
-  return `<div class="card ref-legend"><div class="ref-legend-head"><h3>Legenda comandi</h3><span class="badge">Tocca l’icona accanto al giocatore</span></div><div class="ref-legend-items"><span class="ref-legend-item"><span>⚽</span>Gol</span><span class="ref-legend-item"><span>🎯</span>Assist</span><span class="ref-legend-item"><span>⚠️</span>Fallo</span>${cards?'<span class="ref-legend-item"><span>🟨</span>Ammonizione</span><span class="ref-legend-item"><span>🟥</span>Espulsione</span>':''}<span class="ref-legend-item"><span>＋</span>Gol squadra / autorete</span><span class="ref-legend-item"><span>↶</span>Annulla evento</span><span class="ref-legend-item"><span>↺</span>Azzera partita</span></div>${state.settings.touchGuard?'<p class="note">Protezione tocchi attiva: tocca due volte lo stesso comando per confermarlo.</p>':''}</div>`;
+  return `<details class="card ref-legend"><summary><strong>Legenda rapida</strong><span class="badge">⚽ Gol · 🎯 Assist · ⚠️ Fallo</span></summary><div class="ref-legend-items"><span class="ref-legend-item"><span>⚽</span>Gol</span><span class="ref-legend-item"><span>🎯</span>Assist</span><span class="ref-legend-item"><span>⚠️</span>Fallo</span>${cards?'<span class="ref-legend-item"><span>🟨</span>Ammonizione</span><span class="ref-legend-item"><span>🟥</span>Espulsione</span>':''}<span class="ref-legend-item"><span>＋</span>Gol squadra / autorete</span><span class="ref-legend-item"><span>↶</span>Annulla evento</span><span class="ref-legend-item"><span>↺</span>Azzera partita</span></div>${state.settings.touchGuard?'<p class="note">Protezione attiva: tocca due volte lo stesso comando per confermarlo.</p>':''}</details>`;
 }
 function openMatchRostersModal(id){
   const match=state.matches.find(item=>item.id===id),home=teamById(match?.homeTeamId),away=teamById(match?.awayTeamId);
@@ -1406,7 +1657,8 @@ function openMatchRostersModal(id){
 function renderRemoteRefereeHome(){
   setHeader('Arbitraggio',`${state.settings.name} · accesso arbitro`);
   const ordered=[...state.matches].sort((a,b)=>a.status==='live'?-1:b.status==='live'?1:a.status==='scheduled'&&b.status==='played'?-1:a.status==='played'&&b.status==='scheduled'?1:0);
-  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">Copparì Live · Arbitro</div><h2>Partite e referti</h2><p class="note">Puoi arbitrare e chiudere le partite. Le rose sono consultabili, mentre squadre, partecipanti, calendario e configurazione non sono modificabili da questo link.</p></div>${refereeLegendHtml()}<div class="match-list" style="margin-top:16px">${ordered.length?ordered.map(remoteRefereeMatchRow).join(''):'<div class="empty"><strong>Nessuna partita disponibile</strong>Il gestore deve prima generare il calendario.</div>'}</div>`;
+  const live=ordered.filter(match=>match.status==='live').length,scheduled=ordered.filter(match=>match.status==='scheduled').length,played=ordered.filter(match=>match.status==='played').length;
+  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card ref-hub"><div><div class="kicker">Copparì Live · accesso arbitro</div><h2>Scegli la partita</h2><p class="note">Apri il referto, gestisci timer ed eventi; il resto rimane in sola lettura.</p></div><div class="ref-hub-count"><span class="status-chip live">${live} in corso</span><span class="status-chip">${scheduled} da giocare</span><span class="status-chip done">${played} concluse</span></div></div>${refereeLegendHtml()}<div class="match-list" style="margin-top:10px">${ordered.length?ordered.map(remoteRefereeMatchRow).join(''):'<div class="empty"><strong>Nessuna partita disponibile</strong>Il gestore deve prima generare il calendario.</div>'}</div>`;
   view.querySelectorAll('[data-ref-match]').forEach(button=>button.onclick=()=>openRefereeMode(button.dataset.refMatch));
   view.querySelectorAll('[data-match-rosters]').forEach(button=>button.onclick=()=>openMatchRostersModal(button.dataset.matchRosters));
 }
@@ -1531,20 +1783,29 @@ function renderSetup(){
       <div class="setup-brand"><div class="brand-mark large"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="82" height="82" /></div><div style="flex:1"><div class="kicker">Configurazione guidata</div><h1>Prepara il tuo torneo</h1><p>In pochi minuti avrai partecipanti, formula, orari e fase finale sotto controllo.</p></div><button class="ghost" id="setupGuide">? Guida gestore</button></div>
       ${installBannerHtml()}
       <div class="card setup-card">
-        <div class="step-tabs"><div class="step-tab active">1 · Identità</div><div class="step-tab active">2 · Partecipanti</div><div class="step-tab active">3 · Formula</div><div class="step-tab active">4 · Tempi</div></div>
-        <div class="form-grid">
-          <div class="field"><label>Nome torneo</label><input id="setupName" maxlength="80" value="${esc(s.name)}" placeholder="Es. Copparì"></div>
-          <div class="field"><label>Edizione</label><input id="setupEdition" maxlength="80" value="${esc(s.edition)}" placeholder="Es. Estate 2026"></div>
-          <div class="field"><label>Luogo (facoltativo)</label><input id="setupVenue" maxlength="120" value="${esc(s.venue||'')}" placeholder="Centro sportivo / campo"></div>
-          <div class="field"><label>Gestore (facoltativo)</label><input id="setupOrganizer" maxlength="120" value="${esc(s.organizer||'')}" placeholder="Nome del responsabile"></div>
-          <div class="field"><label>N° partecipanti</label><input id="setupPlayers" type="number" min="10" max="200" value="${s.targetPlayers}"></div>
-          <div class="field"><label>N° giocatori per rosa</label><input id="setupRoster" type="number" min="5" max="20" value="${s.rosterSize}"></div>
-          <div class="field"><label>Formula torneo</label><select id="setupFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Campionato + Finale</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div>
-          <div class="field"><label>Girone (se previsto)</label><select id="setupMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div>
-          <div class="field"><label>Finale 3° posto</label><select id="setupBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div>
-          <div class="field"><label>Inizio torneo</label><input id="setupStartTime" type="time" value="00:00" disabled><small>La sequenza delle partite parte a mezzanotte e prosegue fino alla fine.</small></div><div class="field"><label>Tempi</label><input value="2 tempi" disabled><small>Modalità arbitro ottimizzata per 1° tempo, intervallo e 2° tempo.</small></div><div class="field"><label>Durata totale di gioco / partita (min)</label><input id="setupMinutes" type="number" min="2" max="120" value="${s.matchMinutes}"><small>Esclude la pausa tra 1° e 2° tempo.</small></div>
-          <div class="field"><label>Pausa tra 1° e 2° tempo (min)</label><input id="setupHalftime" type="number" min="0" max="30" value="${s.halftimeMinutes}"></div>
-          <div class="field"><label>Tempo tra due partite (min)</label><input id="setupChange" type="number" min="0" max="60" value="${s.changeMinutes}"></div>
+        <div class="setup-sections">
+          <section class="setup-section"><div class="setup-section-head"><span class="setup-step-number">1</span><div><h2>Identità</h2><p>Come apparirà il torneo.</p></div></div><div class="form-grid">
+            <div class="field"><label>Nome torneo</label><input id="setupName" maxlength="80" value="${esc(s.name)}" placeholder="Es. Copparì"></div>
+            <div class="field"><label>Edizione</label><input id="setupEdition" maxlength="80" value="${esc(s.edition)}" placeholder="Es. Estate 2026"></div>
+            <div class="field"><label>Luogo <span aria-hidden="true">·</span> facoltativo</label><input id="setupVenue" maxlength="120" value="${esc(s.venue||'')}" placeholder="Centro sportivo / campo"></div>
+            <div class="field"><label>Gestore <span aria-hidden="true">·</span> facoltativo</label><input id="setupOrganizer" maxlength="120" value="${esc(s.organizer||'')}" placeholder="Nome del responsabile"></div>
+          </div></section>
+          <section class="setup-section"><div class="setup-section-head"><span class="setup-step-number">2</span><div><h2>Squadre</h2><p>Numeri compatibili e rose uguali.</p></div></div><div class="form-grid">
+            <div class="field"><label>Partecipanti</label><input id="setupPlayers" type="number" min="10" max="200" value="${s.targetPlayers}"></div>
+            <div class="field"><label>Giocatori per rosa</label><input id="setupRoster" type="number" min="5" max="20" value="${s.rosterSize}"></div>
+          </div></section>
+          <section class="setup-section"><div class="setup-section-head"><span class="setup-step-number">3</span><div><h2>Formula</h2><p>Girone e fase finale.</p></div></div><div class="form-grid">
+            <div class="field"><label>Formula torneo</label><select id="setupFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Campionato + Finale</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div>
+            <div class="field"><label>Girone <span aria-hidden="true">·</span> se previsto</label><select id="setupMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div>
+            <div class="field"><label>Finale 3° posto</label><select id="setupBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div>
+          </div></section>
+          <section class="setup-section"><div class="setup-section-head"><span class="setup-step-number">4</span><div><h2>Tempi</h2><p>Durata e ritmo della serata.</p></div></div><div class="form-grid">
+            <div class="field"><label>Inizio torneo</label><input id="setupStartTime" type="time" value="00:00" disabled><small>Sequenza continua da mezzanotte.</small></div>
+            <div class="field"><label>Tempi</label><input value="2 tempi" disabled><small>1° tempo, intervallo, 2° tempo.</small></div>
+            <div class="field"><label>Gioco per partita <span aria-hidden="true">·</span> min</label><input id="setupMinutes" type="number" min="2" max="120" value="${s.matchMinutes}"></div>
+            <div class="field"><label>Intervallo <span aria-hidden="true">·</span> min</label><input id="setupHalftime" type="number" min="0" max="30" value="${s.halftimeMinutes}"></div>
+            <div class="field"><label>Cambio partita <span aria-hidden="true">·</span> min</label><input id="setupChange" type="number" min="0" max="60" value="${s.changeMinutes}"></div>
+          </div></section>
         </div>
         <div id="setupPreview" class="setup-preview"></div>
         <p class="note"><strong>Regola fissa:</strong> tutte le squadre devono avere esattamente lo stesso numero di giocatori. La configurazione può essere creata solo quando N° partecipanti è divisibile per N° giocatori per rosa.</p>
@@ -1618,16 +1879,16 @@ function renderHome(){
   const s=standings();
   const action=managerNextAction(),goals=playedMatches().reduce((sum,m)=>sum+(+m.homeScore||0)+(+m.awayScore||0),0),snap=latestSnapshot();
   view.innerHTML=`
-    <div class="card manager-hero"><div class="kicker">${esc(state.settings.edition)} · inizio ${esc(state.settings.startTime||'00:00')}${state.settings.venue?` · ${esc(state.settings.venue)}`:''}</div><h2>${esc(state.settings.name)}</h2><div class="note">${played} concluse · ${Math.max(0,totalExpected-played)} da giocare${state.settings.organizer?` · gestore ${esc(state.settings.organizer)}`:''}</div><div class="progress-track" style="margin-top:14px;background:#2b4735"><div class="progress-fill" style="width:${progress}%;background:var(--brand-2)"></div></div><div class="manager-hero-actions"><button class="secondary" id="heroGuide">? Guida gestore</button><button class="ghost" style="color:white;border-color:#52705c" id="heroBackup">↓ Esporta backup</button></div></div>
+    <div class="card manager-hero"><div class="manager-hero-summary"><div class="kicker">${esc(state.settings.edition)} · inizio ${esc(state.settings.startTime||'00:00')}${state.settings.venue?` · ${esc(state.settings.venue)}`:''}</div><h2>${esc(state.settings.name)}</h2><div class="note">${played} concluse · ${Math.max(0,totalExpected-played)} da giocare${state.settings.organizer?` · gestore ${esc(state.settings.organizer)}`:''}</div><div class="progress-track" style="margin-top:11px;background:#2b4735" aria-label="Avanzamento torneo: ${progress}%"><div class="progress-fill" style="width:${progress}%;background:var(--brand-2)"></div></div></div><div class="manager-hero-actions"><button class="secondary" id="heroGuide">? Guida</button><button class="ghost" style="color:white;border-color:#52705c" id="heroBackup">↓ Backup</button></div></div>
     ${installBannerHtml()}
     ${liveShareCardHtml()}
-    <div class="grid cols-4" style="margin-top:16px">${metric('Partecipanti',`${activePlayers().length}/${state.settings.targetPlayers}`,'attivi')}${metric('Squadre',`${state.teams.length}/${state.settings.teamCount}`,`${state.settings.rosterSize} per rosa`)}${metric('Partite',`${played}/${Math.max(state.matches.length,totalExpected)}`,'concluse')}${metric('Gol',goals,'registrati')}</div>
+    <div class="grid cols-4 metric-grid" style="margin-top:10px">${metric('Partecipanti',`${activePlayers().length}/${state.settings.targetPlayers}`,'attivi')}${metric('Squadre',`${state.teams.length}/${state.settings.teamCount}`,`${state.settings.rosterSize} per rosa`)}${metric('Partite',`${played}/${Math.max(state.matches.length,totalExpected)}`,'concluse')}${metric('Gol',goals,'registrati')}</div>
     <div class="control-grid">
       <div class="card soft"><div class="kicker">Prossimo passo consigliato</div><div class="next-action" style="margin-top:12px"><span class="next-action-icon">${action.icon}</span><div><strong>${esc(action.title)}</strong><p>${esc(action.text)}</p></div><button class="primary" id="nextActionBtn">${esc(action.label)}</button></div>${snap?`<div class="notice info" style="margin-top:14px"><span>↶</span><span><strong>Rete di sicurezza attiva.</strong> Ultimo punto di ripristino: ${esc(snap.label)}.</span><button class="ghost" id="quickUndo">Ripristina</button></div>`:''}</div>
       <div class="card"><div class="section-head"><h3>Controllo serata</h3><span class="badge">${progress}%</span></div>${managerChecklistHtml()}</div>
     </div>
     ${next?renderNextMatchCard(next):state.matches.length?`<div class="card" style="margin-top:16px;text-align:center"><h2>🏆 ${state.settings.playoffs?'Torneo completato':'Girone completato'}</h2><p class="note">Non ci sono altre partite programmate.</p></div>`:`<div class="card" style="margin-top:16px;text-align:center"><h2>La serata parte da qui</h2><p class="note">Completa partecipanti e squadre, poi genera il calendario. La cabina di regia ti indicherà sempre il prossimo passo.</p><button class="secondary" id="emptyStartPlayers">Inserisci partecipanti</button></div>`}
-    <div class="grid cols-2" style="margin-top:16px">
+    <div class="grid cols-2 public-section-grid">
       <div class="card"><h3>Classifica live</h3>${s.length?`<div class="leaderboard">${s.slice(0,Math.min(6,s.length)).map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">La classifica apparirà dopo la creazione delle squadre.</div>'}</div>
       <div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}${state.settings.playoffs?'<div style="margin-top:12px"><button class="ghost full" id="syncKo">Aggiorna fase finale</button></div>':''}</div>
     </div>`;
@@ -1660,12 +1921,12 @@ function renderKnockoutSummary(){
 
 function renderPlayers(){
   setHeader('Partecipanti',`${state.settings.name} · previsti ${state.settings.targetPlayers}`);
-  const rows=state.players.map(p=>{const history=playerProfileSummary(archiveProfileForPlayer(p,false)),summary=history.matches?`${history.matches} pres. · ${history.goals} gol · ${history.assists} assist${history.average?` · media ${history.average.toLocaleString('it-IT',{maximumFractionDigits:1})}`:''}`:'Prima edizione';return `<tr data-player-row data-search="${esc(`${p.name} ${roleLabel(p.role)} ${teamById(p.teamId)?.name||''}`.toLowerCase())}"><td><strong>${esc(p.name)}</strong></td><td>${roleLabel(p.role)}</td><td><span aria-label="Livello ${p.rating} su 5">${'★'.repeat(p.rating)}${'☆'.repeat(5-p.rating)}</span></td><td>${esc(teamById(p.teamId)?.name || '—')}</td><td><span class="note">${esc(summary)}</span></td><td>${p.active===false?'<span class="badge red">Non attivo</span>':'<span class="badge green">Attivo</span>'}</td><td><button class="ghost" data-edit-player="${p.id}">Gestisci</button></td></tr>`;}).join('');
+  const rows=state.players.map(p=>{const history=playerProfileSummary(archiveProfileForPlayer(p,false)),summary=history.matches?`${history.matches} pres. · ${history.goals} gol · ${history.assists} assist${history.average?` · media ${history.average.toLocaleString('it-IT',{maximumFractionDigits:1})}`:''}`:'Prima edizione',team=teamById(p.teamId)?.name||'Senza squadra';return `<tr data-player-row data-search="${esc(`${p.name} ${roleLabel(p.role)} ${team}`.toLowerCase())}"><td><strong>${esc(p.name)}</strong><span class="mobile-row-meta">${esc(roleLabel(p.role))} · ${esc(team)}</span><span class="mobile-row-note">${esc(summary)}</span></td><td>${esc(roleLabel(p.role))}</td><td><span class="player-rating" aria-label="Livello ${p.rating} su 5">${'★'.repeat(p.rating)}${'☆'.repeat(5-p.rating)}</span></td><td>${esc(teamById(p.teamId)?.name || '—')}</td><td><span class="note">${esc(summary)}</span></td><td>${p.active===false?'<span class="badge red">Non attivo</span>':'<span class="badge green">Attivo</span>'}</td><td><button class="ghost" data-edit-player="${p.id}">Gestisci</button></td></tr>`;}).join('');
   const count=activePlayers().length;
   view.innerHTML=`
     <div class="section-head"><h2>Partecipanti <span class="badge ${count===state.settings.targetPlayers?'green':count>state.settings.targetPlayers?'red':'yellow'}">${count}/${state.settings.targetPlayers}</span></h2><div class="actions"><button class="secondary" id="bulkPlayers">Incolla lista</button><button class="primary" id="addPlayerBtn">+ Aggiungi</button></div></div>
     ${count!==state.settings.targetPlayers?`<div class="notice ${count>state.settings.targetPlayers?'danger':'warn'}" style="margin-bottom:14px"><span>${count>state.settings.targetPlayers?'!':'i'}</span><span>${count<state.settings.targetPlayers?`Mancano <strong>${state.settings.targetPlayers-count}</strong> partecipanti attivi prima di generare le squadre.`:`Ci sono <strong>${count-state.settings.targetPlayers}</strong> partecipanti attivi in più rispetto alla configurazione. Puoi disattivarli o aggiornare le impostazioni.`}</span></div>`:''}
-    ${rows?`<div class="search-row"><label class="sr-only" for="playerSearch">Cerca partecipante</label><input id="playerSearch" type="search" placeholder="Cerca nome, ruolo o squadra…" autocomplete="off"><button class="ghost" id="clearPlayerSearch">Azzera filtro</button></div><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Ruolo</th><th>Livello</th><th>Squadra</th><th>Storico</th><th>Stato</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><div class="note" id="playerSearchCount" style="margin-top:9px">${state.players.length} partecipanti visualizzati</div>`:`<div class="empty"><strong>Nessun partecipante inserito</strong>Usa “Incolla lista” per aggiungere rapidamente tutti i ${state.settings.targetPlayers} partecipanti, un nome per riga.<br><br><button class="secondary" id="emptyBulk">Incolla lista partecipanti</button></div>`}
+    ${rows?`<div class="search-row"><label class="sr-only" for="playerSearch">Cerca partecipante</label><input id="playerSearch" type="search" placeholder="Cerca nome, ruolo o squadra…" autocomplete="off"><button class="ghost" id="clearPlayerSearch">Azzera</button></div><div class="table-wrap"><table class="participants-table"><thead><tr><th>Nome</th><th>Ruolo</th><th>Livello</th><th>Squadra</th><th>Storico</th><th>Stato</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><div class="note" id="playerSearchCount" style="margin-top:7px">${state.players.length} partecipanti visualizzati</div>`:`<div class="empty"><strong>Nessun partecipante inserito</strong>Usa “Incolla lista” per aggiungere rapidamente tutti i ${state.settings.targetPlayers} partecipanti, un nome per riga.<br><br><button class="secondary" id="emptyBulk">Incolla lista partecipanti</button></div>`}
   `;
   document.getElementById('addPlayerBtn')?.addEventListener('click',()=>openPlayerModal());
   document.getElementById('bulkPlayers')?.addEventListener('click',openBulkPlayersModal);
@@ -1801,7 +2062,7 @@ function renderCalendar(){
   const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?'Sequenza continua dalle 00:00':m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
   const ordered=[...Object.entries(groups)];
   const ko=knockoutGamesExpected();
-  view.innerHTML=`<div class="section-head"><h2>Partite <span class="badge">${state.matches.length}</span></h2><div class="actions">${state.settings.playoffs?'<button class="ghost" id="syncPlayoffs">Aggiorna playoff</button>':''}${state.teams.length>=2?'<button class="ghost" id="addMatch">+ Partita manuale</button>':''}${state.matches.length?'<button class="danger-outline" id="deleteCalendar">Cancella calendario</button>':''}<button class="secondary" id="genCalendar">${state.matches.length?'Genera variante':'Genera calendario'}</button></div></div><div class="schedule-summary"><span class="status-chip">${groupGamesExpected()} partite di girone</span><span class="status-chip">inizio 00:00</span><span class="status-chip">ordine variabile</span><span class="status-chip">fine stimata ${clockAdd('00:00',estimatedTournamentMinutes())}</span><span class="status-chip">${formatMode()}</span>${ko?`<span class="status-chip">${ko} playoff</span>`:'<span class="status-chip">vince la classifica</span>'}</div>${ordered.length?ordered.map(([label,matches])=>`<div class="round-block"><div class="round-title">${label}</div><div class="match-list">${matches.map(matchRow).join('')}</div></div>`).join(''):`<div class="empty"><strong>Calendario non ancora generato</strong>Servono ${state.settings.teamCount} squadre. Verranno create ${groupGamesExpected()} partite consecutive a partire dalle 00:00.</div>`}`;
+  view.innerHTML=`<div class="section-head"><h2>Partite <span class="badge">${state.matches.length}</span></h2><div class="actions"><button class="secondary" id="genCalendar">${state.matches.length?'Genera variante':'Genera calendario'}</button>${state.settings.playoffs?'<button class="ghost" id="syncPlayoffs">Aggiorna playoff</button>':''}${state.teams.length>=2?'<button class="ghost" id="addMatch">+ Partita manuale</button>':''}${state.matches.length?'<button class="danger-outline" id="deleteCalendar">Cancella calendario</button>':''}</div></div><div class="schedule-summary"><span class="status-chip">${groupGamesExpected()} partite di girone</span><span class="status-chip">inizio 00:00</span><span class="status-chip">ordine variabile</span><span class="status-chip">fine stimata ${clockAdd('00:00',estimatedTournamentMinutes())}</span><span class="status-chip">${formatMode()}</span>${ko?`<span class="status-chip">${ko} playoff</span>`:'<span class="status-chip">vince la classifica</span>'}</div>${ordered.length?ordered.map(([label,matches])=>`<div class="round-block"><div class="round-title">${label}</div><div class="match-list">${matches.map(matchRow).join('')}</div></div>`).join(''):`<div class="empty"><strong>Calendario non ancora generato</strong>Servono ${state.settings.teamCount} squadre. Verranno create ${groupGamesExpected()} partite consecutive a partire dalle 00:00.</div>`}`;
   document.getElementById('genCalendar').onclick=generateCalendar;
   document.getElementById('deleteCalendar')?.addEventListener('click',deleteCalendar);
   document.getElementById('addMatch')?.addEventListener('click',openCreateMatchModal);
@@ -1810,7 +2071,7 @@ function renderCalendar(){
   view.querySelectorAll('[data-ref-match]').forEach(b=>b.onclick=()=>openRefereeMode(b.dataset.refMatch));
   view.querySelectorAll('[data-ratings-match]').forEach(b=>b.onclick=()=>openRatingsModal(b.dataset.ratingsMatch));
 }
-function matchRow(m){const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live';const pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';return `<div class="match"><div class="stage-label">${stageLabel(m)} · ${esc(matchDisplayTime(m))}${live?' · ● IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div><div class="match-actions"><button class="primary" data-ref-match="${m.id}">${played?'Apri referto':live?'Riprendi arbitro':'Avvia arbitro'}</button>${played?`<button class="secondary" data-ratings-match="${m.id}">Copparigelle${m.ratingsPublished?' ✓':''}</button>`:''}<button class="ghost" data-edit-match="${m.id}">Gestisci</button></div></div>`;}
+function matchRow(m){const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live';const pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';return `<div class="match ${live?'is-live':played?'is-played':'is-scheduled'}"><div class="stage-label"><span class="match-status-dot" aria-hidden="true"></span>${esc(stageLabel(m))} · ${esc(matchDisplayTime(m))}${live?' · IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div><div class="match-actions"><button class="primary" data-ref-match="${m.id}">${played?'Apri referto':live?'Riprendi':'Avvia arbitro'}</button>${played?`<button class="secondary" data-ratings-match="${m.id}">Copparigelle${m.ratingsPublished?' ✓':''}</button>`:''}<button class="ghost" data-edit-match="${m.id}">Gestisci</button></div></div>`;}
 function openCreateMatchModal(){
   if(state.teams.length<2)return toast('Servono almeno due squadre');
   const options=state.teams.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
@@ -2120,7 +2381,16 @@ function setMatchMvp(m,playerId){
 function refereeRosterHtml(m,team,readOnly=false){
   const dis=readOnly?'disabled':'';
   const cards=state.settings.cardsEnabled!==false;
-  return `<div class="ref-team"><div class="ref-team-title"><span>${esc(team.name)}</span><strong>${team.id===m.homeTeamId?(m.homeScore??0):(m.awayScore??0)}</strong></div><button class="ghost full ref-team-goal" data-ref-event="teamgoal" data-team="${team.id}" data-action-label="gol squadra ${esc(team.name)}" aria-label="Gol squadra o autorete per ${esc(team.name)}" ${dis}>+ Gol squadra / autorete</button><div class="ref-roster">${teamPlayers(team.id).map(p=>`<div class="ref-player ${cards?'':'cards-off'}"><div class="grow"><strong>${esc(p.name)}</strong><span>${roleLabel(p.role)}</span></div><button title="Gol · ${esc(p.name)}" aria-label="Gol di ${esc(p.name)}" data-action-label="gol di ${esc(p.name)}" data-ref-event="goal" data-team="${team.id}" data-player="${p.id}" ${dis}>⚽</button><button title="Assist · ${esc(p.name)}" aria-label="Assist di ${esc(p.name)}" data-action-label="assist di ${esc(p.name)}" data-ref-event="assist" data-team="${team.id}" data-player="${p.id}" ${dis}>🎯</button><button title="Fallo · ${esc(p.name)}" aria-label="Fallo di ${esc(p.name)}" data-action-label="fallo di ${esc(p.name)}" data-ref-event="foul" data-team="${team.id}" data-player="${p.id}" ${dis}>⚠️</button>${cards?`<button title="Giallo · ${esc(p.name)}" aria-label="Ammonizione a ${esc(p.name)}" data-action-label="giallo a ${esc(p.name)}" data-ref-event="yellow" data-team="${team.id}" data-player="${p.id}" ${dis}>🟨</button><button title="Rosso · ${esc(p.name)}" aria-label="Espulsione di ${esc(p.name)}" data-action-label="rosso a ${esc(p.name)}" data-ref-event="red" data-team="${team.id}" data-player="${p.id}" ${dis}>🟥</button>`:''}</div>`).join('')}</div></div>`;
+  return `<div class="ref-team" style="--team-color:${safeColor(team.color,'#d7f176')}"><div class="ref-team-title"><span>${esc(team.name)}</span><strong>${team.id===m.homeTeamId?(m.homeScore??0):(m.awayScore??0)}</strong></div><button class="ghost full ref-team-goal" data-ref-event="teamgoal" data-team="${team.id}" data-action-label="gol squadra ${esc(team.name)}" aria-label="Gol squadra o autorete per ${esc(team.name)}" ${dis}>+ Gol squadra / autorete</button><div class="ref-roster">${teamPlayers(team.id).map(p=>`<div class="ref-player ${cards?'':'cards-off'}"><div class="grow"><strong>${esc(p.name)}</strong><span>${roleLabel(p.role)}</span></div><button title="Gol · ${esc(p.name)}" aria-label="Gol di ${esc(p.name)}" data-action-label="gol di ${esc(p.name)}" data-ref-event="goal" data-team="${team.id}" data-player="${p.id}" ${dis}>⚽</button><button title="Assist · ${esc(p.name)}" aria-label="Assist di ${esc(p.name)}" data-action-label="assist di ${esc(p.name)}" data-ref-event="assist" data-team="${team.id}" data-player="${p.id}" ${dis}>🎯</button><button title="Fallo · ${esc(p.name)}" aria-label="Fallo di ${esc(p.name)}" data-action-label="fallo di ${esc(p.name)}" data-ref-event="foul" data-team="${team.id}" data-player="${p.id}" ${dis}>⚠️</button>${cards?`<button title="Giallo · ${esc(p.name)}" aria-label="Ammonizione a ${esc(p.name)}" data-action-label="giallo a ${esc(p.name)}" data-ref-event="yellow" data-team="${team.id}" data-player="${p.id}" ${dis}>🟨</button><button title="Rosso · ${esc(p.name)}" aria-label="Espulsione di ${esc(p.name)}" data-action-label="rosso a ${esc(p.name)}" data-ref-event="red" data-team="${team.id}" data-player="${p.id}" ${dis}>🟥</button>`:''}</div>`).join('')}</div></div>`;
+}
+function bindRefTeamSwitcher(){
+  const layout=modal.querySelector('[data-ref-team-layout]'),buttons=[...modal.querySelectorAll('[data-ref-team-jump]')],panels=[...modal.querySelectorAll('[data-ref-team-panel]')];
+  if(!layout||!buttons.length||!panels.length)return;
+  const setActive=teamId=>{activeRefereeTeamId=teamId;buttons.forEach(button=>{const active=button.dataset.refTeamJump===teamId;button.classList.toggle('active',active);button.setAttribute('aria-selected',String(active));});};
+  const moveTo=teamId=>{const panel=panels.find(item=>item.dataset.refTeamPanel===teamId);if(!panel)return;setActive(teamId);layout.scrollTo({left:panel.offsetLeft-layout.offsetLeft,behavior:'smooth'});};
+  buttons.forEach(button=>button.addEventListener('click',()=>moveTo(button.dataset.refTeamJump)));
+  let frame=0;layout.addEventListener('scroll',()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{const center=layout.scrollLeft+layout.clientWidth/2,panel=panels.reduce((best,item)=>Math.abs((item.offsetLeft-layout.offsetLeft)+item.offsetWidth/2-center)<Math.abs((best.offsetLeft-layout.offsetLeft)+best.offsetWidth/2-center)?item:best,panels[0]);if(panel)setActive(panel.dataset.refTeamPanel);});},{passive:true});
+  requestAnimationFrame(()=>{const panel=panels.find(item=>item.dataset.refTeamPanel===activeRefereeTeamId)||panels[0];layout.scrollLeft=panel.offsetLeft-layout.offsetLeft;setActive(panel.dataset.refTeamPanel);});
 }
 function refereeEventLog(m,readOnly=false){
   const events=[...(m.events||[])].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
@@ -2155,6 +2425,7 @@ function renderRefereeMode(id){
   stopRefereeTicker();
   const m=state.matches.find(x=>x.id===id);if(!m)return closeModal();const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId);if(!h||!a)return toast('Squadre non disponibili');
   const r=ensureReferee(m),ko=isKnockoutMatch(m),readOnly=m.status==='played',allPlayers=[...teamPlayers(h.id),...teamPlayers(a.id)];
+  if(![h.id,a.id].includes(activeRefereeTeamId))activeRefereeTeamId=h.id;
   activeRefereeMatchId=id;requestRefereeWakeLock();document.body.classList.add('modal-open');modalBackdrop.setAttribute('aria-hidden','false');
   modalBackdrop.classList.add('referee-mode');modal.classList.add('referee-modal');modalBackdrop.classList.remove('hidden');
   const phaseButtons=r.phase==='not_started'?'<button class="primary" data-ref-phase="first" data-action-label="avvia il primo tempo">▶ Avvia 1° tempo</button>':r.phase==='first'?'<button class="secondary" data-ref-phase="halftime" data-action-label="termina il primo tempo">⏸ Fine 1° tempo</button>':r.phase==='halftime'?'<button class="primary" data-ref-phase="second" data-action-label="avvia il secondo tempo">▶ Avvia 2° tempo</button>':r.phase==='second'?'<button class="secondary" id="prepareEnd" data-action-label="chiudi il secondo tempo">⏹ Fine 2° tempo</button>':!readOnly?'<span class="badge green">Tempo di gioco concluso</span><button class="ghost" id="resumeSecond" data-action-label="riprendi il secondo tempo">↶ Riprendi 2° tempo</button>':'<span class="badge green">Partita terminata</span>';
@@ -2162,15 +2433,27 @@ function renderRefereeMode(id){
   const target=phaseTargetSeconds(r.phase),targetLabel=target?humanDuration(target/60):'—';
   const fullscreenControl=typeof modalBackdrop.requestFullscreen==='function'?'<button class="ghost icon-btn" id="refFullscreen" title="Schermo intero" aria-label="Attiva schermo intero">⛶</button>':isIOSDevice()?'<button class="ghost icon-btn" id="refIOSHelp" title="Uso a schermo intero su iPhone" aria-label="Istruzioni iPhone">⌂</button>':'';
   const canReset=m.status!=='scheduled';
-  modal.innerHTML=`<div class="ref-head"><button class="ghost" id="exitReferee">← Esci</button><div class="ref-stage">${stageLabel(m)}</div><div class="ref-head-actions"><button class="ghost icon-btn" id="refHelp" title="Guida arbitro" aria-label="Apri guida arbitro">?</button>${fullscreenControl}<span class="phase-badge ${ko?'ko':''}">${phaseLabel(r.phase)}</span></div></div><div class="ref-scoreboard"><div>${esc(h.name)}</div><strong>${refScore(m)}</strong><div>${esc(a.name)}</div></div><div class="ref-live-strip">${!readOnly?'<span class="live-dot"></span><span>Referto salvato automaticamente</span>':'<span>Referto definitivo · sola lettura</span>'}</div><div class="ref-timer"><span id="refClock">00:00</span><small id="refPhaseText">${phaseLabel(r.phase)}${target?` · obiettivo ${targetLabel}`:''}</small><div class="ref-progress" ${target?'':'hidden'}><i id="refProgress"></i></div></div>${!readOnly?`<div class="ref-guard-bar ${state.settings.touchGuard?'':'off'}"><span>${state.settings.touchGuard?'🔒':'⚠'}</span><span id="refGuardStatus">${state.settings.touchGuard?'Tocca due volte lo stesso comando per confermare':'Comandi a tocco singolo'}</span><button class="ghost ref-guard-toggle" id="toggleTouchGuard">${state.settings.touchGuard?'Disattiva':'Attiva'} protezione</button></div>`:''}<div class="ref-phase-actions">${phaseButtons}${['first','halftime','second'].includes(r.phase)?`<button class="ghost" id="toggleRefClock" data-action-label="${r.phaseStartedAt?'metti in pausa il timer':'riprendi il timer'}">${r.phaseStartedAt?'⏸ Pausa timer':'▶ Riprendi timer'}</button>`:''}</div><div class="ref-layout"><div>${refereeRosterHtml(m,h,readOnly)}</div><div>${refereeRosterHtml(m,a,readOnly)}</div></div><div class="ref-bottom-grid"><div class="card ref-log-card"><div class="section-head"><h3>Registro eventi</h3><span class="badge">${(m.events||[]).length}</span></div>${refereeEventLog(m,readOnly)}</div><div class="card"><h3>Chiusura partita</h3><div class="field"><label>MVP</label><select id="refMvp" ${readOnly?'disabled':''}><option value="">— Nessuno —</option>${allPlayers.map(p=>`<option value="${p.id}" ${m.mvpPlayerId===p.id?'selected':''}>${esc(p.name)} · ${esc(teamById(p.teamId)?.name||'')}</option>`).join('')}</select></div>${penHtml}<p class="note">La classifica si aggiorna soltanto dopo la chiusura definitiva.</p><button class="primary full" id="finishMatch" data-action-label="termina definitivamente la partita" ${m.status==='played'||r.phase!=='ended'?'disabled':''}>✓ Termina e aggiorna classifica</button><button class="ghost full" style="margin-top:8px" id="manualSheet">Tabellino manuale</button>${canReset?'<button class="danger-outline full" style="margin-top:8px" id="resetRefereeMatch">↺ Azzera partita</button>':''}</div></div>`;
+  modal.innerHTML=`
+    <div class="ref-head"><button class="ghost" id="exitReferee">← Esci</button><div class="ref-stage">${esc(stageLabel(m))}</div><div class="ref-head-actions"><button class="ghost icon-btn" id="refHelp" title="Guida arbitro" aria-label="Apri guida arbitro">?</button>${fullscreenControl}<span class="phase-badge ${ko?'ko':''}">${esc(phaseLabel(r.phase))}</span></div></div>
+    <div class="ref-control-deck">
+      <div class="ref-scoreboard"><div>${esc(h.name)}</div><strong>${refScore(m)}</strong><div>${esc(a.name)}</div></div>
+      <div class="ref-live-strip">${!readOnly?'<span class="live-dot"></span><span>Referto salvato automaticamente</span>':'<span>Referto definitivo · sola lettura</span>'}</div>
+      <div class="ref-timer"><span id="refClock">00:00</span><small id="refPhaseText">${esc(phaseLabel(r.phase))}${target?` · obiettivo ${targetLabel}`:''}</small><div class="ref-progress" ${target?'':'hidden'}><i id="refProgress"></i></div></div>
+      ${!readOnly?`<div class="ref-guard-bar ${state.settings.touchGuard?'':'off'}"><span>${state.settings.touchGuard?'🔒':'⚠'}</span><span id="refGuardStatus">${state.settings.touchGuard?'Doppio tocco per confermare':'Comandi a tocco singolo'}</span><button class="ghost ref-guard-toggle" id="toggleTouchGuard">${state.settings.touchGuard?'Disattiva':'Attiva'}</button></div>`:''}
+      <div class="ref-phase-actions">${phaseButtons}${['first','halftime','second'].includes(r.phase)?`<button class="ghost" id="toggleRefClock" data-action-label="${r.phaseStartedAt?'metti in pausa il timer':'riprendi il timer'}">${r.phaseStartedAt?'⏸ Pausa timer':'▶ Riprendi timer'}</button>`:''}</div>
+    </div>
+    <div class="ref-team-switch" role="tablist" aria-label="Scegli squadra"><button class="${activeRefereeTeamId===h.id?'active':''}" data-ref-team-jump="${h.id}" role="tab" aria-selected="${activeRefereeTeamId===h.id}">${esc(h.name)}</button><button class="${activeRefereeTeamId===a.id?'active':''}" data-ref-team-jump="${a.id}" role="tab" aria-selected="${activeRefereeTeamId===a.id}">${esc(a.name)}</button></div>
+    <div class="ref-layout" data-ref-team-layout><div class="ref-team-panel" data-ref-team-panel="${h.id}">${refereeRosterHtml(m,h,readOnly)}</div><div class="ref-team-panel" data-ref-team-panel="${a.id}">${refereeRosterHtml(m,a,readOnly)}</div></div>
+    <div class="ref-bottom-grid"><div class="card ref-log-card"><div class="section-head"><h3>Registro eventi</h3><span class="badge">${(m.events||[]).length}</span></div>${refereeEventLog(m,readOnly)}</div><div class="card"><h3>Chiusura partita</h3><div class="field"><label>MVP</label><select id="refMvp" ${readOnly?'disabled':''}><option value="">— Nessuno —</option>${allPlayers.map(p=>`<option value="${p.id}" ${m.mvpPlayerId===p.id?'selected':''}>${esc(p.name)} · ${esc(teamById(p.teamId)?.name||'')}</option>`).join('')}</select></div>${penHtml}<p class="note">La classifica si aggiorna soltanto dopo la chiusura definitiva.</p><button class="primary full" id="finishMatch" data-action-label="termina definitivamente la partita" ${m.status==='played'||r.phase!=='ended'?'disabled':''}>✓ Termina e aggiorna classifica</button><button class="ghost full" style="margin-top:8px" id="manualSheet">Tabellino manuale</button>${canReset?'<button class="danger-outline full" style="margin-top:8px" id="resetRefereeMatch">↺ Azzera partita</button>':''}</div></div>`;
   if(liveRole==='referee'){document.getElementById('toggleTouchGuard')?.remove();document.getElementById('manualSheet')?.remove();}
+  bindRefTeamSwitcher();
   document.getElementById('exitReferee').onclick=()=>closeModal();
   document.getElementById('refHelp').onclick=()=>openRefereeQuickGuide();
   document.getElementById('refFullscreen')?.addEventListener('click',()=>{const targetEl=modalBackdrop;if(!document.fullscreenElement)targetEl.requestFullscreen().catch(()=>toast('Schermo intero non disponibile'));else document.exitFullscreen?.();});
   document.getElementById('refIOSHelp')?.addEventListener('click',openRefereeQuickGuide);
   document.getElementById('toggleTouchGuard')?.addEventListener('click',()=>{if(liveRole==='referee')return toast('La protezione tocchi è impostata dal gestore');if(state.settings.touchGuard&&!confirm('Disattivare la protezione? Ogni comando verrà registrato con un solo tocco.'))return;state.settings.touchGuard=!state.settings.touchGuard;save();renderRefereeMode(m.id);toast(state.settings.touchGuard?'Protezione tocchi attivata':'Protezione tocchi disattivata');});
   modal.querySelectorAll('[data-ref-phase]').forEach(b=>b.onclick=()=>guardedRefAction(b,`phase-${b.dataset.refPhase}`,b.dataset.actionLabel,()=>setRefPhase(m,b.dataset.refPhase)));
-  modal.querySelectorAll('[data-ref-event]').forEach(b=>b.onclick=()=>guardedRefAction(b,`event-${b.dataset.refEvent}-${b.dataset.team}-${b.dataset.player||''}`,b.dataset.actionLabel,()=>addRefEvent(m.id,b.dataset.refEvent,b.dataset.team,b.dataset.player||null)));
+  modal.querySelectorAll('[data-ref-event]').forEach(b=>b.onclick=()=>{activeRefereeTeamId=b.dataset.team;guardedRefAction(b,`event-${b.dataset.refEvent}-${b.dataset.team}-${b.dataset.player||''}`,b.dataset.actionLabel,()=>addRefEvent(m.id,b.dataset.refEvent,b.dataset.team,b.dataset.player||null));});
   modal.querySelectorAll('[data-undo-event]').forEach(b=>b.onclick=()=>guardedRefAction(b,`undo-${b.dataset.undoEvent}`,b.dataset.actionLabel,()=>undoRefEvent(m.id,b.dataset.undoEvent)));
   document.getElementById('prepareEnd')?.addEventListener('click',e=>guardedRefAction(e.currentTarget,'phase-ended',e.currentTarget.dataset.actionLabel,()=>setRefPhase(m,'ended')));
   document.getElementById('resumeSecond')?.addEventListener('click',e=>guardedRefAction(e.currentTarget,'phase-resume-second',e.currentTarget.dataset.actionLabel,()=>setRefPhase(m,'second')));
@@ -2308,7 +2591,7 @@ function standings(){
 function renderStandings(){
   setHeader('Classifica','Girone: punti → scontri diretti → differenza reti → gol fatti');
   const s=standings(), complete=groupComplete(), q=qualifiedCount();
-  view.innerHTML=s.length?`<div class="table-wrap"><table><thead><tr><th>#</th><th>Squadra</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>Pt</th></tr></thead><tbody>${s.map((x,i)=>`<tr><td><span class="rank">${i+1}</span></td><td><strong>${esc(x.team.name)}</strong>${complete&&state.settings.playoffs&&i<q?' <span class="badge green">Qualificata</span>':''}${complete&&!state.settings.playoffs&&i===0?' <span class="badge green">Vincitore</span>':''}</td><td>${x.pg}</td><td>${x.w}</td><td>${x.d}</td><td>${x.l}</td><td>${x.gf}</td><td>${x.ga}</td><td>${x.gd>0?'+':''}${x.gd}</td><td><strong>${x.pts}</strong></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty"><strong>Nessuna squadra</strong>La classifica apparirà qui.</div>';
+  view.innerHTML=s.length?`<div class="section-head"><h2>Classifica live</h2><span class="badge">${s.length} squadre</span></div><div class="schedule-summary"><span class="status-chip">${state.settings.pointsWin} pt vittoria</span><span class="status-chip">${state.settings.pointsDraw} pt pareggio</span>${complete?`<span class="status-chip done">Girone concluso</span>`:groupGamesExpected()?`<span class="status-chip">${playedMatches('group').length}/${groupGamesExpected()} partite</span>`:'<span class="status-chip">Eliminazione diretta</span>'}</div><div class="table-wrap"><table class="standings-table"><thead><tr><th>#</th><th>Squadra</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>Pt</th></tr></thead><tbody>${s.map((x,i)=>`<tr><td><span class="rank">${i+1}</span></td><td><strong>${esc(x.team.name)}</strong>${complete&&state.settings.playoffs&&i<q?' <span class="badge green">Qualificata</span>':''}${complete&&!state.settings.playoffs&&i===0?' <span class="badge green">Vincitore</span>':''}</td><td>${x.pg}</td><td>${x.w}</td><td>${x.d}</td><td>${x.l}</td><td>${x.gf}</td><td>${x.ga}</td><td>${x.gd>0?'+':''}${x.gd}</td><td><strong>${x.pts}</strong></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty"><strong>Nessuna squadra</strong>La classifica apparirà qui.</div>';
 }
 function aggregateStats(){
   const map=new Map(state.players.map(p=>[p.id,{player:p,goals:0,assists:0,fouls:0,yellow:0,red:0,mvp:0}]));
@@ -2403,11 +2686,12 @@ async function copyAwardsText(){
   catch{const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();toast('Premi copiati');}
 }
 function renderStats(){
-  setHeader('Statistiche','Premi, Copparigelle, marcatori, portieri, assist, falli, MVP e disciplina');
+  const role=interfaceRole();
+  setHeader(role==='viewer'?'Premi':'Statistiche',role==='viewer'?'Classifiche individuali e riconoscimenti del torneo':'Premi, Copparigelle, marcatori, portieri, assist, falli, MVP e disciplina');
   const all=aggregateStats(),keepers=goalkeeperStats(),ratings=aggregateRatings();
   const board=(key,label)=>{const arr=[...all].sort((a,b)=>b[key]-a[key]||a.player.name.localeCompare(b.player.name,'it')).filter(x=>x[key]>0).slice(0,10);return `<div class="card"><h3>${label}</h3><div class="leaderboard">${arr.map((x,i)=>`<div class="leader-row"><span class="rank">${i+1}</span><div><strong>${esc(x.player.name)}</strong><span>${esc(teamById(x.player.teamId)?.name||'Senza squadra')}</span></div><div class="leader-value">${x[key]}</div></div>`).join('')||'<div class="empty">Nessun dato ancora</div>'}</div></div>`;};
   const ratingsBoard=`<div class="card"><h3>📝 Copparigelle</h3><div class="leaderboard">${ratings.slice(0,10).map((x,i)=>`<div class="leader-row"><span class="rank">${i+1}</span><div><strong>${esc(x.player.name)}</strong><span>${esc(teamById(x.player.teamId)?.name||'Senza squadra')} · ${x.count} ${x.count===1?'voto':'voti'}</span></div><div class="leader-value">${x.average.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:2})}<small>media</small></div></div>`).join('')||'<div class="empty">Nessuna Copparigella pubblicata</div>'}</div></div>`;
-  view.innerHTML=`${awardsSectionHtml()}<div class="grid cols-2">${ratingsBoard}${board('goals','⚽ Marcatori')}${goalkeeperBoardHtml(keepers)}${board('assists','🎯 Assist')}${board('fouls','⚠️ Falli')}${board('mvp','⭐ MVP')}${board('yellow','🟨 Ammonizioni')}${board('red','🟥 Espulsioni')}</div>`;
+  view.innerHTML=`${awardsSectionHtml()}<div class="grid cols-2 stats-grid">${ratingsBoard}${board('goals','⚽ Marcatori')}${goalkeeperBoardHtml(keepers)}${board('assists','🎯 Assist')}${board('fouls','⚠️ Falli')}${board('mvp','⭐ MVP')}${board('yellow','🟨 Ammonizioni')}${board('red','🟥 Espulsioni')}</div>`;
   document.getElementById('copyAwards')?.addEventListener('click',copyAwardsText);
 }
 
@@ -2461,12 +2745,12 @@ function updateSettingsPreview(){
 function renderSettings(){
   setHeader('Impostazioni','Identità, formula, sicurezza e dati');const s=state.settings,snap=latestSnapshot();
   view.innerHTML=`
-    <div class="grid cols-2">
+    <div class="grid cols-2 settings-grid">
       <div class="card"><div class="kicker">Identità</div><h3>Il tuo torneo</h3><div class="form-grid"><div class="field"><label>Nome torneo</label><input id="setName" maxlength="80" value="${esc(s.name)}"></div><div class="field"><label>Edizione</label><input id="setEdition" maxlength="80" value="${esc(s.edition)}"></div><div class="field"><label>Luogo</label><input id="setVenue" maxlength="120" value="${esc(s.venue||'')}" placeholder="Facoltativo"></div><div class="field"><label>Gestore</label><input id="setOrganizer" maxlength="120" value="${esc(s.organizer||'')}" placeholder="Facoltativo"></div></div></div>
       <div class="card"><div class="kicker">Modalità arbitro e Live</div><h3>Protezione e feedback</h3><div class="form-grid"><div class="field full"><label>Protezione tocchi involontari</label><select id="setTouchGuard"><option value="1" ${s.touchGuard?'selected':''}>Attiva · doppio tocco intenzionale</option><option value="0" ${!s.touchGuard?'selected':''}>Disattiva · tocco singolo</option></select></div><label class="roster-row" style="grid-column:1/-1"><span class="grow"><strong>Cartellini</strong><span class="note">Mostra i comandi giallo e rosso agli arbitri collegati</span></span><input id="setCardsEnabled" type="checkbox" ${s.cardsEnabled!==false?'checked':''}></label><label class="roster-row"><span class="grow"><strong>Vibrazione</strong><span class="note">Conferma eventi e fine tempo, se supportata</span></span><input id="setHaptic" type="checkbox" ${s.hapticFeedback?'checked':''}></label><label class="roster-row"><span class="grow"><strong>Suono</strong><span class="note">Avviso al tempo regolamentare</span></span><input id="setSound" type="checkbox" ${s.soundFeedback?'checked':''}></label></div>${screenWakeControlHtml()}<div class="notice info" style="margin-top:12px"><span>🔒</span><span>Le impostazioni della modalità arbitro si aggiornano automaticamente sui dispositivi collegati. Disattivare i cartellini nasconde i comandi, senza cancellare quelli già registrati.</span></div></div>
     </div>
-    <div class="card" style="margin-top:16px"><div class="kicker">Formula</div><h3>Struttura e tempi</h3><div class="form-grid"><div class="field"><label>N° partecipanti</label><input type="number" min="10" max="200" id="setTarget" value="${s.targetPlayers}"></div><div class="field"><label>Giocatori per rosa</label><input type="number" min="5" max="20" id="setRoster" value="${s.rosterSize}"></div><div class="field"><label>Formula torneo</label><select id="setFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Campionato + Finale</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div><div class="field"><label>Girone</label><select id="setMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div><div class="field"><label>Finale 3° posto</label><select id="setBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div><div class="field"><label>Inizio torneo</label><input id="setStartTime" type="time" value="00:00" disabled><small>Le partite proseguono in sequenza fino alla fine.</small></div><div class="field"><label>Durata totale di gioco (min)</label><input type="number" min="2" max="120" id="setMinutes" value="${s.matchMinutes}"></div><div class="field"><label>Intervallo (min)</label><input type="number" min="0" max="30" id="setHalftime" value="${s.halftimeMinutes}"></div><div class="field"><label>Cambio campo (min)</label><input type="number" min="0" max="60" id="setChange" value="${s.changeMinutes}"></div><div class="field"><label>Punti vittoria</label><input type="number" id="setWin" value="${s.pointsWin}"></div><div class="field"><label>Punti pareggio</label><input type="number" id="setDraw" value="${s.pointsDraw}"></div><div class="field"><label>Punti sconfitta</label><input type="number" id="setLoss" value="${s.pointsLoss}"></div></div><div id="settingsPreview" style="margin-top:14px">${settingsPreviewHtml()}</div><div class="modal-actions"><button class="ghost" id="rerunSetup">Riapri configurazione guidata</button><button class="primary" id="saveSettings">Salva impostazioni</button></div></div>
-    <div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Guida del gestore</h3><p class="note">Procedura completa prima, durante e dopo il torneo, inclusa la gestione delle emergenze.</p><button class="ghost" id="settingsGuide">Apri la guida</button></div><div class="card"><h3>Backup e ripristino</h3><p class="note">Il backup comprende torneo e archivio storico dei giocatori. Esportalo prima dell’inizio e durante la serata.</p><div class="button-row"><button class="ghost" id="exportBtn2">Esporta backup</button><label class="ghost file-label">Importa backup<input type="file" id="importInput2" accept="application/json" hidden></label>${snap?`<button class="ghost" id="restoreSnapshot">↶ ${esc(snap.label)}</button>`:''}</div></div></div>
+    <div class="card settings-form-card" style="margin-top:10px"><div class="kicker">Formula</div><h3>Struttura e tempi</h3><div class="form-grid"><div class="field"><label>N° partecipanti</label><input type="number" min="10" max="200" id="setTarget" value="${s.targetPlayers}"></div><div class="field"><label>Giocatori per rosa</label><input type="number" min="5" max="20" id="setRoster" value="${s.rosterSize}"></div><div class="field"><label>Formula torneo</label><select id="setFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Campionato + Finale</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div><div class="field"><label>Girone</label><select id="setMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div><div class="field"><label>Finale 3° posto</label><select id="setBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div><div class="field"><label>Inizio torneo</label><input id="setStartTime" type="time" value="00:00" disabled><small>Le partite proseguono in sequenza fino alla fine.</small></div><div class="field"><label>Durata totale di gioco (min)</label><input type="number" min="2" max="120" id="setMinutes" value="${s.matchMinutes}"></div><div class="field"><label>Intervallo (min)</label><input type="number" min="0" max="30" id="setHalftime" value="${s.halftimeMinutes}"></div><div class="field"><label>Cambio campo (min)</label><input type="number" min="0" max="60" id="setChange" value="${s.changeMinutes}"></div><div class="field"><label>Punti vittoria</label><input type="number" id="setWin" value="${s.pointsWin}"></div><div class="field"><label>Punti pareggio</label><input type="number" id="setDraw" value="${s.pointsDraw}"></div><div class="field"><label>Punti sconfitta</label><input type="number" id="setLoss" value="${s.pointsLoss}"></div></div><div id="settingsPreview" style="margin-top:10px">${settingsPreviewHtml()}</div><div class="modal-actions"><button class="ghost" id="rerunSetup">Riapri configurazione guidata</button><button class="primary" id="saveSettings">Salva impostazioni</button></div></div>
+    <div class="grid cols-2 settings-grid" style="margin-top:10px"><div class="card"><h3>Guida del gestore</h3><p class="note">Procedura completa prima, durante e dopo il torneo, inclusa la gestione delle emergenze.</p><button class="ghost" id="settingsGuide">Apri la guida</button></div><div class="card"><h3>Backup e ripristino</h3><p class="note">Il backup comprende torneo e archivio storico dei giocatori. Esportalo prima dell’inizio e durante la serata.</p><div class="button-row"><button class="ghost" id="exportBtn2">Esporta backup</button><label class="ghost file-label">Importa backup<input type="file" id="importInput2" accept="application/json" hidden></label>${snap?`<button class="ghost" id="restoreSnapshot">↶ ${esc(snap.label)}</button>`:''}</div></div></div>
     <div class="card" style="margin-top:16px"><div class="kicker">Memoria tra le edizioni</div><h3>Archivio giocatori</h3><p class="note"><strong>${playerArchive.profiles.length} profili</strong> conservati. Presenze, gol, assist, falli, cartellini, MVP e Copparigelle vengono aggiornati dai referti e riutilizzati quando inserisci nuovamente lo stesso nome. Lo storico non è visibile nei link pubblico e arbitro.</p><div class="notice info" style="margin-top:12px"><span>◎</span><span>L’azzeramento del torneo non cancella questo archivio. Per proteggerlo anche in caso di cambio dispositivo, conserva un backup.</span></div></div>
     <div class="card danger-zone" style="margin-top:16px"><h3>Zona sensibile</h3><p class="note">L’azzeramento cancella torneo, squadre, partite e statistiche dell’edizione corrente, ma conserva l’archivio storico dei giocatori. Prima viene comunque creato un punto di ripristino.</p><button class="danger-outline" id="resetAllBtn">Azzera il torneo</button></div>`;
   ['setName','setEdition','setVenue','setOrganizer','setTarget','setRoster','setFormat','setMode','setBronze','setStartTime','setMinutes','setHalftime','setChange','setWin','setDraw','setLoss','setTouchGuard','setCardsEnabled','setHaptic','setSound'].forEach(id=>document.getElementById(id)?.addEventListener('input',updateSettingsPreview));
@@ -2564,9 +2848,14 @@ function importBackup(e){const file=e.target.files?.[0];if(!file)return;const re
 function openResetModal(){openModal(`<h2>Azzera il torneo</h2><p class="modal-subtitle">Questa azione rimuove rose, calendario, risultati e statistiche dell’edizione corrente.</p><div class="notice info"><span>◎</span><span>L’archivio storico dei giocatori resta conservato e potrà essere riutilizzato nella prossima edizione.</span></div><div class="notice danger" style="margin-top:10px"><span>!</span><span>Prima dell’azzeramento verrà creato un punto di ripristino locale.</span></div><div class="field" style="margin-top:14px"><label>Scrivi <strong>AZZERA</strong> per confermare</label><input id="resetPhrase" autocomplete="off" placeholder="AZZERA"></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="danger" id="confirmReset" disabled>Azzeramento definitivo</button></div>`);const input=document.getElementById('resetPhrase'),button=document.getElementById('confirmReset');input.addEventListener('input',()=>button.disabled=input.value.trim().toUpperCase()!=='AZZERA');button.onclick=resetAll;}
 function resetAll(){createSnapshot('Prima dell’azzeramento completo');const fresh=emptyState();Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,fresh);save();currentView='home';sessionSet('coppari.currentView','home');closeModal(true);render();toast('Dati azzerati · ripristino disponibile');}
 
+function openSidebar(){sidebar.classList.add('open');document.getElementById('sidebarScrim')?.setAttribute('tabindex','0');}
+function closeSidebar(){sidebar.classList.remove('open');document.getElementById('sidebarScrim')?.setAttribute('tabindex','-1');}
+
 document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('.nav-item');if(b)navigate(b.dataset.view);});
-document.getElementById('menuBtn').onclick=()=>sidebar.classList.toggle('open');
-document.getElementById('mobileNav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)return navigate(b.dataset.view);if(e.target.closest('[data-menu-open]'))sidebar.classList.add('open');});
+document.getElementById('menuBtn').onclick=()=>sidebar.classList.contains('open')?closeSidebar():openSidebar();
+document.getElementById('sidebarScrim').onclick=closeSidebar;
+document.getElementById('mobileNav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)return navigate(b.dataset.view);if(e.target.closest('[data-menu-open]'))openSidebar();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sidebar.classList.contains('open'))closeSidebar();});
 document.getElementById('guideBtn').onclick=()=>openManagerGuide(false);
 document.getElementById('liveShareBtn').onclick=openLiveShareModal;
 document.getElementById('exportBtn').onclick=exportBackup;
