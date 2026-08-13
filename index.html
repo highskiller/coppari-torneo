@@ -407,6 +407,12 @@ button:active:not(:disabled) { transform:translateY(1px) scale(.985); }
 .live-link-row input { flex:1; min-width:0; border:1px solid var(--line); border-radius:10px; padding:9px 10px; background:white; color:var(--ink); font-size:12px; }
 .spectator-hero { overflow:hidden; position:relative; background:linear-gradient(135deg,#13251a,#2d6547); color:white; border:0; }
 .spectator-hero .note,.spectator-hero .kicker { color:#c8d6cc; }
+.ref-legend { margin-top:16px; padding:14px 16px; }
+.ref-legend-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.ref-legend-head h3 { margin:0; }
+.ref-legend-items { display:flex; flex-wrap:wrap; gap:7px; }
+.ref-legend-item { display:inline-flex; align-items:center; gap:6px; padding:7px 9px; border:1px solid var(--line); border-radius:10px; background:#f7f9f4; font-size:12px; font-weight:750; }
+.ref-legend-item span { font-size:17px; line-height:1; }
 .spectator-live-bar { display:flex; align-items:center; gap:9px; margin-bottom:16px; padding:11px 13px; border:1px solid #cce0c8; border-radius:14px; background:#eff8ec; color:#285b3b; font-size:12px; font-weight:800; }
 .spectator-live-bar.offline { border-color:#ecd5a7; background:#fff7e7; color:#82541a; }
 .live-wait { width:min(620px,100%); margin:8vh auto 0; text-align:center; }
@@ -649,7 +655,7 @@ th,td { padding:9px 11px; }
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v<span id="appVersionLabel">3.7.0</span></span>
+          <span>cabina di regia · v<span id="appVersionLabel">3.7.2</span></span>
         </div>
       </div>
 
@@ -707,7 +713,7 @@ th,td { padding:9px 11px; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.7.0';
+const APP_VERSION = '3.7.2';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
@@ -1388,6 +1394,10 @@ function remoteRefereeMatchRow(m){
   const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live',pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';
   return `<div class="match"><div class="stage-label">${stageLabel(m)} · ${esc(matchDisplayTime(m))}${live?' · ● IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div><div class="match-actions"><button class="ghost" data-match-rosters="${m.id}">Vedi rose</button><button class="primary" data-ref-match="${m.id}">${played?'Apri referto':live?'Riprendi arbitraggio':'Avvia arbitraggio'}</button></div></div>`;
 }
+function refereeLegendHtml(){
+  const cards=state.settings.cardsEnabled!==false;
+  return `<div class="card ref-legend"><div class="ref-legend-head"><h3>Legenda comandi</h3><span class="badge">Tocca l’icona accanto al giocatore</span></div><div class="ref-legend-items"><span class="ref-legend-item"><span>⚽</span>Gol</span><span class="ref-legend-item"><span>🎯</span>Assist</span><span class="ref-legend-item"><span>⚠️</span>Fallo</span>${cards?'<span class="ref-legend-item"><span>🟨</span>Ammonizione</span><span class="ref-legend-item"><span>🟥</span>Espulsione</span>':''}<span class="ref-legend-item"><span>＋</span>Gol squadra / autorete</span><span class="ref-legend-item"><span>↶</span>Annulla evento</span><span class="ref-legend-item"><span>↺</span>Azzera partita</span></div>${state.settings.touchGuard?'<p class="note">Protezione tocchi attiva: tocca due volte lo stesso comando per confermarlo.</p>':''}</div>`;
+}
 function openMatchRostersModal(id){
   const match=state.matches.find(item=>item.id===id),home=teamById(match?.homeTeamId),away=teamById(match?.awayTeamId);
   if(!match||!home||!away)return toast('Rose non disponibili');
@@ -1396,7 +1406,7 @@ function openMatchRostersModal(id){
 function renderRemoteRefereeHome(){
   setHeader('Arbitraggio',`${state.settings.name} · accesso arbitro`);
   const ordered=[...state.matches].sort((a,b)=>a.status==='live'?-1:b.status==='live'?1:a.status==='scheduled'&&b.status==='played'?-1:a.status==='played'&&b.status==='scheduled'?1:0);
-  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">Copparì Live · Arbitro</div><h2>Partite e referti</h2><p class="note">Puoi arbitrare e chiudere le partite. Le rose sono consultabili, mentre squadre, partecipanti, calendario e configurazione non sono modificabili da questo link.</p></div><div class="match-list" style="margin-top:16px">${ordered.length?ordered.map(remoteRefereeMatchRow).join(''):'<div class="empty"><strong>Nessuna partita disponibile</strong>Il gestore deve prima generare il calendario.</div>'}</div>`;
+  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">Copparì Live · Arbitro</div><h2>Partite e referti</h2><p class="note">Puoi arbitrare e chiudere le partite. Le rose sono consultabili, mentre squadre, partecipanti, calendario e configurazione non sono modificabili da questo link.</p></div>${refereeLegendHtml()}<div class="match-list" style="margin-top:16px">${ordered.length?ordered.map(remoteRefereeMatchRow).join(''):'<div class="empty"><strong>Nessuna partita disponibile</strong>Il gestore deve prima generare il calendario.</div>'}</div>`;
   view.querySelectorAll('[data-ref-match]').forEach(button=>button.onclick=()=>openRefereeMode(button.dataset.refMatch));
   view.querySelectorAll('[data-match-rosters]').forEach(button=>button.onclick=()=>openMatchRostersModal(button.dataset.matchRosters));
 }
@@ -2129,6 +2139,18 @@ function toggleRefClock(m){
   } else r.phaseStartedAt=now;
   save({matchId:m.id});renderRefereeMode(m.id);
 }
+function resetRefereeMatch(id){
+  const m=state.matches.find(match=>match.id===id);if(!m)return;
+  const home=teamById(m.homeTeamId),away=teamById(m.awayTeamId);
+  const phrase=prompt(`Azzerare ${home?.name||'?'} vs ${away?.name||'?'}?\n\nVerranno cancellati punteggio, timer, eventi, statistiche, rigori, MVP e Copparigelle.\nScrivi AZZERA per confermare.`);
+  if(phrase===null)return;
+  if(phrase.trim().toUpperCase()!=='AZZERA')return toast('Azzeramento annullato: conferma non valida');
+  if(liveRole!=='referee')createSnapshot(`Prima di azzerare ${home?.name||''} vs ${away?.name||''}`);
+  if(liveRole!=='referee'&&m.status==='played'&&m.stage==='group'&&knockoutMatches().length)removeAllKnockout();
+  else if(liveRole!=='referee'&&m.status==='played'&&isKnockoutMatch(m))removeDownstreamKnockout(m.koSize||2);
+  m.homeScore=null;m.awayScore=null;m.status='scheduled';m.stats=[];m.events=[];m.ratings=[];m.ratingsPublished=false;m.referee=null;m.mvpPlayerId=null;delete m.penHome;delete m.penAway;
+  save({matchId:m.id});closeModal(true);render();toast('Partita azzerata e pronta per essere riavviata');
+}
 function renderRefereeMode(id){
   stopRefereeTicker();
   const m=state.matches.find(x=>x.id===id);if(!m)return closeModal();const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId);if(!h||!a)return toast('Squadre non disponibili');
@@ -2139,7 +2161,8 @@ function renderRefereeMode(id){
   const penHtml=ko?`<div class="ref-pens"><label>Rigori ${esc(h.name)}<input id="refPenHome" type="number" min="0" inputmode="numeric" value="${m.penHome??''}" ${readOnly?'disabled':''}></label><label>Rigori ${esc(a.name)}<input id="refPenAway" type="number" min="0" inputmode="numeric" value="${m.penAway??''}" ${readOnly?'disabled':''}></label></div>`:'';
   const target=phaseTargetSeconds(r.phase),targetLabel=target?humanDuration(target/60):'—';
   const fullscreenControl=typeof modalBackdrop.requestFullscreen==='function'?'<button class="ghost icon-btn" id="refFullscreen" title="Schermo intero" aria-label="Attiva schermo intero">⛶</button>':isIOSDevice()?'<button class="ghost icon-btn" id="refIOSHelp" title="Uso a schermo intero su iPhone" aria-label="Istruzioni iPhone">⌂</button>':'';
-  modal.innerHTML=`<div class="ref-head"><button class="ghost" id="exitReferee">← Esci</button><div class="ref-stage">${stageLabel(m)}</div><div class="ref-head-actions"><button class="ghost icon-btn" id="refHelp" title="Guida arbitro" aria-label="Apri guida arbitro">?</button>${fullscreenControl}<span class="phase-badge ${ko?'ko':''}">${phaseLabel(r.phase)}</span></div></div><div class="ref-scoreboard"><div>${esc(h.name)}</div><strong>${refScore(m)}</strong><div>${esc(a.name)}</div></div><div class="ref-live-strip">${!readOnly?'<span class="live-dot"></span><span>Referto salvato automaticamente</span>':'<span>Referto definitivo · sola lettura</span>'}</div><div class="ref-timer"><span id="refClock">00:00</span><small id="refPhaseText">${phaseLabel(r.phase)}${target?` · obiettivo ${targetLabel}`:''}</small><div class="ref-progress" ${target?'':'hidden'}><i id="refProgress"></i></div></div>${!readOnly?`<div class="ref-guard-bar ${state.settings.touchGuard?'':'off'}"><span>${state.settings.touchGuard?'🔒':'⚠'}</span><span id="refGuardStatus">${state.settings.touchGuard?'Tocca due volte lo stesso comando per confermare':'Comandi a tocco singolo'}</span><button class="ghost ref-guard-toggle" id="toggleTouchGuard">${state.settings.touchGuard?'Disattiva':'Attiva'} protezione</button></div>`:''}<div class="ref-phase-actions">${phaseButtons}${['first','halftime','second'].includes(r.phase)?`<button class="ghost" id="toggleRefClock" data-action-label="${r.phaseStartedAt?'metti in pausa il timer':'riprendi il timer'}">${r.phaseStartedAt?'⏸ Pausa timer':'▶ Riprendi timer'}</button>`:''}</div><div class="ref-layout"><div>${refereeRosterHtml(m,h,readOnly)}</div><div>${refereeRosterHtml(m,a,readOnly)}</div></div><div class="ref-bottom-grid"><div class="card ref-log-card"><div class="section-head"><h3>Registro eventi</h3><span class="badge">${(m.events||[]).length}</span></div>${refereeEventLog(m,readOnly)}</div><div class="card"><h3>Chiusura partita</h3><div class="field"><label>MVP</label><select id="refMvp" ${readOnly?'disabled':''}><option value="">— Nessuno —</option>${allPlayers.map(p=>`<option value="${p.id}" ${m.mvpPlayerId===p.id?'selected':''}>${esc(p.name)} · ${esc(teamById(p.teamId)?.name||'')}</option>`).join('')}</select></div>${penHtml}<p class="note">La classifica si aggiorna soltanto dopo la chiusura definitiva.</p><button class="primary full" id="finishMatch" data-action-label="termina definitivamente la partita" ${m.status==='played'||r.phase!=='ended'?'disabled':''}>✓ Termina e aggiorna classifica</button><button class="ghost full" style="margin-top:8px" id="manualSheet">Tabellino manuale</button></div></div>`;
+  const canReset=m.status!=='scheduled';
+  modal.innerHTML=`<div class="ref-head"><button class="ghost" id="exitReferee">← Esci</button><div class="ref-stage">${stageLabel(m)}</div><div class="ref-head-actions"><button class="ghost icon-btn" id="refHelp" title="Guida arbitro" aria-label="Apri guida arbitro">?</button>${fullscreenControl}<span class="phase-badge ${ko?'ko':''}">${phaseLabel(r.phase)}</span></div></div><div class="ref-scoreboard"><div>${esc(h.name)}</div><strong>${refScore(m)}</strong><div>${esc(a.name)}</div></div><div class="ref-live-strip">${!readOnly?'<span class="live-dot"></span><span>Referto salvato automaticamente</span>':'<span>Referto definitivo · sola lettura</span>'}</div><div class="ref-timer"><span id="refClock">00:00</span><small id="refPhaseText">${phaseLabel(r.phase)}${target?` · obiettivo ${targetLabel}`:''}</small><div class="ref-progress" ${target?'':'hidden'}><i id="refProgress"></i></div></div>${!readOnly?`<div class="ref-guard-bar ${state.settings.touchGuard?'':'off'}"><span>${state.settings.touchGuard?'🔒':'⚠'}</span><span id="refGuardStatus">${state.settings.touchGuard?'Tocca due volte lo stesso comando per confermare':'Comandi a tocco singolo'}</span><button class="ghost ref-guard-toggle" id="toggleTouchGuard">${state.settings.touchGuard?'Disattiva':'Attiva'} protezione</button></div>`:''}<div class="ref-phase-actions">${phaseButtons}${['first','halftime','second'].includes(r.phase)?`<button class="ghost" id="toggleRefClock" data-action-label="${r.phaseStartedAt?'metti in pausa il timer':'riprendi il timer'}">${r.phaseStartedAt?'⏸ Pausa timer':'▶ Riprendi timer'}</button>`:''}</div><div class="ref-layout"><div>${refereeRosterHtml(m,h,readOnly)}</div><div>${refereeRosterHtml(m,a,readOnly)}</div></div><div class="ref-bottom-grid"><div class="card ref-log-card"><div class="section-head"><h3>Registro eventi</h3><span class="badge">${(m.events||[]).length}</span></div>${refereeEventLog(m,readOnly)}</div><div class="card"><h3>Chiusura partita</h3><div class="field"><label>MVP</label><select id="refMvp" ${readOnly?'disabled':''}><option value="">— Nessuno —</option>${allPlayers.map(p=>`<option value="${p.id}" ${m.mvpPlayerId===p.id?'selected':''}>${esc(p.name)} · ${esc(teamById(p.teamId)?.name||'')}</option>`).join('')}</select></div>${penHtml}<p class="note">La classifica si aggiorna soltanto dopo la chiusura definitiva.</p><button class="primary full" id="finishMatch" data-action-label="termina definitivamente la partita" ${m.status==='played'||r.phase!=='ended'?'disabled':''}>✓ Termina e aggiorna classifica</button><button class="ghost full" style="margin-top:8px" id="manualSheet">Tabellino manuale</button>${canReset?'<button class="danger-outline full" style="margin-top:8px" id="resetRefereeMatch">↺ Azzera partita</button>':''}</div></div>`;
   if(liveRole==='referee'){document.getElementById('toggleTouchGuard')?.remove();document.getElementById('manualSheet')?.remove();}
   document.getElementById('exitReferee').onclick=()=>closeModal();
   document.getElementById('refHelp').onclick=()=>openRefereeQuickGuide();
@@ -2154,6 +2177,7 @@ function renderRefereeMode(id){
   document.getElementById('toggleRefClock')?.addEventListener('click',e=>guardedRefAction(e.currentTarget,'clock-toggle',e.currentTarget.dataset.actionLabel,()=>toggleRefClock(m)));
   document.getElementById('refMvp')?.addEventListener('change',e=>{setMatchMvp(m,e.target.value);save({matchId:m.id});});
   document.getElementById('manualSheet')?.addEventListener('click',()=>{if(liveRole==='referee')return toast('Il tabellino manuale è riservato al gestore');if(r.phaseStartedAt){const now=Date.now(),elapsed=Math.max(0,(now-r.phaseStartedAt)/1000);if(r.phase==='first')r.firstSeconds=(r.firstSeconds||0)+elapsed;else if(r.phase==='second')r.secondSeconds=(r.secondSeconds||0)+elapsed;else r.halftimeSeconds=(r.halftimeSeconds||0)+elapsed;r.phaseStartedAt=null;save({matchId:m.id});toast('Timer messo in pausa');}activeRefereeMatchId=null;releaseRefereeWakeLock();openMatchModal(m.id);});
+  document.getElementById('resetRefereeMatch')?.addEventListener('click',()=>resetRefereeMatch(m.id));
   document.getElementById('finishMatch').onclick=e=>{const finish=()=>finishRefereeMatch(m.id);if(state.settings.touchGuard)guardedRefAction(e.currentTarget,'finish-match',e.currentTarget.dataset.actionLabel,finish);else if(confirm('Terminare definitivamente la partita e aggiornare la classifica?'))finish();};
   const updateClock=()=>{const el=document.getElementById('refClock');if(!el)return;const sec=Math.floor(currentRefSeconds(m)),mm=Math.floor(sec/60),ss=sec%60,currentTarget=phaseTargetSeconds(r.phase),progress=document.getElementById('refProgress');el.textContent=`${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;const over=currentTarget>0&&sec>=currentTarget;el.closest('.ref-timer')?.classList.toggle('overtime',over);if(progress){progress.style.width=`${Math.min(100,(sec/Math.max(1,currentTarget))*100)}%`;progress.classList.toggle('overtime',over);}if(over&&r.phaseStartedAt){r.alertedPhases=r.alertedPhases||{};if(!r.alertedPhases[r.phase]){r.alertedPhases[r.phase]=true;save({matchId:m.id});playRefFeedback('alert');toast(r.phase==='halftime'?'Intervallo terminato':'Tempo regolamentare raggiunto',4200);}}};updateClock();refereeTicker=setInterval(updateClock,1000);
 }
@@ -2516,7 +2540,7 @@ function openManagerGuide(initial=false){
 }
 function openRefereeQuickGuide(){
   const iosTip=isIOSDevice()?'\n• iPhone/iPad: per avere più spazio, avvia Copparì dall’icona aggiunta alla schermata Home.':'';
-  alert('PROTEZIONE TOCCHI\n\n• Primo tocco: arma ed evidenzia il comando.\n• Secondo tocco sullo stesso comando entro 2,8 secondi: conferma.\n• ⚠️ registra un fallo sul giocatore.\n• ↶ annulla un evento.\n• Il timer continua anche se esci e puoi riprendere la partita.\n• “Termina e aggiorna classifica” rende il risultato definitivo.'+iosTip);
+  alert('PROTEZIONE TOCCHI\n\n• Primo tocco: arma ed evidenzia il comando.\n• Secondo tocco sullo stesso comando entro 2,8 secondi: conferma.\n• ⚠️ registra un fallo sul giocatore.\n• ↶ annulla un evento.\n• ↺ Azzera partita cancella referto e timer dopo conferma scritta.\n• Il timer continua anche se esci e puoi riprendere la partita.\n• “Termina e aggiorna classifica” rende il risultato definitivo.'+iosTip);
 }
 function maybeShowInitialGuide(){if(!storageGet(GUIDE_KEY)&&modalBackdrop.classList.contains('hidden'))openManagerGuide(true);}
 function backupFileName(){const safe=(state.settings.name||'coppari').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'coppari';return `${safe}-backup-${new Date().toISOString().slice(0,10)}.json`;}
