@@ -86,7 +86,7 @@ const state = {
   players,
   teams,
   matches,
-  meta: { appVersion: '3.7.0', createdAt: now, updatedAt: now },
+  meta: { appVersion: '3.7.1', createdAt: now, updatedAt: now },
 };
 
 const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/coppari_live_create`, {
