@@ -233,7 +233,9 @@ begin
     'events', coalesce(p_match -> 'events', '[]'::jsonb),
     'stats', coalesce(p_match -> 'stats', '[]'::jsonb),
     'referee', p_match -> 'referee',
-    'mvpPlayerId', p_match -> 'mvpPlayerId'
+    'mvpPlayerId', p_match -> 'mvpPlayerId',
+    'ratings', case when v_status = 'scheduled' then '[]'::jsonb else coalesce(v_old_match -> 'ratings', '[]'::jsonb) end,
+    'ratingsPublished', case when v_status = 'scheduled' then false else coalesce((v_old_match ->> 'ratingsPublished')::boolean, false) end
   );
 
   select jsonb_agg(
