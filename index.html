@@ -424,18 +424,45 @@ button:active:not(:disabled) { transform:translateY(1px) scale(.985); }
 body.spectator-mode .sidebar [data-view="players"],body.spectator-mode .sidebar [data-view="settings"],body.spectator-mode #exportBtn,body.spectator-mode .sidebar .file-label { display:none !important; }
 body.remote-referee-mode .sidebar [data-view="players"],body.remote-referee-mode .sidebar [data-view="settings"],body.remote-referee-mode #exportBtn,body.remote-referee-mode .sidebar .file-label,body.remote-referee-mode #guideBtn { display:none !important; }
 
-.ratings-list { display:grid; gap:10px; margin-top:14px; }
-.rating-row { display:grid; grid-template-columns:minmax(150px,1fr) 94px minmax(190px,1.4fr); gap:10px; align-items:center; padding:12px; border:1px solid var(--line); border-radius:14px; background:#f8faf5; }
-.rating-row input { min-width:0; padding:9px 10px; border:1px solid var(--line); border-radius:10px; background:white; }
-.rating-player strong,.rating-player span { display:block; }
-.rating-player span { margin-top:3px; color:var(--muted); font-size:12px; }
-.rating-score { font-size:18px; font-weight:850; text-align:center; }
-.rating-comment { width:100%; }
 .rating-public-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 .rating-public-card { padding:13px; border:1px solid var(--line); border-radius:14px; background:#f8faf5; }
 .rating-public-card strong,.rating-public-card span { display:block; }
 .rating-public-card .vote { color:#285c3a; font-size:22px; font-weight:900; }
 .rating-public-card p { margin:7px 0 0; color:var(--muted); font-size:13px; }
+.collective-shell { display:grid; gap:12px; }
+.collective-head { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; }
+.collective-head h2 { margin:4px 0 0; }
+.collective-progress { min-width:70px; text-align:right; color:var(--muted); font-size:12px; font-weight:800; }
+.collective-head-side { display:flex; align-items:center; justify-content:flex-end; gap:6px; }
+.collective-close { min-width:34px; min-height:34px; padding:4px 8px; font-size:18px; }
+.collective-progress-bar { grid-column:1/-1; height:6px; overflow:hidden; border-radius:999px; background:var(--panel-2); }
+.collective-progress-bar i { display:block; height:100%; border-radius:inherit; background:var(--brand); transition:width .2s ease; }
+.collective-card { min-height:290px; display:grid; align-content:start; gap:12px; padding:16px; border:1px solid var(--line); border-radius:16px; background:#f8faf5; }
+.collective-player { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.collective-player strong,.collective-player span { display:block; }
+.collective-player strong { font-size:20px; }
+.collective-player span { margin-top:3px; color:var(--muted); font-size:12px; }
+.collective-vote { min-width:58px; color:#285c3a; font-size:28px; font-weight:900; text-align:right; }
+.collective-score-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; }
+.collective-score-grid button { min-width:0; min-height:40px; padding:7px 4px; border:1px solid var(--line); border-radius:10px; background:white; color:var(--ink); font-weight:850; }
+.collective-score-grid button.selected { border-color:var(--brand); background:var(--brand); color:white; }
+.collective-card textarea { min-height:86px; max-height:120px; resize:vertical; }
+.collective-nav { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:8px; align-items:center; }
+.collective-nav .primary { justify-self:end; }
+.collective-skip { justify-self:center; color:var(--muted); }
+.collective-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.collective-stat { padding:10px; border-radius:12px; background:#f3f6ef; text-align:center; }
+.collective-stat strong,.collective-stat span { display:block; }
+.collective-stat strong { font-size:21px; }
+.collective-stat span { margin-top:2px; color:var(--muted); font-size:11px; }
+.collective-source-list { display:grid; gap:7px; max-height:170px; overflow:auto; padding-right:3px; }
+.collective-source { padding:9px 10px; border:1px solid var(--line); border-radius:11px; background:white; }
+.collective-source-head { display:flex; justify-content:space-between; gap:8px; font-size:12px; }
+.collective-source p { margin:5px 0 0; color:var(--muted); font-size:12px; }
+.collective-review-field { display:grid; grid-template-columns:86px minmax(0,1fr); gap:9px; align-items:start; }
+.collective-review-field input { font-size:20px; font-weight:850; text-align:center; }
+.collective-review-field textarea { min-height:92px; }
+.collective-empty { display:grid; place-items:center; min-height:180px; padding:18px; border:1px dashed var(--line); border-radius:14px; color:var(--muted); text-align:center; }
 
 .step-tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:0 0 16px; }
 .step-tab { padding:10px; border-radius:12px; background:#f5f7f2; border:1px solid var(--line); font-size:12px; color:var(--muted); font-weight:760; text-align:center; }
@@ -553,9 +580,10 @@ th,td { padding:9px 11px; }
   body.spectator-mode .mobile-nav { grid-template-columns:repeat(5,1fr); }
   body.remote-referee-mode .mobile-nav { grid-template-columns:repeat(4,1fr); }
   body.remote-referee-mode .mobile-nav [data-menu-open] { display:none; }
-  .rating-row { grid-template-columns:1fr 82px; }
-  .rating-comment { grid-column:1/-1; }
   .rating-public-grid { grid-template-columns:1fr; }
+  .collective-card { min-height:270px; padding:13px; }
+  .collective-review-field { grid-template-columns:72px minmax(0,1fr); }
+  .collective-nav button { min-height:40px; padding:8px 10px; }
   .public-match-rosters { grid-template-columns:1fr; }
   .modal-backdrop { padding:0; align-items:end; height:100vh; height:100dvh; overscroll-behavior:none; }
   .modal:not(.referee-modal) { max-height:94vh; border-radius:22px 22px 0 0; padding:18px 15px calc(18px + env(safe-area-inset-bottom)); }
@@ -878,7 +906,7 @@ body.spectator-mode .topbar-actions > .save-pill:not(.live-pill) { display:none;
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span><span id="brandModeLabel">cabina di regia</span> · v<span id="appVersionLabel">3.8.0</span></span>
+          <span><span id="brandModeLabel">cabina di regia</span> · v<span id="appVersionLabel">3.9.0</span></span>
         </div>
       </div>
 
@@ -940,7 +968,7 @@ body.spectator-mode .topbar-actions > .save-pill:not(.live-pill) { display:none;
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.8.0';
+const APP_VERSION = '3.9.0';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
@@ -948,6 +976,7 @@ const GUIDE_KEY = 'coppari.v3.guide.seen';
 const LIVE_CONFIG_KEY = 'coppari.v3.live';
 const PLAYER_ARCHIVE_KEY = 'coppari.v3.player-profiles';
 const WAKE_PREF_KEY = 'coppari.v3.keep-screen-awake';
+const RATING_NICKNAME_KEY = 'coppari.v3.collective-ratings.nickname';
 const PUBLIC_APP_URL = 'https://highskiller.github.io/coppari-torneo/';
 const SUPABASE_URL = 'https://lndqbduvyzjehkeetywt.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_VVYN8s9nVaZQR_jiC5s3GA_p8LKZZbk';
@@ -1071,7 +1100,7 @@ function syncPlayerArchiveFromState(){
   state.matches.filter(match=>['live','played'].includes(match.status)).forEach(match=>{
     const teams=[match.homeTeamId,match.awayTeamId];
     state.players.filter(player=>player.active!==false&&teams.includes(player.teamId)).forEach(player=>{
-      const profile=archiveProfileForPlayer(player,true),stat=(match.stats||[]).find(row=>row.playerId===player.id)||{},rating=(match.ratings||[]).find(row=>row.playerId===player.id),opponentId=player.teamId===match.homeTeamId?match.awayTeamId:match.homeTeamId;
+      const profile=archiveProfileForPlayer(player,true),stat=(match.stats||[]).find(row=>row.playerId===player.id)||{},rating=match.ratingsPublished?(match.ratings||[]).find(row=>row.playerId===player.id):null,opponentId=player.teamId===match.homeTeamId?match.awayTeamId:match.homeTeamId;
       const isHome=player.teamId===match.homeTeamId;
       profile.contributions[`${prefix}${safeId(match.id,'match')}`]={edition:safeText(state.settings.edition||'',80),matchId:match.id,stage:safeText(match.stage||'',40),status:match.status,date:safeText(match.date||'',40),team:safeText(teamById(player.teamId)?.name||'',80),opponent:safeText(teamById(opponentId)?.name||'',80),teamScore:isHome?match.homeScore:match.awayScore,opponentScore:isHome?match.awayScore:match.homeScore,appearance:match.status==='played'?1:0,goals:+stat.goals||0,assists:+stat.assists||0,fouls:+stat.fouls||0,yellow:+stat.yellow||0,red:+stat.red||0,mvp:match.mvpPlayerId===player.id||stat.mvp?1:0,rating:rating&&rating.score!==null&&Number.isFinite(+rating.score)?+rating.score:null,ratingComment:safeText(rating?.comment||'',160),events:(match.events||[]).filter(event=>event.playerId===player.id).map(event=>({type:event.type,minuteLabel:event.minuteLabel,createdAt:event.createdAt}))};
     });
@@ -1272,11 +1301,11 @@ function normalizeState(data){
     const status=['scheduled','live','played'].includes(m?.status)?m.status:'scheduled';
     const events=(Array.isArray(m?.events)?m.events:[]).slice(0,5000).map(e=>({id:safeId(e?.id,'ev'),type:['goal','teamgoal','assist','foul','yellow','red'].includes(e?.type)?e.type:'teamgoal',teamId:safeRef(e?.teamId),playerId:safeRef(e?.playerId),minuteLabel:safeText(e?.minuteLabel||'—',12),createdAt:Number.isFinite(+e?.createdAt)?+e.createdAt:Date.now()}));
     const stats=(Array.isArray(m?.stats)?m.stats:[]).slice(0,500).map(x=>({playerId:safeRef(x?.playerId),goals:clamp(+x?.goals||0,0,999),assists:clamp(+x?.assists||0,0,999),fouls:clamp(+x?.fouls||0,0,999),yellow:clamp(+x?.yellow||0,0,99),red:clamp(+x?.red||0,0,99),mvp:!!x?.mvp})).filter(x=>x.playerId);
-    const ratings=(Array.isArray(m?.ratings)?m.ratings:[]).slice(0,500).map(x=>{const raw=Number(x?.score),score=Number.isFinite(raw)&&raw>=5?Math.round(clamp(raw,5,10)*2)/2:null;return {playerId:safeRef(x?.playerId),score,comment:safeText(x?.comment||'',160)};}).filter(x=>x.playerId&&x.score!==null);
+    const ratings=(Array.isArray(m?.ratings)?m.ratings:[]).slice(0,500).map(x=>{const raw=Number(x?.score),score=Number.isFinite(raw)&&raw>=5?Math.round(clamp(raw,5,10)*2)/2:null;return {playerId:safeRef(x?.playerId),score,comment:safeText(x?.comment||'',240),count:clamp(+x?.count||1,1,999)};}).filter(x=>x.playerId&&x.score!==null);
     const rr=m?.referee&&typeof m.referee==='object'?m.referee:null,phase=rr&&['not_started','first','halftime','second','ended'].includes(rr.phase)?rr.phase:status==='played'?'ended':'not_started';
     const referee=rr?{phase,phaseStartedAt:Number.isFinite(+rr.phaseStartedAt)?+rr.phaseStartedAt:null,firstSeconds:Math.max(0,+rr.firstSeconds||0),secondSeconds:Math.max(0,+rr.secondSeconds||0),halftimeSeconds:Math.max(0,+rr.halftimeSeconds||0),alertedPhases:rr.alertedPhases&&typeof rr.alertedPhases==='object'?rr.alertedPhases:{}}:null;
     const score=v=>v===null||v===undefined||v===''?null:clamp(+v||0,0,999);
-    return {id:safeId(m?.id,'m'),stage,leg:clamp(+m?.leg||1,1,2),round:Math.max(1,+m?.round||1),koSize:m?.koSize?Math.max(2,+m.koSize||2):({final:2,semi:4,quarter:8,round16:16,round32:32}[stage]),slot:Math.max(1,+m?.slot||1),homeTeamId:safeRef(m?.homeTeamId),awayTeamId:safeRef(m?.awayTeamId),date:safeText(m?.date||'',30),status,homeScore:score(m?.homeScore),awayScore:score(m?.awayScore),penHome:score(m?.penHome),penAway:score(m?.penAway),events,stats,ratings,ratingsPublished:!!m?.ratingsPublished,referee,mvpPlayerId:safeRef(m?.mvpPlayerId),targetKoSize:m?.targetKoSize?Math.max(2,+m.targetKoSize||2):undefined,manual:!!m?.manual};
+    return {id:safeId(m?.id,'m'),stage,leg:clamp(+m?.leg||1,1,2),round:Math.max(1,+m?.round||1),koSize:m?.koSize?Math.max(2,+m.koSize||2):({final:2,semi:4,quarter:8,round16:16,round32:32}[stage]),slot:Math.max(1,+m?.slot||1),homeTeamId:safeRef(m?.homeTeamId),awayTeamId:safeRef(m?.awayTeamId),date:safeText(m?.date||'',30),status,homeScore:score(m?.homeScore),awayScore:score(m?.awayScore),penHome:score(m?.penHome),penAway:score(m?.penAway),events,stats,ratings,ratingsOpen:status==='played'&&!m?.ratingsPublished&&m?.ratingsOpen===true,ratingsRoundId:safeRef(m?.ratingsRoundId),ratingsPublished:!!m?.ratingsPublished,referee,mvpPlayerId:safeRef(m?.mvpPlayerId),targetKoSize:m?.targetKoSize?Math.max(2,+m.targetKoSize||2):undefined,manual:!!m?.manual};
   });
   merged.meta={appVersion:APP_VERSION,createdAt:safeText(merged.meta?.createdAt||fresh.meta.createdAt,40),updatedAt:safeText(merged.meta?.updatedAt||fresh.meta.updatedAt,40)};
   return merged;
@@ -1318,7 +1347,7 @@ function toast(msg,duration=2200){ const el=document.getElementById('toast'); el
 function updateSaveIndicator(){
   const now=new Date();
   const time=now.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-  const label=liveRole==='viewer'?(liveConnected?'Diretta · sola lettura':'Diretta non collegata'):liveRole==='manager'?(liveConnected?`Sincronizzato live alle ${time}`:'Gestore non collegato'):liveRole==='referee'?(liveConnected?`Referto sincronizzato alle ${time}`:'Arbitro non collegato'):liveRole==='host'?(liveConnected?`Salvato e condiviso alle ${time}`:`Salvato sul telefono alle ${time}`):storageReady?`Salvato alle ${time}`:'Salvataggio non disponibile';
+  const label=liveRole==='viewer'?(liveConnected?'Diretta · pagelle degli amici':'Diretta non collegata'):liveRole==='manager'?(liveConnected?`Sincronizzato live alle ${time}`:'Gestore non collegato'):liveRole==='referee'?(liveConnected?`Referto sincronizzato alle ${time}`:'Arbitro non collegato'):liveRole==='host'?(liveConnected?`Salvato e condiviso alle ${time}`:`Salvato sul telefono alle ${time}`):storageReady?`Salvato alle ${time}`:'Salvataggio non disponibile';
   const top=document.getElementById('saveStatus'),side=document.getElementById('sidebarSaveStatus');
   if(top)top.textContent=label;if(side)side.textContent=label;
 }
@@ -1445,6 +1474,11 @@ function liveErrorText(error){
   if(/LIVE_ROOM_NOT_FOUND/i.test(text))return 'Questa diretta non esiste o il link non è valido.';
   if(/LIVE_ACCESS_DENIED|LIVE_SECRET_INVALID/i.test(text))return 'Il link gestore o arbitro non è valido.';
   if(/LIVE_ENDED/i.test(text))return 'La diretta è stata terminata dal gestore.';
+  if(/LIVE_RATINGS_CLOSED|LIVE_RATING_ROUND_CHANGED/i.test(text))return 'La raccolta delle pagelle è stata chiusa o aggiornata dal gestore.';
+  if(/LIVE_RATINGS_NOT_PUBLISHED/i.test(text))return 'La Copparigella definitiva non è ancora pubblicata.';
+  if(/LIVE_MATCH_NOT_PLAYED/i.test(text))return 'Le pagelle si possono inviare solo dopo la partita.';
+  if(/LIVE_RATING_NAME_INVALID/i.test(text))return 'Scrivi un nome o soprannome di almeno 2 caratteri.';
+  if(/LIVE_RATING_PLAYER_INVALID|LIVE_RATING_INVALID/i.test(text))return 'La pagella contiene dati non validi. Riaprila e riprova.';
   if(/LIVE_ROOM_TAKEN/i.test(text))return 'Impossibile creare la stanza Live. Riprova per generarne una nuova.';
   if(/failed to fetch|network|timeout/i.test(text))return 'Supabase non è raggiungibile. Controlla la connessione Internet.';
   return 'Servizio Live temporaneamente non disponibile.';
@@ -1570,19 +1604,25 @@ function handleLiveWriteResult(row,conflictMessage){
 }
 function sendLiveManagerUpdate(){
   if(!['host','manager'].includes(liveRole)||!liveConnected||liveEnded)return false;const snapshot=sharedStateSnapshot();
-  return queueLiveWrite(async()=>{const row=await liveRpc('coppari_live_update',{p_room_id:liveRoomId,p_manager_secret:liveSecret,p_base_revision:liveRevision,p_state:snapshot});handleLiveWriteResult(row,'Aggiornato da un altro gestore: ripeti l’ultima modifica');});
+  return queueLiveWrite(async()=>{const row=await liveRpc('coppari_live_update',{p_room_id:liveRoomId,p_manager_secret:liveSecret,p_base_revision:liveRevision,p_state:snapshot});return handleLiveWriteResult(row,'Aggiornato da un altro gestore: ripeti l’ultima modifica');});
 }
 function sendLiveRefereeMatchUpdate(matchId){
   if(liveRole!=='referee'||!liveConnected||liveEnded)return false;const match=state.matches.find(item=>item.id===matchId);if(!match)return false;const snapshot=JSON.parse(JSON.stringify(match));
-  return queueLiveWrite(async()=>{const row=await liveRpc('coppari_live_update_referee',{p_room_id:liveRoomId,p_referee_secret:liveRefereeSecret,p_base_revision:liveRevision,p_match:snapshot});if(handleLiveWriteResult(row,'Referto riallineato: ripeti l’ultima operazione'))applyLiveRow(row,true);});
+  return queueLiveWrite(async()=>{const row=await liveRpc('coppari_live_update_referee',{p_room_id:liveRoomId,p_referee_secret:liveRefereeSecret,p_base_revision:liveRevision,p_match:snapshot});const accepted=handleLiveWriteResult(row,'Referto riallineato: ripeti l’ultima operazione');if(accepted)applyLiveRow(row,true);return accepted;});
 }
 function sendLiveRatingsUpdate(){return sendLiveManagerUpdate();}
 function spectatorLiveBarHtml(){
   return `<div class="spectator-live-bar ${liveConnected&&!liveEnded?'':'offline'}"><span class="live-dot"></span><span>${liveEnded?'Diretta conclusa · dati finali disponibili':liveConnected?'Diretta cloud collegata · aggiornamento automatico':'Connessione interrotta · ultimo aggiornamento visibile'}</span></div>`;
 }
+function publicCollectiveButtonHtml(m){
+  if(m.status!=='played')return '';
+  if(m.ratingsOpen)return `<button class="secondary" data-contribute-ratings="${m.id}">${collectiveHasLocalSubmission(m)?'Modifica pagella':'Fai la pagella'}</button>`;
+  if(m.ratingsPublished&&m.ratings?.length)return `<button class="ghost" data-ratings-match="${m.id}">Copparigella</button>`;
+  return '';
+}
 function publicMatchRow(m){
   const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live',pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';
-  return `<div class="match ${live?'is-live':played?'is-played':'is-scheduled'}"><div class="stage-label"><span class="match-status-dot" aria-hidden="true"></span>${esc(stageLabel(m))} · ${esc(matchDisplayTime(m))}${live?' · IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div><div class="match-actions"><button class="${live?'primary':'ghost'}" data-public-match="${m.id}">${live?'Segui live':'Dettagli'}</button>${played&&m.ratingsPublished&&m.ratings?.length?`<button class="ghost" data-ratings-match="${m.id}">Copparigelle</button>`:''}</div></div>`;
+  return `<div class="match ${live?'is-live':played?'is-played':'is-scheduled'}"><div class="stage-label"><span class="match-status-dot" aria-hidden="true"></span>${esc(stageLabel(m))} · ${esc(matchDisplayTime(m))}${live?' · IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div><div class="match-actions"><button class="${live?'primary':'ghost'}" data-public-match="${m.id}">${live?'Segui live':'Dettagli'}</button>${publicCollectiveButtonHtml(m)}</div></div>`;
 }
 function publicMatchPhase(m){return m.referee?.phase|| (m.status==='played'?'ended':m.status==='live'?'first':'not_started');}
 function publicMatchSeconds(m){
@@ -1600,7 +1640,7 @@ function publicEventLogHtml(m){
 function publicMatchDetailsHtml(m){
   const home=teamById(m.homeTeamId),away=teamById(m.awayTeamId),phase=publicMatchPhase(m),live=m.status==='live',played=m.status==='played',mvp=playerById(m.mvpPlayerId),pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?`${m.penHome}–${m.penAway} ai rigori`:'';
   const status=live?`<span class="phase-badge"><span class="live-dot"></span>${esc(phaseLabel(phase))}</span><span class="status-chip" id="publicMatchClock">00:00</span>${m.referee&&!m.referee.phaseStartedAt&&['first','halftime','second'].includes(phase)?'<span class="status-chip">Timer in pausa</span>':''}`:played?'<span class="badge green">Partita conclusa</span>':'<span class="badge">In programma</span>';
-  return `<div class="kicker">${esc(stageLabel(m))} · ${esc(matchDisplayTime(m))}</div><h2 style="margin-top:6px">Dettagli partita</h2><div class="ref-scoreboard"><div>${esc(home?.name||'?')}</div><strong>${live||played?refScore(m):'VS'}</strong><div>${esc(away?.name||'?')}</div></div><div class="public-match-summary">${status}${pens?`<span class="status-chip">${esc(pens)}</span>`:''}${mvp?`<span class="status-chip">⭐ MVP ${esc(mvp.name)}</span>`:''}</div><div class="grid cols-2"><div class="card"><div class="section-head"><h3>Eventi</h3><span class="badge">${(m.events||[]).length}</span></div>${publicEventLogHtml(m)}</div><div class="card"><h3>Informazioni</h3><div class="checklist"><div class="check-item done"><span class="check-mark">${live?'●':'✓'}</span><span>${live?'Aggiornamento automatico della diretta':'Dettagli ufficiali del referto'}</span></div><div class="check-item"><span class="check-mark">◆</span><span>${teamPlayers(home?.id).length} giocatori ${esc(home?.name||'')}</span></div><div class="check-item"><span class="check-mark">◆</span><span>${teamPlayers(away?.id).length} giocatori ${esc(away?.name||'')}</span></div></div></div></div><div class="section-head" style="margin-top:18px"><h3>Rose</h3><span class="badge">Sola lettura</span></div><div class="team-grid public-match-rosters">${home?readOnlyRosterCardHtml(home,state.teams.indexOf(home)):''}${away?readOnlyRosterCardHtml(away,state.teams.indexOf(away)):''}</div><div class="modal-actions">${played&&m.ratingsPublished&&m.ratings?.length?`<button class="ghost" data-public-ratings="${m.id}">Vedi Copparigelle</button>`:''}<button class="primary" data-close>Chiudi</button></div>`;
+  return `<div class="kicker">${esc(stageLabel(m))} · ${esc(matchDisplayTime(m))}</div><h2 style="margin-top:6px">Dettagli partita</h2><div class="ref-scoreboard"><div>${esc(home?.name||'?')}</div><strong>${live||played?refScore(m):'VS'}</strong><div>${esc(away?.name||'?')}</div></div><div class="public-match-summary">${status}${pens?`<span class="status-chip">${esc(pens)}</span>`:''}${mvp?`<span class="status-chip">⭐ MVP ${esc(mvp.name)}</span>`:''}</div><div class="grid cols-2"><div class="card"><div class="section-head"><h3>Eventi</h3><span class="badge">${(m.events||[]).length}</span></div>${publicEventLogHtml(m)}</div><div class="card"><h3>Informazioni</h3><div class="checklist"><div class="check-item done"><span class="check-mark">${live?'●':'✓'}</span><span>${live?'Aggiornamento automatico della diretta':'Dettagli ufficiali del referto'}</span></div><div class="check-item"><span class="check-mark">◆</span><span>${teamPlayers(home?.id).length} giocatori ${esc(home?.name||'')}</span></div><div class="check-item"><span class="check-mark">◆</span><span>${teamPlayers(away?.id).length} giocatori ${esc(away?.name||'')}</span></div></div></div></div><div class="section-head" style="margin-top:18px"><h3>Rose</h3><span class="badge">Sola lettura</span></div><div class="team-grid public-match-rosters">${home?readOnlyRosterCardHtml(home,state.teams.indexOf(home)):''}${away?readOnlyRosterCardHtml(away,state.teams.indexOf(away)):''}</div><div class="modal-actions">${m.ratingsOpen?`<button class="secondary" data-public-contribute="${m.id}">${collectiveHasLocalSubmission(m)?'Modifica la tua pagella':'Scrivi la tua pagella'}</button>`:m.ratingsPublished&&m.ratings?.length?`<button class="ghost" data-public-ratings="${m.id}">Vedi Copparigella</button>`:''}<button class="primary" data-close>Chiudi</button></div>`;
 }
 function renderPublicMatchDetails(id,preserveFocus=false){
   const match=state.matches.find(item=>item.id===id);if(!match)return closeModal(true);
@@ -1610,13 +1650,14 @@ function renderPublicMatchDetails(id,preserveFocus=false){
   activePublicMatchId=id;modal.classList.add('public-match-modal');
   modal.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>closeModal());
   modal.querySelector('[data-public-ratings]')?.addEventListener('click',event=>openRatingsModal(event.currentTarget.dataset.publicRatings,true));
+  modal.querySelector('[data-public-contribute]')?.addEventListener('click',event=>openPublicCollectiveRating(event.currentTarget.dataset.publicContribute));
   if(keepCloseFocus)modal.querySelector('[data-close]')?.focus();
   const updateClock=()=>{const clock=document.getElementById('publicMatchClock');if(!clock)return;const seconds=Math.floor(publicMatchSeconds(match));clock.textContent=`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;};
   updateClock();if(match.status==='live')refereeTicker=setInterval(updateClock,1000);
 }
 function openPublicMatchDetails(id){renderPublicMatchDetails(id,false);}
 function renderSpectatorHome(){
-  setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Diretta pubblica · sola lettura');
+  setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Diretta pubblica · pagelle degli amici');
   if(!state.settings.configured){view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">Copparì Live</div><h2>Torneo in preparazione</h2><p class="note">Questa pagina si aggiorna automaticamente appena il gestore completa la configurazione.</p></div>`;return;}
   const played=playedMatches().length,total=Math.max(state.matches.length,totalGamesExpected()),goals=playedMatches().reduce((sum,m)=>sum+(+m.homeScore||0)+(+m.awayScore||0),0),liveMatch=state.matches.find(match=>match.status==='live'),next=liveMatch||nextScheduledMatch(),table=standings();
   const priority=next?`<div class="card next-match-card public-priority ${next.status==='live'?'is-live':''}" style="margin-top:10px"><div class="next-match-stage">${next.status==='live'?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${esc(stageLabel(next))}</div><div class="next-match-teams"><div class="next-match-team">${esc(teamById(next.homeTeamId)?.name||'?')}</div><div class="next-match-vs">${next.status==='live'?`<strong style="font-size:24px">${refScore(next)}</strong><small style="display:block;margin-top:3px">${esc(phaseLabel(publicMatchPhase(next)))}</small>`:'VS'}</div><div class="next-match-team">${esc(teamById(next.awayTeamId)?.name||'?')}</div></div><div class="button-row center"><button class="${next.status==='live'?'primary':'ghost'}" data-public-match="${next.id}">${next.status==='live'?'Apri la diretta':'Dettagli partita'}</button></div></div>`:'';
@@ -1640,6 +1681,7 @@ function renderSpectatorCalendar(){
   view.innerHTML=`${spectatorLiveBarHtml()}<div class="schedule-summary" aria-label="Riepilogo partite"><span class="status-chip">${state.matches.length} totali</span>${live?`<span class="status-chip live">● ${live} in corso</span>`:''}<span class="status-chip done">${played} concluse</span><span class="status-chip">${scheduled} da giocare</span></div>${Object.keys(groups).length?Object.entries(groups).map(([label,matches])=>`<div class="round-block"><div class="round-title">${esc(label)}</div><div class="match-list">${matches.map(publicMatchRow).join('')}</div></div>`).join(''):'<div class="empty"><strong>Calendario in preparazione</strong>Le partite appariranno automaticamente.</div>'}`;
   view.querySelectorAll('[data-public-match]').forEach(button=>button.onclick=()=>openPublicMatchDetails(button.dataset.publicMatch));
   view.querySelectorAll('[data-ratings-match]').forEach(button=>button.onclick=()=>openRatingsModal(button.dataset.ratingsMatch,true));
+  view.querySelectorAll('[data-contribute-ratings]').forEach(button=>button.onclick=()=>openPublicCollectiveRating(button.dataset.contributeRatings));
 }
 function remoteRefereeMatchRow(m){
   const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live',pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';
@@ -1669,20 +1711,20 @@ function liveShareCardHtml(){
   return `<div class="card live-share-card"><span class="live-share-icon">↗</span><div><h3>Fai seguire il torneo a tutti</h3><p class="note">Crea link separati per pubblico, arbitro e gestore. Nessun account richiesto.</p></div><div class="live-share-actions"><button class="primary" id="startLiveFromHome">Avvia diretta</button></div></div>`;
 }
 function liveAccessHtml(links){
-  const publicBox=`<div class="live-link-box"><label>Link pubblico · sola lettura</label><div class="live-link-row"><input readonly value="${esc(links.viewer)}"><button class="ghost" id="copyViewerLink">Copia</button><button class="primary" id="shareViewerLink">Condividi</button></div><div class="note">Mostra rose e giocatori, calendario, risultati, classifica e premi senza consentire modifiche.</div></div>`;
+  const publicBox=`<div class="live-link-box"><label>Link pubblico · diretta e Copparigelle</label><div class="live-link-row"><input readonly value="${esc(links.viewer)}"><button class="ghost" id="copyViewerLink">Copia</button><button class="primary" id="shareViewerLink">Condividi</button></div><div class="note">Mostra torneo e risultati. Dopo ogni partita permette soltanto di inviare una pagella individuale firmata.</div></div>`;
   const managerBox=`<div class="live-link-box"><label>Link gestore · controllo completo</label><div class="live-link-row"><input readonly value="${esc(links.manager)}"><button class="ghost" id="copyManagerLink">Copia</button></div><div class="note">Può cambiare partecipanti, squadre, calendario, configurazione, Copparigelle e referti. Invialo solo agli organizzatori.</div></div>`;
   const refereeBox=`<div class="live-link-box"><label>Link arbitro · partite, referti e rose</label><div class="live-link-row"><input readonly value="${esc(links.referee)}"><button class="ghost" id="copyRefereeLink">Copia</button></div><div class="note">Può consultare le rose, avviare e arbitrare le partite, registrare eventi, MVP e risultato finale; non può cambiare squadre, partecipanti o configurazione.</div></div>`;
   if(liveRole==='host')return publicBox+refereeBox+managerBox;
   if(liveRole==='manager')return publicBox+managerBox;
   if(liveRole==='referee')return '<div class="notice info"><span>⚑</span><span>Accesso Arbitro: puoi modificare soltanto partite e referti. Il resto del torneo è in sola lettura.</span></div>';
-  return '<div class="notice info"><span>👁</span><span>Questa pagina è in sola lettura e si aggiorna automaticamente.</span></div>';
+  return '<div class="notice info"><span>👁</span><span>Puoi seguire il torneo e contribuire alle Copparigelle aperte; il resto rimane in sola lettura.</span></div>';
 }
 function screenWakeControlHtml(){
   const checked=keepScreenAwakeEnabled()?'checked':'',disabled=screenWakeLockSupported()?'':'disabled';
   return `<label class="roster-row" style="margin-top:14px"><span class="grow"><strong>Mantieni schermo acceso durante la Live</strong><span class="note" data-wake-status>${esc(screenWakeStatus())}</span></span><input type="checkbox" data-wake-toggle ${checked} ${disabled}></label><p class="note">Vale solo su questo dispositivo. Consuma più batteria: durante il torneo è consigliato collegarlo alla corrente.</p>`;
 }
 function liveModalHtml(){
-  if(!liveRole)return `<div data-live-modal><div class="kicker">Condivisione senza account</div><h2 style="margin-top:6px">Avvia la diretta cloud</h2><p class="modal-subtitle">Il torneo viene salvato su Supabase e resta raggiungibile anche quando questo telefono è chiuso.</p><div class="notice info"><span>●</span><span>Verranno creati tre accessi: pubblico in sola lettura, arbitro limitato a partite e referti, gestore con controllo completo.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveNow">Avvia e crea i link</button></div></div>`;
+  if(!liveRole)return `<div data-live-modal><div class="kicker">Condivisione senza account</div><h2 style="margin-top:6px">Avvia la diretta cloud</h2><p class="modal-subtitle">Il torneo viene salvato su Supabase e resta raggiungibile anche quando questo telefono è chiuso.</p><div class="notice info"><span>●</span><span>Verranno creati tre accessi: pubblico con contributi limitati alle Copparigelle, arbitro limitato a partite e referti, gestore con controllo completo.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveNow">Avvia e crea i link</button></div></div>`;
   const links=liveLinks(),status=liveRole==='host'?(liveRealtimeConnected?`Diretta attiva · <strong id="liveConnectedCount">${hostConnectionCount()}</strong> collegati`:'Diretta cloud attiva'):liveRole==='manager'?'Collegato come gestore':liveRole==='referee'?'Collegato come arbitro':'Collegato come spettatore';
   return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione persistente tramite Supabase, con aggiornamento automatico di riserva.</p>${liveAccessHtml(links)}${liveRole==='referee'?screenWakeControlHtml():''}<div class="notice info" style="margin-top:14px"><span>☁</span><span>I dati restano disponibili nel cloud. Il telefono che ha creato la diretta può essere chiuso; un altro gestore autorizzato può continuare il torneo.</span></div>${liveRole==='host'?'<div class="notice warn" style="margin-top:12px"><span>↩</span><span>Se questa sessione è bloccata, “Scollega questo telefono” rimuove soltanto il collegamento locale e conserva tutti i dati del torneo.</span></div>':''}<div class="modal-actions">${liveRole==='host'?'<button class="ghost" id="leaveLiveLocal">Scollega questo telefono</button><button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
 }
@@ -2071,7 +2113,7 @@ function renderCalendar(){
   view.querySelectorAll('[data-ref-match]').forEach(b=>b.onclick=()=>openRefereeMode(b.dataset.refMatch));
   view.querySelectorAll('[data-ratings-match]').forEach(b=>b.onclick=()=>openRatingsModal(b.dataset.ratingsMatch));
 }
-function matchRow(m){const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live';const pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';return `<div class="match ${live?'is-live':played?'is-played':'is-scheduled'}"><div class="stage-label"><span class="match-status-dot" aria-hidden="true"></span>${esc(stageLabel(m))} · ${esc(matchDisplayTime(m))}${live?' · IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div><div class="match-actions"><button class="primary" data-ref-match="${m.id}">${played?'Apri referto':live?'Riprendi':'Avvia arbitro'}</button>${played?`<button class="secondary" data-ratings-match="${m.id}">Copparigelle${m.ratingsPublished?' ✓':''}</button>`:''}<button class="ghost" data-edit-match="${m.id}">Gestisci</button></div></div>`;}
+function matchRow(m){const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live';const pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';return `<div class="match ${live?'is-live':played?'is-played':'is-scheduled'}"><div class="stage-label"><span class="match-status-dot" aria-hidden="true"></span>${esc(stageLabel(m))} · ${esc(matchDisplayTime(m))}${live?' · IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div><div class="match-actions"><button class="primary" data-ref-match="${m.id}">${played?'Apri referto':live?'Riprendi':'Avvia arbitro'}</button>${played?`<button class="secondary" data-ratings-match="${m.id}">Copparigella${m.ratingsPublished?' ✓':m.ratingsOpen?' · aperta':''}</button>`:''}<button class="ghost" data-edit-match="${m.id}">Gestisci</button></div></div>`;}
 function openCreateMatchModal(){
   if(state.teams.length<2)return toast('Servono almeno due squadre');
   const options=state.teams.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
@@ -2418,7 +2460,7 @@ function resetRefereeMatch(id){
   if(liveRole!=='referee')createSnapshot(`Prima di azzerare ${home?.name||''} vs ${away?.name||''}`);
   if(liveRole!=='referee'&&m.status==='played'&&m.stage==='group'&&knockoutMatches().length)removeAllKnockout();
   else if(liveRole!=='referee'&&m.status==='played'&&isKnockoutMatch(m))removeDownstreamKnockout(m.koSize||2);
-  m.homeScore=null;m.awayScore=null;m.date='';m.status='scheduled';m.stats=[];m.events=[];m.ratings=[];m.ratingsPublished=false;m.referee=null;m.mvpPlayerId=null;delete m.penHome;delete m.penAway;
+  m.homeScore=null;m.awayScore=null;m.date='';m.status='scheduled';m.stats=[];m.events=[];m.ratings=[];m.ratingsOpen=false;m.ratingsPublished=false;m.referee=null;m.mvpPlayerId=null;delete m.ratingsRoundId;delete m.penHome;delete m.penAway;
   save({matchId:m.id});closeModal(true);render();toast('Partita azzerata e pronta per essere riavviata');
 }
 function renderRefereeMode(id){
@@ -2469,8 +2511,8 @@ function finishRefereeMatch(id){
   const m=state.matches.find(x=>x.id===id);if(!m)return;const r=ensureReferee(m);if(m.homeScore==null)m.homeScore=0;if(m.awayScore==null)m.awayScore=0;
   if(isKnockoutMatch(m)&&+m.homeScore===+m.awayScore){const ph=document.getElementById('refPenHome')?.value,pa=document.getElementById('refPenAway')?.value;if(ph===''||pa===''||ph==null||pa==null||+ph===+pa)return toast('Nei playoff indica un vincitore ai rigori');m.penHome=+ph;m.penAway=+pa;}else{delete m.penHome;delete m.penAway;}
   createSnapshot(`Prima di terminare ${teamById(m.homeTeamId)?.name||''} vs ${teamById(m.awayTeamId)?.name||''}`);setMatchMvp(m,document.getElementById('refMvp')?.value||m.mvpPlayerId||'');
-  r.phase='ended';r.phaseStartedAt=null;m.status='played';if(!m.date){const d=new Date();m.date=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
-  save({matchId:m.id});if(liveRole!=='referee')syncKnockout(false);closeModal();render();toast('Partita terminata e classifica aggiornata');
+  r.phase='ended';r.phaseStartedAt=null;m.status='played';m.ratings=[];m.ratingsRoundId=uid('ratings');m.ratingsOpen=false;m.ratingsPublished=false;if(!m.date){const d=new Date();m.date=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
+  save({matchId:m.id});if(liveRole!=='referee')syncKnockout(false);closeModal();render();toast('Partita terminata · il gestore può aprire la Copparigella',4200);
 }
 function openMatchModal(id){
   const m=state.matches.find(x=>x.id===id),home=teamById(m.homeTeamId),away=teamById(m.awayTeamId),players=[...teamPlayers(home.id),...teamPlayers(away.id)],existing=new Map((m.stats||[]).map(s=>[s.playerId,s]));const ko=isKnockoutMatch(m);
@@ -2486,7 +2528,7 @@ function openMatchModal(id){
     const mvpRows=draftStats.filter(x=>x.mvp);if(mvpRows.length>1)return toast('Seleziona un solo MVP');
     let penHome=null,penAway=null;
     if(ko&&+hs===+as){penHome=document.getElementById('penHome').value;penAway=document.getElementById('penAway').value;if(penHome===''||penAway===''||+penHome===+penAway)return toast('Inserisci un vincitore ai rigori');}
-    const oldWinner=matchWinner(m), oldHs=m.homeScore, oldAs=m.awayScore;
+    const oldWinner=matchWinner(m), oldHs=m.homeScore, oldAs=m.awayScore,firstCompletion=m.status!=='played';
     const scoreChanged=m.status==='played' && (+hs!==+oldHs || +as!==+oldAs);
     if(!ko && scoreChanged && knockoutMatches().length){
       if(!confirm('Questo risultato può cambiare la classifica e il tabellone playoff. La fase finale verrà rigenerata. Continuare?'))return;
@@ -2497,6 +2539,7 @@ function openMatchModal(id){
     if(ko&&+hs===+as){m.penHome=+penHome;m.penAway=+penAway;}else{delete m.penHome;delete m.penAway;}
     if((m.events||[]).length){m.events=[];m.referee=null;m.mvpPlayerId=null;}
     m.homeScore=+hs;m.awayScore=+as;m.date=document.getElementById('matchDate').value;m.status='played';
+    if(firstCompletion){m.ratings=[];m.ratingsRoundId=uid('ratings');m.ratingsOpen=false;m.ratingsPublished=false;}
     const newWinner=matchWinner(m);
     if(ko && oldWinner && newWinner && oldWinner!==newWinner){
       removeDownstreamKnockout(m.koSize||2);
@@ -2513,39 +2556,156 @@ function openMatchModal(id){
       if(downstream&&!confirm('Ripristinando questa partita verranno rimossi i turni successivi già generati. Continuare?'))return;
       removeDownstreamKnockout(m.koSize||2);
     }
-    createSnapshot(`Prima di ripristinare ${home.name} vs ${away.name}`);m.homeScore=null;m.awayScore=null;m.date='';m.status='scheduled';m.stats=[];m.events=[];m.ratings=[];m.ratingsPublished=false;m.referee=null;m.mvpPlayerId=null;delete m.penHome;delete m.penAway;
+    createSnapshot(`Prima di ripristinare ${home.name} vs ${away.name}`);m.homeScore=null;m.awayScore=null;m.date='';m.status='scheduled';m.stats=[];m.events=[];m.ratings=[];m.ratingsOpen=false;m.ratingsPublished=false;m.referee=null;m.mvpPlayerId=null;delete m.ratingsRoundId;delete m.penHome;delete m.penAway;
     save();closeModal(true);render();toast('Partita ripristinata');
   };
 }
 
-function suggestedRating(m,playerId){
-  const stat=(m.stats||[]).find(s=>s.playerId===playerId)||{},mvp=m.mvpPlayerId===playerId||stat.mvp;
-  const raw=6+(stat.goals||0)+(stat.assists||0)*.5+(mvp?1:0)-(stat.yellow||0)*.5-(stat.red||0)*1.5;
-  return Math.round(clamp(raw,5,10)*2)/2;
+function collectivePlayers(m){return [...teamPlayers(m.homeTeamId),...teamPlayers(m.awayTeamId)];}
+function collectiveDraftKey(m){return `coppari.v3.collective-ratings.${safeId(liveRoomId||'local','room')}.${safeId(m?.id,'match')}.${safeId(m?.ratingsRoundId||'round','round')}`;}
+function collectiveVoterToken(){
+  const key=`coppari.v3.collective-voter.${safeId(liveRoomId||'local','room')}`;
+  let token=cleanLiveSecret(storageGet(key)||sessionGet(key));if(token)return token;
+  token=randomLiveToken(24);if(!storageSet(key,token))sessionSet(key,token);return token;
 }
-function publicRatingsHtml(m){
-  const ratings=(m.ratings||[]).filter(r=>playerById(r.playerId)).sort((a,b)=>b.score-a.score||playerById(a.playerId).name.localeCompare(playerById(b.playerId).name,'it'));
-  return `<div class="rating-public-grid">${ratings.map(r=>{const p=playerById(r.playerId);return `<div class="rating-public-card"><span class="vote">${r.score.toLocaleString('it-IT')}</span><strong>${esc(p.name)}</strong><span>${esc(teamById(p.teamId)?.name||'')}</span>${r.comment?`<p>${esc(r.comment)}</p>`:''}</div>`;}).join('')}</div>`;
+function loadCollectiveLocalDraft(m){
+  try{
+    const raw=JSON.parse(storageGet(collectiveDraftKey(m))||'null');
+    const ratings=(Array.isArray(raw?.ratings)?raw.ratings:[]).map(item=>{const score=Number(item?.score);return {playerId:safeRef(item?.playerId),score:Number.isFinite(score)?Math.round(clamp(score,5,10)*2)/2:null,comment:safeText(item?.comment||'',160)};}).filter(item=>item.playerId&&item.score!==null);
+    return {nickname:safeText(raw?.nickname||storageGet(RATING_NICKNAME_KEY)||'',40),ratings,submitted:!!raw?.submitted};
+  }catch{return {nickname:safeText(storageGet(RATING_NICKNAME_KEY)||'',40),ratings:[],submitted:false};}
+}
+function saveCollectiveLocalDraft(m,draft){return storageSet(collectiveDraftKey(m),JSON.stringify(draft));}
+function collectiveHasLocalSubmission(m){return !!m?.ratingsRoundId&&loadCollectiveLocalDraft(m).submitted;}
+function medianScore(values){
+  const sorted=values.map(Number).filter(Number.isFinite).sort((a,b)=>a-b);if(!sorted.length)return null;
+  const middle=Math.floor(sorted.length/2),value=sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;
+  return Math.round(value*2)/2;
+}
+function normalizeCollectiveSubmissions(raw){
+  return (Array.isArray(raw)?raw:[]).slice(0,500).map(item=>({author:safeText(item?.author||'Amico',40)||'Amico',submittedAt:safeText(item?.submittedAt||'',40),ratings:(Array.isArray(item?.ratings)?item.ratings:[]).slice(0,500).map(rating=>{const rawScore=Number(rating?.score);return {playerId:safeRef(rating?.playerId),score:Number.isFinite(rawScore)?Math.round(clamp(rawScore,5,10)*2)/2:null,comment:safeText(rating?.comment||'',160)};}).filter(rating=>rating.playerId&&rating.score!==null)})).filter(item=>item.ratings.length);
+}
+async function readCollectiveSubmissions(m,manager=false){
+  if(!liveRoomId||!m?.ratingsRoundId)return {count:0,submissions:[]};
+  const name=manager?'coppari_live_read_rating_submissions':'coppari_live_read_published_ratings';
+  const args={p_room_id:liveRoomId,p_match_id:m.id,p_round_id:m.ratingsRoundId};if(manager)args.p_manager_secret=liveSecret;
+  const row=await liveRpc(name,args),submissions=normalizeCollectiveSubmissions(row?.submissions);
+  return {count:Math.max(submissions.length,+row?.submission_count||0),submissions};
+}
+function collectiveEntriesForPlayer(submissions,playerId){
+  return submissions.map(submission=>{const rating=submission.ratings.find(item=>item.playerId===playerId);return rating?{...rating,author:submission.author}:null;}).filter(Boolean);
+}
+function representativeCollectiveComment(entries,median){
+  const seen=new Set(),comments=entries.filter(item=>item.comment).sort((a,b)=>Math.abs(a.score-median)-Math.abs(b.score-median)||b.comment.length-a.comment.length).map(item=>item.comment).filter(comment=>{const key=comment.toLocaleLowerCase('it');if(seen.has(key))return false;seen.add(key);return true;});
+  return safeText(comments.slice(0,2).join(' · '),240);
+}
+function collectiveDraftRows(m,submissions){
+  const existing=new Map((m.ratings||[]).map(item=>[item.playerId,item]));
+  return collectivePlayers(m).map(player=>{const entries=collectiveEntriesForPlayer(submissions,player.id),score=medianScore(entries.map(item=>item.score));if(score===null)return null;const previous=existing.get(player.id);return {playerId:player.id,score,count:entries.length,comment:previous?.comment||representativeCollectiveComment(entries,score)};}).filter(Boolean);
+}
+function collectiveSourceListHtml(entries){
+  if(!entries.length)return '<div class="collective-empty">Nessun contributo disponibile.</div>';
+  return `<div class="collective-source-list">${entries.map(item=>`<div class="collective-source"><div class="collective-source-head"><strong>${esc(item.author)}</strong><strong>${item.score.toLocaleString('it-IT')}</strong></div>${item.comment?`<p>${esc(item.comment)}</p>`:'<p>Nessun commento.</p>'}</div>`).join('')}</div>`;
+}
+async function persistCollectiveManagerState(){
+  state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};syncPlayerArchiveFromState();
+  if(['host','manager'].includes(liveRole)){
+    if(!liveConnected||liveEnded){toast(liveEnded?'La diretta è terminata':'Collegamento live interrotto: attendi la riconnessione',4200);return false;}
+    if(liveRole==='host')persistStateLocally();
+    try{return (await sendLiveManagerUpdate())!==false;}catch(error){toast(liveErrorText(error),5200);return false;}
+  }
+  return save();
+}
+async function setCollectiveCollection(id,open){
+  const match=state.matches.find(item=>item.id===id);if(!match)return false;
+  createSnapshot(`${open?'Prima di aprire':'Prima di chiudere'} le Copparigelle`);
+  if(open){if(!match.ratingsRoundId)match.ratingsRoundId=uid('ratings');match.ratingsOpen=true;match.ratingsPublished=false;}
+  else match.ratingsOpen=false;
+  return await persistCollectiveManagerState();
+}
+function collectiveManagerIntroHtml(match,data,error=''){
+  const home=teamById(match.homeTeamId),away=teamById(match.awayTeamId),count=data?.count||0,status=match.ratingsPublished?'Pubblicata':match.ratingsOpen?'Raccolta aperta':'Raccolta chiusa';
+  const errorHtml=error?`<div class="notice warn"><span>!</span><span>${esc(error)}</span></div>`:'';
+  const actions=match.ratingsOpen?`<button class="ghost" id="refreshCollective">Aggiorna</button><button class="primary" id="closeCollective">Chiudi e prepara</button>`:match.ratingsPublished?`<button class="ghost" id="viewPublishedCollective">Vedi pubblicata</button>${count?'<button class="secondary" id="reviewCollective">Rivedi</button>':''}<button class="primary" id="openCollective">Riapri raccolta</button>`:`<button class="ghost" data-close>Chiudi</button>${count?'<button class="secondary" id="reviewCollective">Prepara definitiva</button>':''}<button class="primary" id="openCollective">Apri raccolta</button>`;
+  return `<div class="collective-shell"><div class="kicker">Copparigella collettiva · ${esc(status)}</div><div class="collective-head"><div><h2>${esc(home?.name||'?')} ${match.homeScore}–${match.awayScore} ${esc(away?.name||'?')}</h2><p class="note">I giudizi restano separati e nascosti fino alla pubblicazione.</p></div><span class="badge">${count} ${count===1?'pagella':'pagelle'}</span></div>${errorHtml}<div class="collective-summary"><div class="collective-stat"><strong>${count}</strong><span>amici</span></div><div class="collective-stat"><strong>${collectivePlayers(match).length}</strong><span>giocatori</span></div><div class="collective-stat"><strong>${match.ratingsPublished?'✓':match.ratingsOpen?'●':'—'}</strong><span>${esc(status)}</span></div></div><div class="notice info"><span>📝</span><span>Il voto definitivo parte dalla mediana. La frase proposta usa soltanto commenti realmente inviati e deve essere approvata dal pagellista.</span></div><div class="modal-actions">${actions}</div></div>`;
+}
+async function openCollectiveManagerModal(id){
+  const match=state.matches.find(item=>item.id===id);if(!match)return toast('Partita non disponibile');
+  if(match.status!=='played')return toast('Le Copparigelle si aprono dopo la partita');
+  if(!['host','manager'].includes(liveRole)){
+    openModal(`<div class="kicker">Copparigella collettiva</div><h2 style="margin-top:6px">Prima avvia la diretta</h2><p class="modal-subtitle">I contributi degli amici vengono raccolti in modo separato e sicuro nel cloud.</p><div class="notice info"><span>↗</span><span>Avvia Copparì Live e condividi il normale link pubblico: non serve un altro collegamento.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveForRatings">Avvia diretta</button></div>`);
+    document.getElementById('startLiveForRatings').onclick=async()=>{const button=document.getElementById('startLiveForRatings');button.disabled=true;button.textContent='Avvio…';if(await startLiveHost())openCollectiveManagerModal(id);else{button.disabled=false;button.textContent='Riprova';}};return;
+  }
+  openModal('<div class="collective-empty">Caricamento delle pagelle…</div>');
+  let data={count:0,submissions:[]},error='';try{data=await readCollectiveSubmissions(match,true);}catch(cause){error=liveErrorText(cause);}
+  const renderOverview=()=>{
+    const current=state.matches.find(item=>item.id===id);if(!current)return closeModal(true);modal.innerHTML=collectiveManagerIntroHtml(current,data,error);modal.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>closeModal());
+    document.getElementById('refreshCollective')?.addEventListener('click',()=>openCollectiveManagerModal(id));
+    document.getElementById('openCollective')?.addEventListener('click',async event=>{event.currentTarget.disabled=true;if(await setCollectiveCollection(id,true))openCollectiveManagerModal(id);else event.currentTarget.disabled=false;});
+    document.getElementById('closeCollective')?.addEventListener('click',async event=>{event.currentTarget.disabled=true;event.currentTarget.textContent='Chiusura…';if(!(await setCollectiveCollection(id,false)))return openCollectiveManagerModal(id);try{data=await readCollectiveSubmissions(state.matches.find(item=>item.id===id),true);openCollectiveReview(id,data.submissions);}catch(cause){error=liveErrorText(cause);renderOverview();}});
+    document.getElementById('reviewCollective')?.addEventListener('click',()=>openCollectiveReview(id,data.submissions));
+    document.getElementById('viewPublishedCollective')?.addEventListener('click',()=>openPublishedCollectiveRatings(id));
+  };
+  renderOverview();
+}
+function openCollectiveReview(id,submissions){
+  const match=state.matches.find(item=>item.id===id);if(!match)return toast('Partita non disponibile');
+  const rows=collectiveDraftRows(match,submissions);if(!rows.length){toast('Non ci sono ancora voti da elaborare');return openCollectiveManagerModal(id);}
+  const session={index:0,rows};
+  const capture=()=>{const row=session.rows[session.index],score=Number(document.getElementById('collectiveFinalScore')?.value);if(Number.isFinite(score))row.score=Math.round(clamp(score,5,10)*2)/2;row.comment=safeText(document.getElementById('collectiveFinalComment')?.value||'',240);};
+  const commit=async published=>{capture();const target=state.matches.find(item=>item.id===id);if(!target)return toast('Partita non più disponibile');target.ratings=session.rows.map(row=>({playerId:row.playerId,score:row.score,comment:row.comment,count:row.count}));target.ratingsOpen=false;target.ratingsPublished=published;const ok=await persistCollectiveManagerState();if(!ok)return;toast(published?'Copparigella collettiva pubblicata':'Bozza della Copparigella salvata');if(published){closeModal(true);render();}else openCollectiveManagerModal(id);};
+  const renderStep=()=>{
+    const row=session.rows[session.index],player=playerById(row.playerId),entries=collectiveEntriesForPlayer(submissions,row.playerId),percent=((session.index+1)/session.rows.length)*100,last=session.index===session.rows.length-1;
+    modal.innerHTML=`<div class="collective-shell"><div class="collective-head"><div><div class="kicker">Revisione del pagellista</div><h2>${esc(player?.name||'Giocatore')}</h2><p class="note">${esc(teamById(player?.teamId)?.name||'')} · mediana di ${row.count} ${row.count===1?'voto':'voti'}</p></div><div class="collective-head-side"><div class="collective-progress">${session.index+1}/${session.rows.length}</div><button class="ghost collective-close" data-close aria-label="Chiudi">×</button></div><div class="collective-progress-bar"><i style="width:${percent}%"></i></div></div><div class="collective-card"><div class="collective-review-field"><label class="field"><span>Voto finale</span><input id="collectiveFinalScore" type="number" min="5" max="10" step="0.5" inputmode="decimal" value="${row.score}"></label><label class="field"><span>Testo definitivo</span><textarea id="collectiveFinalComment" maxlength="240" placeholder="Sintesi approvata dal pagellista">${esc(row.comment)}</textarea></label></div><details><summary><strong>${entries.length} contributi originali</strong></summary><div style="margin-top:8px">${collectiveSourceListHtml(entries)}</div></details></div><div class="collective-nav"><button class="ghost" id="collectivePrev" ${session.index===0?'disabled':''}>← Indietro</button><button class="ghost" id="saveCollectiveDraft">Salva bozza</button><button class="primary" id="collectiveNext">${last?'Pubblica':'Avanti →'}</button></div></div>`;
+    modal.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>closeModal());
+    document.getElementById('collectivePrev').onclick=()=>{capture();session.index--;renderStep();};
+    document.getElementById('saveCollectiveDraft').onclick=event=>{event.currentTarget.disabled=true;commit(false);};
+    document.getElementById('collectiveNext').onclick=event=>{capture();if(last){event.currentTarget.disabled=true;event.currentTarget.textContent='Pubblicazione…';commit(true);}else{session.index++;renderStep();}};
+  };
+  openModal('');renderStep();
+}
+async function openPublishedCollectiveRatings(id){
+  const match=state.matches.find(item=>item.id===id);if(!match||!match.ratingsPublished||!match.ratings?.length)return toast('Copparigella non ancora pubblicata');
+  openModal('<div class="collective-empty">Apro la Copparigella…</div>');
+  let submissions=[];try{submissions=(await readCollectiveSubmissions(match,false)).submissions;}catch{}
+  const rows=(match.ratings||[]).filter(item=>playerById(item.playerId)),session={index:0};
+  const renderStep=()=>{
+    const row=rows[session.index],player=playerById(row.playerId),entries=collectiveEntriesForPlayer(submissions,row.playerId),percent=((session.index+1)/rows.length)*100;
+    modal.innerHTML=`<div class="collective-shell"><div class="collective-head"><div><div class="kicker">Copparigella collettiva</div><h2>${esc(player?.name||'Giocatore')}</h2><p class="note">${esc(teamById(player?.teamId)?.name||'')}</p></div><div class="collective-progress">${session.index+1}/${rows.length}</div><div class="collective-progress-bar"><i style="width:${percent}%"></i></div></div><div class="collective-card"><div class="collective-player"><div><strong>Voto definitivo</strong><span>Mediana approvata dal pagellista · ${row.count||entries.length||1} contributi</span></div><div class="collective-vote">${row.score.toLocaleString('it-IT')}</div></div>${row.comment?`<p style="margin:0">${esc(row.comment)}</p>`:'<p class="note" style="margin:0">Nessun commento definitivo.</p>'}${entries.length?`<details><summary><strong>Leggi i giudizi degli amici</strong></summary><div style="margin-top:8px">${collectiveSourceListHtml(entries)}</div></details>`:''}</div><div class="collective-nav"><button class="ghost" id="publishedPrev" ${session.index===0?'disabled':''}>← Indietro</button><button class="ghost" data-close>Chiudi</button><button class="primary" id="publishedNext" ${session.index===rows.length-1?'disabled':''}>Avanti →</button></div></div>`;
+    modal.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>closeModal());document.getElementById('publishedPrev').onclick=()=>{session.index--;renderStep();};document.getElementById('publishedNext').onclick=()=>{session.index++;renderStep();};
+  };
+  renderStep();
+}
+function openPublicCollectiveRating(id){
+  const match=state.matches.find(item=>item.id===id);if(!match||match.status!=='played')return toast('La partita non è ancora conclusa');
+  if(!match.ratingsOpen||!match.ratingsRoundId)return toast('La raccolta delle pagelle è chiusa');
+  if(liveRole!=='viewer'||!liveConnected)return toast('Apri il link pubblico della diretta per inviare la tua pagella');
+  const players=collectivePlayers(match),local=loadCollectiveLocalDraft(match),ratings=new Map(local.ratings.map(item=>[item.playerId,{score:item.score,comment:item.comment}])),session={index:0,nickname:local.nickname,ratings,submitted:local.submitted};
+  const scoreValues=Array.from({length:11},(_,index)=>5+index*.5);
+  const renderStep=()=>{
+    const player=players[session.index],entry=session.ratings.get(player.id)||{score:null,comment:''},percent=((session.index+1)/players.length)*100,last=session.index===players.length-1;
+    modal.innerHTML=`<div class="collective-shell"><div class="collective-head"><div><div class="kicker">${session.submitted?'Modifica la tua pagella':'La tua pagella'}</div><h2>${esc(player.name)}</h2><p class="note">${esc(teamById(player.teamId)?.name||'')} · i giudizi restano nascosti fino alla pubblicazione</p></div><div class="collective-head-side"><div class="collective-progress">${session.index+1}/${players.length}</div><button class="ghost collective-close" data-close aria-label="Chiudi">×</button></div><div class="collective-progress-bar"><i style="width:${percent}%"></i></div></div><label class="field"><span>Il tuo nome o soprannome</span><input id="collectiveNickname" maxlength="40" autocomplete="nickname" value="${esc(session.nickname)}" placeholder="Es. Ricky"></label><div class="collective-card"><div class="collective-player"><div><strong>Scegli il voto</strong><span>Da 5 a 10, anche con mezzi voti</span></div><div class="collective-vote" id="collectiveVotePreview">${entry.score===null?'—':entry.score.toLocaleString('it-IT')}</div></div><div class="collective-score-grid">${scoreValues.map(score=>`<button type="button" data-collective-score="${score}" class="${entry.score===score?'selected':''}">${score.toLocaleString('it-IT')}</button>`).join('')}</div><label class="field"><span>Commento facoltativo</span><textarea id="collectiveComment" maxlength="160" placeholder="Scrivi solo ciò che hai davvero osservato">${esc(entry.comment)}</textarea></label></div><div class="collective-nav"><button class="ghost" id="collectivePublicPrev" ${session.index===0?'disabled':''}>← Indietro</button><button class="ghost collective-skip" id="collectivePublicSkip">Salta</button><button class="primary" id="collectivePublicNext">${last?`Invia ${session.submitted?'modifiche':'pagella'}`:'Avanti →'}</button></div></div>`;
+    const saveLocal=()=>saveCollectiveLocalDraft(match,{nickname:session.nickname,ratings:[...session.ratings].map(([playerId,value])=>({playerId,...value})).filter(item=>item.score!==null),submitted:session.submitted});
+    modal.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>{saveLocal();closeModal();});
+    document.getElementById('collectiveNickname').oninput=event=>{session.nickname=safeText(event.target.value,40);};
+    modal.querySelectorAll('[data-collective-score]').forEach(button=>button.onclick=()=>{const score=+button.dataset.collectiveScore,current=session.ratings.get(player.id)||{comment:''};session.ratings.set(player.id,{score,comment:safeText(document.getElementById('collectiveComment').value,160)});modal.querySelectorAll('[data-collective-score]').forEach(item=>item.classList.toggle('selected',item===button));document.getElementById('collectiveVotePreview').textContent=score.toLocaleString('it-IT');saveLocal();});
+    document.getElementById('collectiveComment').oninput=event=>{const current=session.ratings.get(player.id)||{score:null};session.ratings.set(player.id,{score:current.score,comment:safeText(event.target.value,160)});};
+    document.getElementById('collectivePublicPrev').onclick=()=>{session.index--;saveLocal();renderStep();};
+    document.getElementById('collectivePublicSkip').onclick=()=>{session.ratings.delete(player.id);saveLocal();if(last)toast('Giocatore saltato');else{session.index++;renderStep();}};
+    document.getElementById('collectivePublicNext').onclick=async event=>{
+      saveLocal();if(!last){session.index++;return renderStep();}
+      const payload=[...session.ratings].map(([playerId,value])=>({playerId,score:value.score,comment:safeText(value.comment||'',160)})).filter(item=>Number.isFinite(item.score));
+      if(session.nickname.length<2)return toast('Scrivi il tuo nome o soprannome');if(!payload.length)return toast('Assegna almeno un voto');
+      const button=event.currentTarget;button.disabled=true;button.textContent='Invio…';
+      try{const result=await liveRpc('coppari_live_submit_ratings',{p_room_id:liveRoomId,p_match_id:match.id,p_round_id:match.ratingsRoundId,p_voter_token:collectiveVoterToken(),p_voter_name:session.nickname,p_ratings:payload});session.submitted=true;storageSet(RATING_NICKNAME_KEY,session.nickname);saveLocal();closeModal(true);render();toast(`Pagella inviata · ${+result?.submission_count||1} contributi raccolti`,4200);}catch(error){button.disabled=false;button.textContent=`Invia ${session.submitted?'modifiche':'pagella'}`;toast(liveErrorText(error),5200);}
+    };
+  };
+  openModal('');renderStep();
 }
 function openRatingsModal(id,readOnly=false){
-  const initial=state.matches.find(m=>m.id===id);if(!initial)return toast('Partita non disponibile');
-  if(initial.status!=='played')return toast('Le Copparigelle si compilano dopo la partita');
-  if(liveRole==='referee'&&!readOnly)return toast('Il link arbitro non può modificare le Copparigelle');
-  if(readOnly&&(!initial.ratingsPublished||!initial.ratings?.length))return toast('Copparigelle non ancora pubblicate');
-  const home=teamById(initial.homeTeamId),away=teamById(initial.awayTeamId),players=[...teamPlayers(initial.homeTeamId),...teamPlayers(initial.awayTeamId)],existing=new Map((initial.ratings||[]).map(r=>[r.playerId,r]));
-  if(readOnly){openModal(`<div class="kicker">Copparigelle pubblicate</div><h2 style="margin-top:6px">${esc(home?.name||'?')} ${initial.homeScore}–${initial.awayScore} ${esc(away?.name||'?')}</h2><p class="modal-subtitle">${stageLabel(initial)} · voti e commenti del gestore</p>${publicRatingsHtml(initial)}<div class="modal-actions"><button class="primary" data-close>Chiudi</button></div>`);return;}
-  const rows=players.map(p=>{const r=existing.get(p.id);return `<div class="rating-row" data-rating-player="${p.id}"><div class="rating-player"><strong>${esc(p.name)}</strong><span>${esc(teamById(p.teamId)?.name||'')} · suggerito ${suggestedRating(initial,p.id).toLocaleString('it-IT')}</span></div><input class="rating-score" data-rating-score type="number" min="5" max="10" step="0.5" inputmode="decimal" value="${r?.score??''}" placeholder="${suggestedRating(initial,p.id)}" aria-label="Voto ${esc(p.name)}"><input class="rating-comment" data-rating-comment maxlength="160" value="${esc(r?.comment||'')}" placeholder="Commento simpatico facoltativo" aria-label="Commento ${esc(p.name)}"></div>`;}).join('');
-  openModal(`<div class="kicker">Copparigelle</div><h2 style="margin-top:6px">${esc(home?.name||'?')} ${initial.homeScore}–${initial.awayScore} ${esc(away?.name||'?')}</h2><p class="modal-subtitle">Voti da 5 a 10, anche con mezzi voti. Puoi salvarli in bozza o renderli visibili al pubblico.</p><div class="notice ${initial.ratingsPublished?'info':'warn'}"><span>${initial.ratingsPublished?'✓':'i'}</span><span>${initial.ratingsPublished?'Copparigelle pubblicate: il pubblico può già leggerle.':'Bozza privata: il pubblico non vede ancora questi voti.'}</span></div><div class="ratings-list">${rows}</div><div class="modal-actions"><button class="ghost" id="suggestRatings">Usa voti suggeriti</button><button class="ghost" id="saveRatingsDraft">Salva bozza</button><button class="primary" id="publishRatings">Salva e pubblica</button></div>`);
-  document.getElementById('suggestRatings').onclick=()=>modal.querySelectorAll('[data-rating-player]').forEach(row=>{const input=row.querySelector('[data-rating-score]');if(!input.value)input.value=String(suggestedRating(state.matches.find(m=>m.id===id)||initial,row.dataset.ratingPlayer));});
-  const commit=published=>{
-    const ratings=[...modal.querySelectorAll('[data-rating-player]')].map(row=>{const raw=row.querySelector('[data-rating-score]').value;if(raw==='')return null;return {playerId:row.dataset.ratingPlayer,score:Math.round(clamp(+raw||5,5,10)*2)/2,comment:row.querySelector('[data-rating-comment]').value.trim().slice(0,160)};}).filter(Boolean);
-    if(!ratings.length)return toast('Inserisci almeno un voto');
-    const target=state.matches.find(m=>m.id===id);if(!target)return toast('Partita non più disponibile');
-    createSnapshot(`Prima di aggiornare le Copparigelle di ${home?.name||''} vs ${away?.name||''}`);target.ratings=ratings;target.ratingsPublished=published;state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};
-    if(liveRole==='manager'){if(!liveConnected)return toast('Collegamento live interrotto: attendi la riconnessione',4200);syncPlayerArchiveFromState();sendLiveRatingsUpdate(id);updateSaveIndicator();}else save();
-    closeModal(true);render();toast(published?'Copparigelle pubblicate':'Copparigelle salvate in bozza');
-  };
-  document.getElementById('saveRatingsDraft').onclick=()=>commit(false);document.getElementById('publishRatings').onclick=()=>commit(true);
+  if(readOnly)return openPublishedCollectiveRatings(id);
+  if(liveRole==='referee')return toast('Il link arbitro non può gestire le Copparigelle');
+  return openCollectiveManagerModal(id);
 }
 
 function miniTable(teamIds){
@@ -2817,7 +2977,7 @@ async function requestAppInstall(){
 }
 function openManagerGuide(initial=false){
   const localWarning=isLocalFileMode()?'<div class="notice warn" style="margin-top:10px"><span>!</span><span>Se hai ricevuto solo il file HTML e iOS lo mostra in anteprima, per il torneo è preferibile un link web aperto direttamente in Safari.</span></div>':'';
-  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist, falli e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Condivisione live</strong></summary><ol class="note"><li>Da Panoramica tocca “Avvia diretta”.</li><li>Invia il link pubblico a chi deve solo seguire risultati e classifiche.</li><li>Invia il link gestore soltanto agli organizzatori autorizzati.</li><li>Dopo il primo salvataggio i dati restano su Supabase: il telefono che ha avviato la Live può essere chiuso.</li><li>Evitate di modificare contemporaneamente la stessa partita da due telefoni.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> apri il link gestore sul nuovo dispositivo.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione se serve ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
+  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist, falli e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Condivisione live</strong></summary><ol class="note"><li>Da Panoramica tocca “Avvia diretta”.</li><li>Invia il link pubblico a chi segue il torneo e scrive le pagelle.</li><li>Invia il link gestore soltanto agli organizzatori autorizzati.</li><li>Dopo il primo salvataggio i dati restano su Supabase: il telefono che ha avviato la Live può essere chiuso.</li><li>Evitate di modificare contemporaneamente la stessa partita da due telefoni.</li></ol></details><details class="card soft"><summary><strong>Copparigella collettiva</strong></summary><ol class="note"><li>Dopo una partita vai in Partite → Copparigella e apri la raccolta.</li><li>Gli amici compilano una scheda alla volta dal link pubblico; i giudizi restano nascosti.</li><li>Chiudi la raccolta e prepara la definitiva: il voto parte dalla mediana.</li><li>Rivedi un giocatore alla volta, correggi il testo e pubblica.</li><li>I contributi originali diventano consultabili solo sotto la pagella definitiva.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> apri il link gestore sul nuovo dispositivo.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione se serve ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
   const liveGuideDetails=[...modal.querySelectorAll('details')].find(item=>item.querySelector('summary')?.textContent.trim()==='Condivisione live');
   if(liveGuideDetails)liveGuideDetails.innerHTML=`<summary><strong>Condivisione live · istruzioni complete</strong></summary><div class="notice info" style="margin:12px 0"><span>☁</span><span><strong>Supabase è la sorgente ufficiale.</strong> Conserva il torneo e distribuisce ogni aggiornamento agli altri dispositivi anche quando il primo telefono è chiuso.</span></div><h4>1 · Avvia la diretta</h4><ol class="note"><li>Completa almeno la configurazione iniziale, poi da Panoramica tocca “Avvia diretta”.</li><li>Attendi la conferma “Diretta cloud attiva”, quindi condividi i link.</li><li>Esporta comunque un backup prima del torneo e dopo le modifiche più importanti.</li></ol><h4>2 · Scegli il link corretto</h4><ul class="note"><li><strong>Link pubblico:</strong> è sempre in sola lettura. Mostra rose e giocatori, risultati, calendario, classifica e premi; chi lo apre non può cambiare i dati.</li><li><strong>Link arbitro:</strong> consente di consultare le rose e gestire soltanto partite, timer e referti.</li><li><strong>Link gestore:</strong> offre controllo completo. Conservalo come una password.</li></ul><h4>3 · Durante il torneo</h4><ol class="note"><li>Ogni modifica confermata viene salvata nel cloud e notificata agli altri dispositivi.</li><li>Il primo telefono può essere bloccato o chiuso; un altro dispositivo con il link gestore può continuare il torneo.</li><li>Se due gestori modificano la stessa revisione, Copparì conserva la prima modifica e chiede all’altro di ripetere l’operazione.</li><li>Se Internet cade, le modifiche vengono bloccate finché non avviene la riconnessione; l’ultimo stato resta disponibile.</li></ol><h4>4 · Chiusura e sicurezza</h4><ul class="note"><li>“Termina diretta” impedisce nuove modifiche, ma conserva nel cloud i dati finali in sola lettura.</li><li>Tratta i link gestore e arbitro come password. Se vengono condivisi per errore, termina la diretta e avviane una nuova.</li><li>I segreti dei link vengono verificati nel database e non sono salvati in chiaro.</li></ul>`;
   document.getElementById('closeGuide').onclick=()=>{storageSet(GUIDE_KEY,'1');closeModal(true);};
