@@ -540,7 +540,7 @@ tr:hover td { background:#fbfcf8; }
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v<span id="appVersionLabel">3.5.2</span></span>
+          <span>cabina di regia · v<span id="appVersionLabel">3.5.3</span></span>
         </div>
       </div>
 
@@ -597,7 +597,7 @@ tr:hover td { background:#fbfcf8; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.5.2';
+const APP_VERSION = '3.5.3';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
@@ -1199,7 +1199,7 @@ function screenWakeControlHtml(){
 function liveModalHtml(){
   if(!liveRole)return `<div data-live-modal><div class="kicker">Condivisione senza account</div><h2 style="margin-top:6px">Avvia la diretta cloud</h2><p class="modal-subtitle">Il torneo viene salvato su Supabase e resta raggiungibile anche quando questo telefono è chiuso.</p><div class="notice info"><span>●</span><span>Verranno creati tre accessi: pubblico in sola lettura, arbitro limitato a partite e referti, gestore con controllo completo.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveNow">Avvia e crea i link</button></div></div>`;
   const links=liveLinks(),status=liveRole==='host'?`Diretta attiva · <strong id="liveConnectedCount">${hostConnectionCount()}</strong> collegati`:liveRole==='manager'?'Collegato come gestore':liveRole==='referee'?'Collegato come arbitro':'Collegato come spettatore';
-  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione persistente tramite Supabase Realtime.</p>${liveAccessHtml(links)}${liveRole==='referee'?screenWakeControlHtml():''}<div class="notice info" style="margin-top:14px"><span>☁</span><span>I dati restano disponibili nel cloud. Il telefono che ha creato la diretta può essere chiuso; un altro gestore autorizzato può continuare il torneo.</span></div><div class="modal-actions">${liveRole==='host'?'<button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
+  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione persistente tramite Supabase Realtime.</p>${liveAccessHtml(links)}${liveRole==='referee'?screenWakeControlHtml():''}<div class="notice info" style="margin-top:14px"><span>☁</span><span>I dati restano disponibili nel cloud. Il telefono che ha creato la diretta può essere chiuso; un altro gestore autorizzato può continuare il torneo.</span></div>${liveRole==='host'?'<div class="notice warn" style="margin-top:12px"><span>↩</span><span>Se questa sessione è bloccata, “Scollega questo telefono” rimuove soltanto il collegamento locale e conserva tutti i dati del torneo.</span></div>':''}<div class="modal-actions">${liveRole==='host'?'<button class="ghost" id="leaveLiveLocal">Scollega questo telefono</button><button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
 }
 function bindLiveModalActions(){
   modal.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>closeModal());
@@ -1209,15 +1209,23 @@ function bindLiveModalActions(){
   document.getElementById('copyManagerLink')?.addEventListener('click',()=>copyLiveLink(liveLinks().manager,'Link gestore copiato'));
   document.getElementById('copyRefereeLink')?.addEventListener('click',()=>copyLiveLink(liveLinks().referee,'Link arbitro copiato'));
   document.getElementById('shareViewerLink')?.addEventListener('click',()=>shareLiveViewerLink());
+  document.getElementById('leaveLiveLocal')?.addEventListener('click',leaveLiveHostLocally);
   document.getElementById('stopLiveNow')?.addEventListener('click',stopLiveHost);
 }
 function openLiveShareModal(){openModal(liveModalHtml());bindLiveModalActions();}
 async function copyLiveLink(link,message){try{await navigator.clipboard.writeText(link);toast(message);}catch{const input=document.createElement('textarea');input.value=link;input.style.position='fixed';input.style.opacity='0';document.body.appendChild(input);input.select();document.execCommand('copy');input.remove();toast(message);}}
 async function shareLiveViewerLink(){const link=liveLinks().viewer;if(navigator.share){try{await navigator.share({title:`Diretta ${state.settings.name}`,text:'Segui il torneo Copparì in diretta',url:link});return;}catch(error){if(error?.name==='AbortError')return;}}copyLiveLink(link,'Link pubblico copiato');}
+function clearLocalLiveSession(message){
+  closeLiveTransport();storageRemove(LIVE_CONFIG_KEY);liveRole=null;liveRoomId=null;liveSecret=null;liveRefereeSecret=null;liveRevision=0;liveHasState=false;liveConnecting=false;liveEnded=false;liveApplyingRemote=false;liveErrorMessage='';liveReconnectAttempts=0;livePresenceCount=0;liveWriteQueue=Promise.resolve();closeModal(true);render();toast(message);
+}
+function leaveLiveHostLocally(){
+  if(liveRole!=='host'||!confirm('Scollegare soltanto questo telefono? La stanza cloud, se esiste, non verrà terminata. Partecipanti, squadre, calendario e risultati resteranno salvati su questo dispositivo.'))return;
+  clearLocalLiveSession('Telefono scollegato dalla vecchia sessione Live');
+}
 async function stopLiveHost(){
   if(liveRole!=='host'||!confirm('Terminare la diretta? Tutti i dispositivi collegati perderanno la connessione.'))return;
-  try{await liveRpc('coppari_live_stop',{p_room_id:liveRoomId,p_manager_secret:liveSecret});notifyLiveRefresh();liveEnded=true;closeLiveTransport();storageRemove(LIVE_CONFIG_KEY);liveRole=null;liveRoomId=null;liveSecret=null;liveRefereeSecret=null;liveRevision=0;closeModal(true);render();toast('Diretta terminata: i dati finali restano nel cloud');}
-  catch(error){toast(liveErrorText(error),5200);}
+  try{const stopped=await liveRpc('coppari_live_stop',{p_room_id:liveRoomId,p_manager_secret:liveSecret});if(stopped!==true)throw new Error('LIVE_ROOM_NOT_FOUND');notifyLiveRefresh();liveEnded=true;clearLocalLiveSession('Diretta terminata: i dati finali restano nel cloud');}
+  catch(error){toast(`${liveErrorText(error)} Puoi usare “Scollega questo telefono” per uscire senza cancellare il torneo.`,7200);}
 }
 function initLiveSharing(){
   const join=parseLiveJoinFromLocation();
