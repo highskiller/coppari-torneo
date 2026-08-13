@@ -540,7 +540,7 @@ tr:hover td { background:#fbfcf8; }
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v3.3.1</span>
+          <span>cabina di regia · v<span id="appVersionLabel">3.5.1</span></span>
         </div>
       </div>
 
@@ -598,6 +598,7 @@ tr:hover td { background:#fbfcf8; }
 
   <script>
 const APP_VERSION = '3.5.1';
+document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
