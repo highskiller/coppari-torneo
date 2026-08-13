@@ -702,6 +702,14 @@ body:has(.app-shell.setup-mode) { padding-bottom:0; }
 .spectator-hero { padding:17px 18px; }
 .spectator-hero h2 { margin:5px 0 2px; font-size:clamp(23px,3.4vw,32px); }
 .spectator-hero .note { margin:0; }
+.spectator-hero-main { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.spectator-hero-copy { min-width:0; }
+.spectator-guide-btn { flex:0 0 auto; color:white; border-color:rgba(255,255,255,.34); background:rgba(255,255,255,.08); }
+.public-guide-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin:14px 0; }
+.public-guide-step { display:grid; grid-template-columns:32px minmax(0,1fr); gap:9px; align-items:start; padding:11px; border:1px solid var(--line); border-radius:13px; background:#f8faf5; }
+.public-guide-number { width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background:var(--brand); color:white; font-size:12px; font-weight:900; }
+.public-guide-step strong { display:block; margin:1px 0 3px; color:var(--ink); font-size:13px; }
+.public-guide-step span:last-child { display:block; color:var(--muted); font-size:11px; line-height:1.4; }
 .spectator-live-bar { margin-bottom:10px; padding:8px 11px; }
 .public-priority { border-color:#cddfc9; background:linear-gradient(145deg,#fffefa,#f1f8ed); }
 .public-priority.is-live { border-color:#e8b3af; box-shadow:0 12px 36px rgba(157,52,45,.1); }
@@ -756,7 +764,6 @@ body:has(.app-shell.setup-mode) { padding-bottom:0; }
 .modal:not(.referee-modal) > .modal-actions { margin-bottom:-4px; }
 
 body.remote-referee-mode .sidebar [data-view="calendar"] { display:none !important; }
-body.spectator-mode #guideBtn { display:none !important; }
 body.spectator-mode .topbar-actions > .save-pill:not(.live-pill) { display:none; }
 
 @media (max-width:980px) {
@@ -797,6 +804,10 @@ body.spectator-mode .topbar-actions > .save-pill:not(.live-pill) { display:none;
   .manager-hero-actions button { min-height:36px; }
   .spectator-hero { padding:13px; }
   .spectator-hero .note { font-size:11px; }
+  .spectator-hero-main { align-items:flex-start; gap:9px; }
+  .spectator-guide-btn { min-height:36px; padding:6px 9px; font-size:11px; }
+  .public-guide-grid { grid-template-columns:1fr; gap:7px; margin:11px 0; }
+  .public-guide-step { padding:9px; }
   .spectator-live-bar { margin-bottom:7px; padding:7px 9px; font-size:10px; }
   .public-priority { margin-top:8px !important; }
   .public-priority .next-match-stage { font-size:9px; }
@@ -906,7 +917,7 @@ body.spectator-mode .topbar-actions > .save-pill:not(.live-pill) { display:none;
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span><span id="brandModeLabel">cabina di regia</span> · v<span id="appVersionLabel">3.9.0</span></span>
+          <span><span id="brandModeLabel">cabina di regia</span> · v<span id="appVersionLabel">3.9.1</span></span>
         </div>
       </div>
 
@@ -968,7 +979,7 @@ body.spectator-mode .topbar-actions > .save-pill:not(.live-pill) { display:none;
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.9.0';
+const APP_VERSION = '3.9.1';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
@@ -1376,11 +1387,12 @@ function syncRoleNavigation(){
   document.body.classList.toggle('spectator-mode',role==='viewer');
   document.body.classList.toggle('remote-referee-mode',role==='referee');
   document.body.dataset.role=role;
-  const pill=document.getElementById('rolePill'),pillText=document.getElementById('rolePillText'),brandMode=document.getElementById('brandModeLabel'),sideTitle=document.getElementById('sidebarStatusTitle');
+  const pill=document.getElementById('rolePill'),pillText=document.getElementById('rolePillText'),brandMode=document.getElementById('brandModeLabel'),sideTitle=document.getElementById('sidebarStatusTitle'),guideButton=document.getElementById('guideBtn');
   if(pill){pill.dataset.role=role;pill.setAttribute('aria-label',`Modalità ${roleNames[role]}`);}
   if(pillText)pillText.textContent=roleNames[role];
   if(brandMode)brandMode.textContent=brandNames[role];
   if(sideTitle)sideTitle.textContent=role==='viewer'?'Diretta pubblica':role==='referee'?'Referto sincronizzato':'Salvataggio automatico';
+  if(guideButton)guideButton.textContent=role==='viewer'?'? Come funziona':'? Guida';
   document.querySelectorAll('[data-label-manager],[data-label-viewer],[data-label-referee]').forEach(button=>{
     const label=button.dataset[`label${role[0].toUpperCase()}${role.slice(1)}`];
     if(label){const text=button.querySelector('span:last-child');if(text)text.textContent=label;button.setAttribute('aria-label',label);}
@@ -1656,12 +1668,17 @@ function renderPublicMatchDetails(id,preserveFocus=false){
   updateClock();if(match.status==='live')refereeTicker=setInterval(updateClock,1000);
 }
 function openPublicMatchDetails(id){renderPublicMatchDetails(id,false);}
+function openPublicGuide(){
+  openModal(`<div class="kicker">Guida del pubblico · sempre disponibile</div><h2 style="margin-top:6px">Segui Copparì in 30 secondi</h2><p class="modal-subtitle">Puoi consultare squadre, programma e regole della diretta anche prima del calcio d'inizio.</p><div class="public-guide-grid"><div class="public-guide-step"><span class="public-guide-number">1</span><span><strong>Prima del torneo</strong><span>Controlla squadre, rose, orari e prossima partita: le informazioni compaiono appena il gestore le prepara.</span></span></div><div class="public-guide-step"><span class="public-guide-number">2</span><span><strong>Durante le partite</strong><span>La diretta si aggiorna automaticamente. Apri “Dettagli” per punteggio, timer ed eventi registrati.</span></span></div><div class="public-guide-step"><span class="public-guide-number">3</span><span><strong>Fai la tua pagella</strong><span>Dopo la partita, quando la raccolta è aperta, assegna voto e commento a un giocatore alla volta. Gli altri giudizi restano nascosti.</span></span></div><div class="public-guide-step"><span class="public-guide-number">4</span><span><strong>Scopri i risultati</strong><span>Segui classifica e premi. Dopo la pubblicazione puoi leggere la Copparigella definitiva e, se vuoi, i contributi originali.</span></span></div></div><div class="notice info"><span>👁</span><span>Il link pubblico non permette di modificare torneo o referti. Puoi soltanto inviare la tua pagella quando il gestore apre la raccolta.</span></div><div class="modal-actions"><button class="primary" data-close>Ho capito</button></div>`);
+}
+function bindPublicGuideButtons(root=view){root.querySelectorAll('[data-public-guide]').forEach(button=>button.onclick=openPublicGuide);}
 function renderSpectatorHome(){
   setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Diretta pubblica · pagelle degli amici');
-  if(!state.settings.configured){view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">Copparì Live</div><h2>Torneo in preparazione</h2><p class="note">Questa pagina si aggiorna automaticamente appena il gestore completa la configurazione.</p></div>`;return;}
+  if(!state.settings.configured){view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="spectator-hero-main"><div class="spectator-hero-copy"><div class="kicker">Copparì Live</div><h2>Torneo in preparazione</h2><p class="note">Questa pagina si aggiorna automaticamente appena il gestore completa la configurazione.</p></div><button class="ghost spectator-guide-btn" data-public-guide>? Come funziona</button></div></div>`;bindPublicGuideButtons();return;}
   const played=playedMatches().length,total=Math.max(state.matches.length,totalGamesExpected()),goals=playedMatches().reduce((sum,m)=>sum+(+m.homeScore||0)+(+m.awayScore||0),0),liveMatch=state.matches.find(match=>match.status==='live'),next=liveMatch||nextScheduledMatch(),table=standings();
   const priority=next?`<div class="card next-match-card public-priority ${next.status==='live'?'is-live':''}" style="margin-top:10px"><div class="next-match-stage">${next.status==='live'?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${esc(stageLabel(next))}</div><div class="next-match-teams"><div class="next-match-team">${esc(teamById(next.homeTeamId)?.name||'?')}</div><div class="next-match-vs">${next.status==='live'?`<strong style="font-size:24px">${refScore(next)}</strong><small style="display:block;margin-top:3px">${esc(phaseLabel(publicMatchPhase(next)))}</small>`:'VS'}</div><div class="next-match-team">${esc(teamById(next.awayTeamId)?.name||'?')}</div></div><div class="button-row center"><button class="${next.status==='live'?'primary':'ghost'}" data-public-match="${next.id}">${next.status==='live'?'Apri la diretta':'Dettagli partita'}</button></div></div>`:'';
-  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">${esc(state.settings.edition)} · Copparì Live</div><h2>${esc(state.settings.name)}</h2><p class="note">Partite, classifica e premi in un’unica diretta.</p>${state.settings.venue?`<div class="inline-meta"><span class="status-chip">⌖ ${esc(state.settings.venue)}</span></div>`:''}</div>${priority}<div class="grid cols-4 metric-grid" style="margin-top:10px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',liveMatch?'In campo':next?'In arrivo':'Concluso')}</div><div class="grid cols-2 public-section-grid"><div class="card"><div class="section-head"><h3>Classifica live</h3><button class="ghost" data-go-standings>Completa</button></div>${table.length?`<div class="leaderboard">${table.slice(0,6).map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}</div></div>`;
+  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="spectator-hero-main"><div class="spectator-hero-copy"><div class="kicker">${esc(state.settings.edition)} · Copparì Live</div><h2>${esc(state.settings.name)}</h2><p class="note">Partite, classifica e premi in un’unica diretta.</p>${state.settings.venue?`<div class="inline-meta"><span class="status-chip">⌖ ${esc(state.settings.venue)}</span></div>`:''}</div><button class="ghost spectator-guide-btn" data-public-guide>? Come funziona</button></div></div>${priority}<div class="grid cols-4 metric-grid" style="margin-top:10px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',liveMatch?'In campo':next?'In arrivo':'Concluso')}</div><div class="grid cols-2 public-section-grid"><div class="card"><div class="section-head"><h3>Classifica live</h3><button class="ghost" data-go-standings>Completa</button></div>${table.length?`<div class="leaderboard">${table.slice(0,6).map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}</div></div>`;
+  bindPublicGuideButtons();
   view.querySelectorAll('[data-public-match]').forEach(button=>button.onclick=()=>openPublicMatchDetails(button.dataset.publicMatch));
   view.querySelector('[data-go-standings]')?.addEventListener('click',()=>navigate('standings'));
 }
@@ -3016,7 +3033,7 @@ document.getElementById('menuBtn').onclick=()=>sidebar.classList.contains('open'
 document.getElementById('sidebarScrim').onclick=closeSidebar;
 document.getElementById('mobileNav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)return navigate(b.dataset.view);if(e.target.closest('[data-menu-open]'))openSidebar();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sidebar.classList.contains('open'))closeSidebar();});
-document.getElementById('guideBtn').onclick=()=>openManagerGuide(false);
+document.getElementById('guideBtn').onclick=()=>interfaceRole()==='viewer'?openPublicGuide():openManagerGuide(false);
 document.getElementById('liveShareBtn').onclick=openLiveShareModal;
 document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importInput').onchange=importBackup;
