@@ -540,7 +540,7 @@ tr:hover td { background:#fbfcf8; }
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v<span id="appVersionLabel">3.5.3</span></span>
+          <span>cabina di regia · v<span id="appVersionLabel">3.5.4</span></span>
         </div>
       </div>
 
@@ -597,7 +597,7 @@ tr:hover td { background:#fbfcf8; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.5.3';
+const APP_VERSION = '3.5.4';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
@@ -1608,8 +1608,9 @@ function renderCalendar(){
   const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?'Sequenza continua dalle 00:00':m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
   const ordered=[...Object.entries(groups)];
   const ko=knockoutGamesExpected();
-  view.innerHTML=`<div class="section-head"><h2>Partite <span class="badge">${state.matches.length}</span></h2><div class="actions">${state.settings.playoffs?'<button class="ghost" id="syncPlayoffs">Aggiorna playoff</button>':''}${state.teams.length>=2?'<button class="ghost" id="addMatch">+ Partita manuale</button>':''}<button class="secondary" id="genCalendar">Genera calendario</button></div></div><div class="schedule-summary"><span class="status-chip">${groupGamesExpected()} partite di girone</span><span class="status-chip">inizio 00:00</span><span class="status-chip">fine stimata ${clockAdd('00:00',estimatedTournamentMinutes())}</span><span class="status-chip">${formatMode()}</span>${ko?`<span class="status-chip">${ko} playoff</span>`:'<span class="status-chip">vince la classifica</span>'}</div>${ordered.length?ordered.map(([label,matches])=>`<div class="round-block"><div class="round-title">${label}</div><div class="match-list">${matches.map(matchRow).join('')}</div></div>`).join(''):`<div class="empty"><strong>Calendario non ancora generato</strong>Servono ${state.settings.teamCount} squadre. Verranno create ${groupGamesExpected()} partite consecutive a partire dalle 00:00.</div>`}`;
+  view.innerHTML=`<div class="section-head"><h2>Partite <span class="badge">${state.matches.length}</span></h2><div class="actions">${state.settings.playoffs?'<button class="ghost" id="syncPlayoffs">Aggiorna playoff</button>':''}${state.teams.length>=2?'<button class="ghost" id="addMatch">+ Partita manuale</button>':''}${state.matches.length?'<button class="danger-outline" id="deleteCalendar">Cancella calendario</button>':''}<button class="secondary" id="genCalendar">${state.matches.length?'Genera variante':'Genera calendario'}</button></div></div><div class="schedule-summary"><span class="status-chip">${groupGamesExpected()} partite di girone</span><span class="status-chip">inizio 00:00</span><span class="status-chip">ordine variabile</span><span class="status-chip">fine stimata ${clockAdd('00:00',estimatedTournamentMinutes())}</span><span class="status-chip">${formatMode()}</span>${ko?`<span class="status-chip">${ko} playoff</span>`:'<span class="status-chip">vince la classifica</span>'}</div>${ordered.length?ordered.map(([label,matches])=>`<div class="round-block"><div class="round-title">${label}</div><div class="match-list">${matches.map(matchRow).join('')}</div></div>`).join(''):`<div class="empty"><strong>Calendario non ancora generato</strong>Servono ${state.settings.teamCount} squadre. Verranno create ${groupGamesExpected()} partite consecutive a partire dalle 00:00.</div>`}`;
   document.getElementById('genCalendar').onclick=generateCalendar;
+  document.getElementById('deleteCalendar')?.addEventListener('click',deleteCalendar);
   document.getElementById('addMatch')?.addEventListener('click',openCreateMatchModal);
   document.getElementById('syncPlayoffs')?.addEventListener('click',()=>{syncKnockout(true);renderCalendar();});
   view.querySelectorAll('[data-edit-match]').forEach(b=>b.onclick=()=>openMatchModal(b.dataset.editMatch));
@@ -1661,8 +1662,11 @@ function findNoConsecutiveOrder(pairs,previousPair=null){
   }
   return visit(previousPair)?path:null;
 }
-function createContinuousLeg(teamIds,previousPair=null,reverseFixtures=false){
-  const pending=createRoundRobinLeg(teamIds).flat().map(([a,b])=>reverseFixtures?[b,a]:[a,b]);
+function shuffledCopy(values){
+  const copy=[...values];for(let i=copy.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[copy[i],copy[j]]=[copy[j],copy[i]];}return copy;
+}
+function orderContinuousFixtures(fixtures,previousPair=null,randomize=false){
+  const pending=(randomize?shuffledCopy(fixtures):[...fixtures]).map(pair=>[...pair]);
   const exact=findNoConsecutiveOrder(pending,previousPair);
   if(exact)return exact;
   const sequence=[],lastPlayed=new Map();
@@ -1678,20 +1682,34 @@ function createContinuousLeg(teamIds,previousPair=null,reverseFixtures=false){
   }
   return sequence;
 }
+function createContinuousLeg(teamIds,previousPair=null,reverseFixtures=false,randomize=false){
+  const seededIds=randomize?shuffledCopy(teamIds):[...teamIds];
+  const fixtures=createRoundRobinLeg(seededIds).flat().map(([a,b])=>reverseFixtures?[b,a]:[a,b]);
+  return orderContinuousFixtures(fixtures,previousPair,randomize);
+}
+function fixtureOrderSignature(pairs){return pairs.map(([home,away])=>`${home}>${away}`).join('|');}
 function generateCalendar(){
   if(state.teams.length!==state.settings.teamCount)return toast(`Servono esattamente ${state.settings.teamCount} squadre`);
   if(state.settings.tournamentFormat==='knockout'){if(state.teams.some(t=>teamPlayers(t.id).length!==state.settings.rosterSize))return toast(`Ogni squadra deve avere esattamente ${state.settings.rosterSize} giocatori`);if(state.matches.length&&!confirm('Rigenerare il tabellone cancellerà risultati e statistiche. Continuare?'))return;createSnapshot(state.matches.length?'Prima di rigenerare il tabellone':'Prima di generare il tabellone');if(seedDirectKnockout()){save();renderCalendar();toast('Tabellone eliminazione diretta creato');}return;}
   if(state.teams.some(t=>teamPlayers(t.id).length!==state.settings.rosterSize))return toast(`Ogni squadra deve avere esattamente ${state.settings.rosterSize} giocatori`);
-  if(state.matches.length&&!confirm('Rigenerare il calendario cancellerà risultati e statistiche. Continuare?'))return;
+  if(state.matches.length&&!confirm('Generare una nuova variante del calendario? Accoppiamenti e regole restano uguali, ma l’ordine cambia. Risultati e statistiche attuali verranno cancellati.'))return;
   createSnapshot(state.matches.length?'Prima di rigenerare il calendario':'Prima di generare il calendario');
-  const teamIds=state.teams.map(t=>t.id),firstLeg=createContinuousLeg(teamIds),matches=[];
+  const teamIds=state.teams.map(t=>t.id),previousSignature=fixtureOrderSignature(groupMatches().filter(m=>(+m.leg||1)===1&&!m.manual).map(m=>[m.homeTeamId,m.awayTeamId]));let firstLeg=[];
+  for(let attempt=0;attempt<40;attempt++){firstLeg=createContinuousLeg(teamIds,null,false,true);if(!previousSignature||fixtureOrderSignature(firstLeg)!==previousSignature)break;}
+  const matches=[];
   firstLeg.forEach(([home,away],slot)=>matches.push({id:uid('m'),stage:'group',leg:1,round:slot+1,homeTeamId:home,awayTeamId:away,date:'',status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null}));
   if(state.settings.scheduleMode==='double'){
     const offset=firstLeg.length;
-    const secondLeg=createContinuousLeg(teamIds,firstLeg[firstLeg.length-1],true);
+    const secondLeg=orderContinuousFixtures(firstLeg.map(([home,away])=>[away,home]),firstLeg[firstLeg.length-1],true);
     secondLeg.forEach(([home,away],slot)=>matches.push({id:uid('m'),stage:'group',leg:2,round:offset+slot+1,homeTeamId:home,awayTeamId:away,date:'',status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null}));
   }
-  state.matches=matches;save();renderCalendar();toast(`Calendario creato: ${matches.length} partite`);
+  state.matches=matches;save();renderCalendar();toast(`${previousSignature?'Nuova variante':'Calendario'} creat${previousSignature?'a':'o'}: ${matches.length} partite`);
+}
+function deleteCalendar(){
+  if(!state.matches.length)return toast('Non c’è alcun calendario da cancellare');
+  const hasProgress=state.matches.some(m=>m.status!=='scheduled'||(m.events||[]).length||(m.stats||[]).length);
+  if(!confirm(`Cancellare tutto il calendario${hasProgress?', compresi risultati, referti e statistiche':''}? Partecipanti e squadre resteranno invariati.`))return;
+  createSnapshot('Prima di cancellare il calendario');state.matches=[];save();renderCalendar();toast('Calendario cancellato · squadre e partecipanti conservati');
 }
 function matchWinner(m){if(m.status!=='played')return null;if(+m.homeScore>+m.awayScore)return m.homeTeamId;if(+m.awayScore>+m.homeScore)return m.awayTeamId;if(m.stage==='group')return null;if(m.penHome==null||m.penAway==null||+m.penHome===+m.penAway)return null;return +m.penHome>+m.penAway?m.homeTeamId:m.awayTeamId;}
 function matchLoser(m){const w=matchWinner(m);if(!w)return null;return w===m.homeTeamId?m.awayTeamId:m.homeTeamId;}
