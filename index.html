@@ -655,7 +655,7 @@ th,td { padding:9px 11px; }
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v<span id="appVersionLabel">3.7.2</span></span>
+          <span>cabina di regia · v<span id="appVersionLabel">3.7.3</span></span>
         </div>
       </div>
 
@@ -713,7 +713,7 @@ th,td { padding:9px 11px; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.7.2';
+const APP_VERSION = '3.7.3';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
@@ -2148,7 +2148,7 @@ function resetRefereeMatch(id){
   if(liveRole!=='referee')createSnapshot(`Prima di azzerare ${home?.name||''} vs ${away?.name||''}`);
   if(liveRole!=='referee'&&m.status==='played'&&m.stage==='group'&&knockoutMatches().length)removeAllKnockout();
   else if(liveRole!=='referee'&&m.status==='played'&&isKnockoutMatch(m))removeDownstreamKnockout(m.koSize||2);
-  m.homeScore=null;m.awayScore=null;m.status='scheduled';m.stats=[];m.events=[];m.ratings=[];m.ratingsPublished=false;m.referee=null;m.mvpPlayerId=null;delete m.penHome;delete m.penAway;
+  m.homeScore=null;m.awayScore=null;m.date='';m.status='scheduled';m.stats=[];m.events=[];m.ratings=[];m.ratingsPublished=false;m.referee=null;m.mvpPlayerId=null;delete m.penHome;delete m.penAway;
   save({matchId:m.id});closeModal(true);render();toast('Partita azzerata e pronta per essere riavviata');
 }
 function renderRefereeMode(id){
@@ -2230,7 +2230,7 @@ function openMatchModal(id){
       if(downstream&&!confirm('Ripristinando questa partita verranno rimossi i turni successivi già generati. Continuare?'))return;
       removeDownstreamKnockout(m.koSize||2);
     }
-    createSnapshot(`Prima di ripristinare ${home.name} vs ${away.name}`);m.homeScore=null;m.awayScore=null;m.status='scheduled';m.stats=[];m.events=[];m.ratings=[];m.ratingsPublished=false;m.referee=null;m.mvpPlayerId=null;delete m.penHome;delete m.penAway;
+    createSnapshot(`Prima di ripristinare ${home.name} vs ${away.name}`);m.homeScore=null;m.awayScore=null;m.date='';m.status='scheduled';m.stats=[];m.events=[];m.ratings=[];m.ratingsPublished=false;m.referee=null;m.mvpPlayerId=null;delete m.penHome;delete m.penAway;
     save();closeModal(true);render();toast('Partita ripristinata');
   };
 }
