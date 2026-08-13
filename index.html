@@ -155,7 +155,7 @@ tr:last-child td { border-bottom:0; }
 .modal h2 { margin:0 0 16px; }
 .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; flex-wrap:wrap; }
 .stats-editor { display:grid; gap:8px; margin-top:12px; }
-.stats-player { display:grid; grid-template-columns:minmax(130px,1fr) repeat(5, 66px); gap:7px; align-items:end; border-top:1px solid var(--line); padding-top:9px; }
+.stats-player { display:grid; grid-template-columns:minmax(130px,1fr) repeat(6, 66px); gap:7px; align-items:end; border-top:1px solid var(--line); padding-top:9px; }
 .stats-player label { display:grid; gap:3px; font-size:10px; color:var(--muted); font-weight:700; }
 .stats-player input[type="number"] { width:100%; padding:7px; border:1px solid var(--line); border-radius:8px; }
 .stats-player input[type="checkbox"] { width:18px; height:18px; }
@@ -269,7 +269,8 @@ tr:last-child td { border-bottom:0; }
 .ref-team-title strong { font-size:22px; }
 .ref-team-goal { margin:9px; width:calc(100% - 18px); }
 .ref-roster { display:grid; gap:1px; padding:0 9px 9px; }
-.ref-player { display:grid; grid-template-columns:minmax(0,1fr) repeat(4,42px); gap:5px; align-items:center; padding:8px 0; border-top:1px solid var(--line); }
+.ref-player { display:grid; grid-template-columns:minmax(0,1fr) repeat(5,42px); gap:5px; align-items:center; padding:8px 0; border-top:1px solid var(--line); }
+.ref-player.cards-off { grid-template-columns:minmax(0,1fr) repeat(3,42px); }
 .ref-player:first-child { border-top:0; }
 .ref-player .grow { min-width:0; }
 .ref-player strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -297,7 +298,8 @@ tr:last-child td { border-bottom:0; }
   .ref-scoreboard strong { font-size:34px; }
   .ref-timer span { font-size:31px; }
   .ref-layout, .ref-bottom-grid { grid-template-columns:1fr; }
-  .ref-player { grid-template-columns:minmax(0,1fr) repeat(4,39px); gap:4px; }
+  .ref-player { grid-template-columns:minmax(0,1fr) repeat(5,39px); gap:4px; }
+  .ref-player.cards-off { grid-template-columns:minmax(0,1fr) repeat(3,39px); }
   .ref-player button { width:37px; height:36px; }
   .match-actions { grid-column:1/-1; width:100%; }
   .match-actions button { flex:1; }
@@ -647,7 +649,7 @@ th,td { padding:9px 11px; }
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v<span id="appVersionLabel">3.6.3</span></span>
+          <span>cabina di regia · v<span id="appVersionLabel">3.7.0</span></span>
         </div>
       </div>
 
@@ -705,12 +707,13 @@ th,td { padding:9px 11px; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.6.3';
+const APP_VERSION = '3.7.0';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
 const LIVE_CONFIG_KEY = 'coppari.v3.live';
+const PLAYER_ARCHIVE_KEY = 'coppari.v3.player-profiles';
 const WAKE_PREF_KEY = 'coppari.v3.keep-screen-awake';
 const PUBLIC_APP_URL = 'https://highskiller.github.io/coppari-torneo/';
 const SUPABASE_URL = 'https://lndqbduvyzjehkeetywt.supabase.co';
@@ -755,6 +758,7 @@ function installBannerHtml(){
 }
 
 const state = loadState();
+let playerArchive = loadPlayerArchive();
 let currentView = sessionGet('coppari.currentView') || 'home';
 let modalReturnFocus = null;
 let activeRefereeMatchId = null;
@@ -802,6 +806,44 @@ function safeText(v='',max=120){return String(v??'').replace(/[\u0000-\u001F\u00
 function safeId(v,prefix='id'){const cleaned=String(v??'').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,100);return cleaned||uid(prefix);}
 function safeRef(v){return v===null||v===undefined||v===''?null:safeId(v,'ref');}
 function safeColor(v,fallback='#315b43'){return /^#[0-9a-f]{6}$/i.test(String(v||''))?String(v):fallback;}
+function normalizedPlayerName(name){return safeText(name,80).toLocaleLowerCase('it').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();}
+function emptyPlayerArchive(){return {version:1,updatedAt:null,profiles:[]};}
+function normalizePlayerArchive(raw){
+  const source=raw&&typeof raw==='object'?raw:{},profiles=(Array.isArray(source.profiles)?source.profiles:[]).slice(0,1000).map(item=>{
+    const name=safeText(item?.name||'Giocatore',80)||'Giocatore',contributions={};
+    Object.entries(item?.contributions&&typeof item.contributions==='object'?item.contributions:{}).slice(0,10000).forEach(([key,value])=>{if(!value||typeof value!=='object')return;const hasRating=value.rating!==null&&value.rating!==undefined&&value.rating!==''&&Number.isFinite(+value.rating);contributions[safeId(key,'match')]={edition:safeText(value.edition||'',80),matchId:safeRef(value.matchId),stage:safeText(value.stage||'',40),status:['live','played'].includes(value.status)?value.status:'played',date:safeText(value.date||'',40),team:safeText(value.team||'',80),opponent:safeText(value.opponent||'',80),teamScore:value.teamScore===null||value.teamScore===undefined?null:clamp(+value.teamScore||0,0,999),opponentScore:value.opponentScore===null||value.opponentScore===undefined?null:clamp(+value.opponentScore||0,0,999),appearance:value.appearance?1:0,goals:clamp(+value.goals||0,0,999),assists:clamp(+value.assists||0,0,999),fouls:clamp(+value.fouls||0,0,999),yellow:clamp(+value.yellow||0,0,99),red:clamp(+value.red||0,0,99),mvp:value.mvp?1:0,rating:hasRating?clamp(+value.rating,5,10):null,ratingComment:safeText(value.ratingComment||'',160),events:(Array.isArray(value.events)?value.events:[]).slice(0,1000).map(event=>({type:['goal','assist','foul','yellow','red'].includes(event?.type)?event.type:'foul',minuteLabel:safeText(event?.minuteLabel||'—',12),createdAt:Number.isFinite(+event?.createdAt)?+event.createdAt:0}))};});
+    return {id:safeId(item?.id,'profile'),name,key:normalizedPlayerName(name),aliases:(Array.isArray(item?.aliases)?item.aliases:[]).map(alias=>safeText(alias,80)).filter(Boolean).slice(0,20),role:['TBD','POR','DIF','CEN','ATT'].includes(item?.role)?item.role:'TBD',lastRating:clamp(+item?.lastRating||3,1,5),updatedAt:safeText(item?.updatedAt||'',40),contributions};
+  });
+  return {version:1,updatedAt:safeText(source.updatedAt||'',40),profiles};
+}
+function loadPlayerArchive(){try{return normalizePlayerArchive(JSON.parse(storageGet(PLAYER_ARCHIVE_KEY)||'null'));}catch{return emptyPlayerArchive();}}
+function persistPlayerArchive(){playerArchive.updatedAt=new Date().toISOString();return storageSet(PLAYER_ARCHIVE_KEY,JSON.stringify(playerArchive));}
+function archiveProfileByName(name){const key=normalizedPlayerName(name);return key?playerArchive.profiles.find(profile=>profile.key===key||profile.aliases.some(alias=>normalizedPlayerName(alias)===key))||null:null;}
+function archiveProfileForPlayer(player,create=true){
+  let profile=player?.profileId?playerArchive.profiles.find(item=>item.id===player.profileId):null;profile=profile||archiveProfileByName(player?.name);
+  if(!profile&&create){profile={id:uid('profile'),name:safeText(player?.name||'Giocatore',80)||'Giocatore',key:normalizedPlayerName(player?.name),aliases:[],role:player?.role||'TBD',lastRating:clamp(+player?.rating||3,1,5),updatedAt:new Date().toISOString(),contributions:{}};playerArchive.profiles.push(profile);}
+  if(profile&&player){player.profileId=profile.id;if(profile.name!==player.name&&!profile.aliases.includes(profile.name))profile.aliases.push(profile.name);profile.name=safeText(player.name,80)||profile.name;profile.key=normalizedPlayerName(profile.name);profile.role=player.role||profile.role;profile.lastRating=clamp(+player.rating||profile.lastRating||3,1,5);profile.updatedAt=new Date().toISOString();}
+  return profile;
+}
+function playerProfileSummary(profile){
+  const rows=Object.values(profile?.contributions||{}),played=rows.filter(row=>row.status==='played'),rated=played.filter(row=>row.rating!==null&&row.rating!==undefined&&row.rating!==''&&Number.isFinite(+row.rating));
+  return {matches:played.reduce((sum,row)=>sum+(row.appearance||0),0),goals:played.reduce((sum,row)=>sum+(row.goals||0),0),assists:played.reduce((sum,row)=>sum+(row.assists||0),0),fouls:played.reduce((sum,row)=>sum+(row.fouls||0),0),yellow:played.reduce((sum,row)=>sum+(row.yellow||0),0),red:played.reduce((sum,row)=>sum+(row.red||0),0),mvp:played.reduce((sum,row)=>sum+(row.mvp||0),0),average: rated.length?rated.reduce((sum,row)=>sum+(+row.rating||0),0)/rated.length:null,ratings:rated.length};
+}
+function syncPlayerArchiveFromState(){
+  if(!storageReady||['viewer','referee'].includes(liveRole))return false;
+  const edition=safeText(state.meta?.createdAt||state.settings.edition||'edizione',80),prefix=`${safeId(edition,'edition')}__`;
+  state.matches.filter(match=>match.status==='scheduled').forEach(match=>playerArchive.profiles.forEach(profile=>delete profile.contributions[`${prefix}${safeId(match.id,'match')}`]));
+  state.players.forEach(player=>archiveProfileForPlayer(player,true));
+  state.matches.filter(match=>['live','played'].includes(match.status)).forEach(match=>{
+    const teams=[match.homeTeamId,match.awayTeamId];
+    state.players.filter(player=>player.active!==false&&teams.includes(player.teamId)).forEach(player=>{
+      const profile=archiveProfileForPlayer(player,true),stat=(match.stats||[]).find(row=>row.playerId===player.id)||{},rating=(match.ratings||[]).find(row=>row.playerId===player.id),opponentId=player.teamId===match.homeTeamId?match.awayTeamId:match.homeTeamId;
+      const isHome=player.teamId===match.homeTeamId;
+      profile.contributions[`${prefix}${safeId(match.id,'match')}`]={edition:safeText(state.settings.edition||'',80),matchId:match.id,stage:safeText(match.stage||'',40),status:match.status,date:safeText(match.date||'',40),team:safeText(teamById(player.teamId)?.name||'',80),opponent:safeText(teamById(opponentId)?.name||'',80),teamScore:isHome?match.homeScore:match.awayScore,opponentScore:isHome?match.awayScore:match.homeScore,appearance:match.status==='played'?1:0,goals:+stat.goals||0,assists:+stat.assists||0,fouls:+stat.fouls||0,yellow:+stat.yellow||0,red:+stat.red||0,mvp:match.mvpPlayerId===player.id||stat.mvp?1:0,rating:rating&&rating.score!==null&&Number.isFinite(+rating.score)?+rating.score:null,ratingComment:safeText(rating?.comment||'',160),events:(match.events||[]).filter(event=>event.playerId===player.id).map(event=>({type:event.type,minuteLabel:event.minuteLabel,createdAt:event.createdAt}))};
+    });
+  });
+  playerArchive.profiles.sort((a,b)=>a.name.localeCompare(b.name,'it'));return persistPlayerArchive();
+}
 function roleLabel(role){ return ({TBD:'Da definire',POR:'Portiere',DIF:'Difensore',CEN:'Centrocampista',ATT:'Attaccante'}[role] || role); }
 function teamById(id){ return state.teams.find(t=>t.id===id); }
 function playerById(id){ return state.players.find(p=>p.id===id); }
@@ -919,7 +961,7 @@ function emptyState(){
       name:'Copparì', edition:'Edizione 2026', pointsWin:3, pointsDraw:1, pointsLoss:0,
       targetPlayers:25, rosterSize:5, teamCount:0, scheduleMode:'single', tournamentFormat:'groups_ko',
       startTime:'00:00', periods:2, matchMinutes:20, halftimeMinutes:2, changeMinutes:4, playoffs:true, bronzeFinal:false,
-      venue:'', organizer:'', touchGuard:true, hapticFeedback:true, soundFeedback:true, configured:false
+      venue:'', organizer:'', touchGuard:true, cardsEnabled:true, hapticFeedback:true, soundFeedback:true, configured:false
     },
     players:[], teams:[], matches:[], meta:{appVersion:APP_VERSION,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}
   };
@@ -972,6 +1014,7 @@ function normalizeState(data){
   merged.settings.periods=clamp(+merged.settings.periods||2,1,4);
   if(typeof merged.settings.playoffs!=='boolean') merged.settings.playoffs=true;
   if(typeof merged.settings.touchGuard!=='boolean') merged.settings.touchGuard=true;
+  if(typeof merged.settings.cardsEnabled!=='boolean') merged.settings.cardsEnabled=true;
   if(typeof merged.settings.hapticFeedback!=='boolean') merged.settings.hapticFeedback=true;
   if(typeof merged.settings.soundFeedback!=='boolean') merged.settings.soundFeedback=true;
   merged.settings.name=safeText(merged.settings.name||'Copparì',80)||'Copparì';
@@ -989,12 +1032,12 @@ function normalizeState(data){
   merged.settings.teamCount=calcTeamCount(merged.settings.targetPlayers,merged.settings.rosterSize);
   if(merged.settings.configured && !merged.settings.teamCount) merged.settings.configured=false;
   merged.teams=(Array.isArray(merged.teams)?merged.teams:[]).slice(0,200).map((t,i)=>({id:safeId(t?.id,'t'),name:safeText(t?.name||defaultTeamName(i),80)||defaultTeamName(i),color:safeColor(t?.color,teamColor(i)),captainId:safeRef(t?.captainId)}));
-  merged.players=(Array.isArray(merged.players)?merged.players:[]).slice(0,500).map(p=>({id:safeId(p?.id,'p'),name:safeText(p?.name||'Giocatore',80)||'Giocatore',role:['TBD','POR','DIF','CEN','ATT'].includes(p?.role)?p.role:'TBD',rating:clamp(+p?.rating||3,1,5),teamId:safeRef(p?.teamId),active:p?.active!==false}));
+  merged.players=(Array.isArray(merged.players)?merged.players:[]).slice(0,500).map(p=>({id:safeId(p?.id,'p'),profileId:safeRef(p?.profileId),name:safeText(p?.name||'Giocatore',80)||'Giocatore',role:['TBD','POR','DIF','CEN','ATT'].includes(p?.role)?p.role:'TBD',rating:clamp(+p?.rating||3,1,5),teamId:safeRef(p?.teamId),active:p?.active!==false}));
   merged.matches=(Array.isArray(merged.matches)?merged.matches:[]).slice(0,2000).map(m=>{
     const rawStage=String(m?.stage||'group'),stage=/^(group|prelim|bronze|final|semi|quarter|round16|round32|round\d+)$/.test(rawStage)?rawStage:'group';
     const status=['scheduled','live','played'].includes(m?.status)?m.status:'scheduled';
-    const events=(Array.isArray(m?.events)?m.events:[]).slice(0,5000).map(e=>({id:safeId(e?.id,'ev'),type:['goal','teamgoal','assist','yellow','red'].includes(e?.type)?e.type:'teamgoal',teamId:safeRef(e?.teamId),playerId:safeRef(e?.playerId),minuteLabel:safeText(e?.minuteLabel||'—',12),createdAt:Number.isFinite(+e?.createdAt)?+e.createdAt:Date.now()}));
-    const stats=(Array.isArray(m?.stats)?m.stats:[]).slice(0,500).map(x=>({playerId:safeRef(x?.playerId),goals:clamp(+x?.goals||0,0,999),assists:clamp(+x?.assists||0,0,999),yellow:clamp(+x?.yellow||0,0,99),red:clamp(+x?.red||0,0,99),mvp:!!x?.mvp})).filter(x=>x.playerId);
+    const events=(Array.isArray(m?.events)?m.events:[]).slice(0,5000).map(e=>({id:safeId(e?.id,'ev'),type:['goal','teamgoal','assist','foul','yellow','red'].includes(e?.type)?e.type:'teamgoal',teamId:safeRef(e?.teamId),playerId:safeRef(e?.playerId),minuteLabel:safeText(e?.minuteLabel||'—',12),createdAt:Number.isFinite(+e?.createdAt)?+e.createdAt:Date.now()}));
+    const stats=(Array.isArray(m?.stats)?m.stats:[]).slice(0,500).map(x=>({playerId:safeRef(x?.playerId),goals:clamp(+x?.goals||0,0,999),assists:clamp(+x?.assists||0,0,999),fouls:clamp(+x?.fouls||0,0,999),yellow:clamp(+x?.yellow||0,0,99),red:clamp(+x?.red||0,0,99),mvp:!!x?.mvp})).filter(x=>x.playerId);
     const ratings=(Array.isArray(m?.ratings)?m.ratings:[]).slice(0,500).map(x=>{const raw=Number(x?.score),score=Number.isFinite(raw)&&raw>=5?Math.round(clamp(raw,5,10)*2)/2:null;return {playerId:safeRef(x?.playerId),score,comment:safeText(x?.comment||'',160)};}).filter(x=>x.playerId&&x.score!==null);
     const rr=m?.referee&&typeof m.referee==='object'?m.referee:null,phase=rr&&['not_started','first','halftime','second','ended'].includes(rr.phase)?rr.phase:status==='played'?'ended':'not_started';
     const referee=rr?{phase,phaseStartedAt:Number.isFinite(+rr.phaseStartedAt)?+rr.phaseStartedAt:null,firstSeconds:Math.max(0,+rr.firstSeconds||0),secondSeconds:Math.max(0,+rr.secondSeconds||0),halftimeSeconds:Math.max(0,+rr.halftimeSeconds||0),alertedPhases:rr.alertedPhases&&typeof rr.alertedPhases==='object'?rr.alertedPhases:{}}:null;
@@ -1021,7 +1064,7 @@ function save(options={}){
   if(liveRole==='manager'){
     if(liveApplyingRemote)return true;
     if(!liveConnected||liveEnded){toast(liveEnded?'La diretta è terminata':'Collegamento live interrotto: attendi la riconnessione',4200);return false;}
-    sendLiveManagerUpdate();updateSaveIndicator();return true;
+    syncPlayerArchiveFromState();sendLiveManagerUpdate();updateSaveIndicator();return true;
   }
   if(liveRole==='referee'){
     if(liveApplyingRemote)return true;
@@ -1031,6 +1074,7 @@ function save(options={}){
   }
   if(!storageReady){toast('Salvataggio non disponibile: apri l’app in Safari',4200);return false;}
   try{
+    syncPlayerArchiveFromState();
     if(!persistStateLocally())throw new Error('storage');
     if(liveRole==='host'&&!liveApplyingRemote)sendLiveManagerUpdate();
     updateSaveIndicator();return true;
@@ -1190,6 +1234,7 @@ function applyLiveClientState(raw,revision,force=false){
     if(!force&&Number.isFinite(+revision)&&+revision<=liveRevision&&liveHasState)return;
     const clean=normalizeState(raw),first=!liveHasState;liveApplyingRemote=true;
     Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,clean);liveRevision=Math.max(0,+revision||0);liveHasState=true;liveConnecting=false;liveErrorMessage='';
+    if(['host','manager'].includes(liveRole))syncPlayerArchiveFromState();
     if(liveRole==='host')persistStateLocally();if(first){currentView='home';sessionSet('coppari.currentView','home');}
     refreshAfterLiveState();liveApplyingRemote=false;updateLiveStatusUI();
   }catch{liveApplyingRemote=false;toast('Dati live non validi',4200);}
@@ -1605,12 +1650,12 @@ function renderKnockoutSummary(){
 
 function renderPlayers(){
   setHeader('Partecipanti',`${state.settings.name} · previsti ${state.settings.targetPlayers}`);
-  const rows=state.players.map(p=>`<tr data-player-row data-search="${esc(`${p.name} ${roleLabel(p.role)} ${teamById(p.teamId)?.name||''}`.toLowerCase())}"><td><strong>${esc(p.name)}</strong></td><td>${roleLabel(p.role)}</td><td><span aria-label="Livello ${p.rating} su 5">${'★'.repeat(p.rating)}${'☆'.repeat(5-p.rating)}</span></td><td>${esc(teamById(p.teamId)?.name || '—')}</td><td>${p.active===false?'<span class="badge red">Non attivo</span>':'<span class="badge green">Attivo</span>'}</td><td><button class="ghost" data-edit-player="${p.id}">Gestisci</button></td></tr>`).join('');
+  const rows=state.players.map(p=>{const history=playerProfileSummary(archiveProfileForPlayer(p,false)),summary=history.matches?`${history.matches} pres. · ${history.goals} gol · ${history.assists} assist${history.average?` · media ${history.average.toLocaleString('it-IT',{maximumFractionDigits:1})}`:''}`:'Prima edizione';return `<tr data-player-row data-search="${esc(`${p.name} ${roleLabel(p.role)} ${teamById(p.teamId)?.name||''}`.toLowerCase())}"><td><strong>${esc(p.name)}</strong></td><td>${roleLabel(p.role)}</td><td><span aria-label="Livello ${p.rating} su 5">${'★'.repeat(p.rating)}${'☆'.repeat(5-p.rating)}</span></td><td>${esc(teamById(p.teamId)?.name || '—')}</td><td><span class="note">${esc(summary)}</span></td><td>${p.active===false?'<span class="badge red">Non attivo</span>':'<span class="badge green">Attivo</span>'}</td><td><button class="ghost" data-edit-player="${p.id}">Gestisci</button></td></tr>`;}).join('');
   const count=activePlayers().length;
   view.innerHTML=`
     <div class="section-head"><h2>Partecipanti <span class="badge ${count===state.settings.targetPlayers?'green':count>state.settings.targetPlayers?'red':'yellow'}">${count}/${state.settings.targetPlayers}</span></h2><div class="actions"><button class="secondary" id="bulkPlayers">Incolla lista</button><button class="primary" id="addPlayerBtn">+ Aggiungi</button></div></div>
     ${count!==state.settings.targetPlayers?`<div class="notice ${count>state.settings.targetPlayers?'danger':'warn'}" style="margin-bottom:14px"><span>${count>state.settings.targetPlayers?'!':'i'}</span><span>${count<state.settings.targetPlayers?`Mancano <strong>${state.settings.targetPlayers-count}</strong> partecipanti attivi prima di generare le squadre.`:`Ci sono <strong>${count-state.settings.targetPlayers}</strong> partecipanti attivi in più rispetto alla configurazione. Puoi disattivarli o aggiornare le impostazioni.`}</span></div>`:''}
-    ${rows?`<div class="search-row"><label class="sr-only" for="playerSearch">Cerca partecipante</label><input id="playerSearch" type="search" placeholder="Cerca nome, ruolo o squadra…" autocomplete="off"><button class="ghost" id="clearPlayerSearch">Azzera filtro</button></div><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Ruolo</th><th>Livello</th><th>Squadra</th><th>Stato</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><div class="note" id="playerSearchCount" style="margin-top:9px">${state.players.length} partecipanti visualizzati</div>`:`<div class="empty"><strong>Nessun partecipante inserito</strong>Usa “Incolla lista” per aggiungere rapidamente tutti i ${state.settings.targetPlayers} partecipanti, un nome per riga.<br><br><button class="secondary" id="emptyBulk">Incolla lista partecipanti</button></div>`}
+    ${rows?`<div class="search-row"><label class="sr-only" for="playerSearch">Cerca partecipante</label><input id="playerSearch" type="search" placeholder="Cerca nome, ruolo o squadra…" autocomplete="off"><button class="ghost" id="clearPlayerSearch">Azzera filtro</button></div><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Ruolo</th><th>Livello</th><th>Squadra</th><th>Storico</th><th>Stato</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><div class="note" id="playerSearchCount" style="margin-top:9px">${state.players.length} partecipanti visualizzati</div>`:`<div class="empty"><strong>Nessun partecipante inserito</strong>Usa “Incolla lista” per aggiungere rapidamente tutti i ${state.settings.targetPlayers} partecipanti, un nome per riga.<br><br><button class="secondary" id="emptyBulk">Incolla lista partecipanti</button></div>`}
   `;
   document.getElementById('addPlayerBtn')?.addEventListener('click',()=>openPlayerModal());
   document.getElementById('bulkPlayers')?.addEventListener('click',openBulkPlayersModal);
@@ -1628,14 +1673,16 @@ function openBulkPlayersModal(){
     const roleMap={'DA DEFINIRE':'TBD',TBD:'TBD',PORTIERE:'POR',POR:'POR',DIFENSORE:'DIF',DIF:'DIF',CENTROCAMPISTA:'CEN',CEN:'CEN',ATTACCANTE:'ATT',ATT:'ATT'};
     const existing=new Set(state.players.map(p=>p.name.toLowerCase())); let added=0;
     createSnapshot('Prima dell’importazione partecipanti');
-    rows.forEach(row=>{const [rawName,rawRole='',rawRating='']=row.split(/[;\t]/).map(x=>x.trim());const name=rawName?.slice(0,80);if(name&&!existing.has(name.toLowerCase())){state.players.push({id:uid('p'),name,role:roleMap[rawRole.toUpperCase()]||'TBD',rating:clamp(+rawRating||3,1,5),teamId:null,active:true});existing.add(name.toLowerCase());added++;}});
+    rows.forEach(row=>{const [rawName,rawRole='',rawRating='']=row.split(/[;\t]/).map(x=>x.trim());const name=rawName?.slice(0,80),prior=archiveProfileByName(name);if(name&&!existing.has(name.toLowerCase())){state.players.push({id:uid('p'),profileId:prior?.id||null,name,role:rawRole?roleMap[rawRole.toUpperCase()]||'TBD':prior?.role||'TBD',rating:rawRating?clamp(+rawRating||3,1,5):prior?.lastRating||3,teamId:null,active:true});existing.add(name.toLowerCase());added++;}});
     save();closeModal();renderPlayers();toast(`${added} partecipanti aggiunti`);
   };
 }
 function openPlayerModal(id=null){
   const p=id?playerById(id):{name:'',role:'TBD',rating:3,teamId:null,active:true};
-  openModal(`<h2>${id?'Modifica':'Nuovo'} giocatore</h2><div class="form-grid"><div class="field full"><label>Nome</label><input id="pName" value="${esc(p.name)}" placeholder="Nome o soprannome"></div><div class="field"><label>Ruolo</label><select id="pRole">${['TBD','POR','DIF','CEN','ATT'].map(r=>`<option ${p.role===r?'selected':''} value="${r}">${roleLabel(r)}</option>`).join('')}</select></div><div class="field"><label>Livello (1-5)</label><select id="pRating">${[1,2,3,4,5].map(n=>`<option ${p.rating===n?'selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label>Stato</label><select id="pActive"><option value="1" ${p.active!==false?'selected':''}>Attivo</option><option value="0" ${p.active===false?'selected':''}>Non attivo</option></select></div></div>${p.teamId?`<p class="note">Squadra attuale: <strong>${esc(teamById(p.teamId)?.name||'—')}</strong>. Per cambiare squadra usa “Scambia giocatori”, così le rose restano sempre uguali.</p>`:''}<div class="modal-actions">${id?'<button class="danger" id="deletePlayer">Elimina</button>':''}<button class="ghost" data-close>Chiudi</button><button class="primary" id="savePlayer">Salva</button></div>`);
-  document.getElementById('savePlayer').onclick=()=>{ const name=document.getElementById('pName').value.trim();if(!name)return toast('Inserisci il nome');if(state.players.some(x=>x.id!==id&&x.name.trim().toLowerCase()===name.toLowerCase()))return toast('Esiste già un partecipante con questo nome'); const active=document.getElementById('pActive').value==='1'; if(id&&p.teamId&&!active&&!confirm('Disattivandolo la sua rosa risulterà incompleta. Continuare?'))return; const data={name:name.slice(0,80),role:document.getElementById('pRole').value,rating:+document.getElementById('pRating').value,active};createSnapshot(id?`Prima della modifica di ${p.name}`:'Prima di aggiungere un partecipante'); if(id)Object.assign(p,data);else state.players.push({id:uid('p'),teamId:null,...data});save();closeModal();renderPlayers();toast('Partecipante salvato'); };
+  const profile=archiveProfileForPlayer(p,false),history=playerProfileSummary(profile),historyHtml=profile?`<div class="notice info" style="margin-top:14px"><span>◎</span><span><strong>Storico:</strong> ${history.matches} presenze, ${history.goals} gol, ${history.assists} assist, ${history.fouls} falli, ${history.yellow} gialli, ${history.red} rossi, ${history.mvp} MVP${history.average?`, media ${history.average.toLocaleString('it-IT',{maximumFractionDigits:1})}`:''}.</span></div>`:'';
+  openModal(`<h2>${id?'Modifica':'Nuovo'} giocatore</h2><div class="form-grid"><div class="field full"><label>Nome</label><input id="pName" value="${esc(p.name)}" placeholder="Nome o soprannome"></div><div class="field"><label>Ruolo</label><select id="pRole">${['TBD','POR','DIF','CEN','ATT'].map(r=>`<option ${p.role===r?'selected':''} value="${r}">${roleLabel(r)}</option>`).join('')}</select></div><div class="field"><label>Livello (1-5)</label><select id="pRating">${[1,2,3,4,5].map(n=>`<option ${p.rating===n?'selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label>Stato</label><select id="pActive"><option value="1" ${p.active!==false?'selected':''}>Attivo</option><option value="0" ${p.active===false?'selected':''}>Non attivo</option></select></div></div>${historyHtml}${p.teamId?`<p class="note">Squadra attuale: <strong>${esc(teamById(p.teamId)?.name||'—')}</strong>. Per cambiare squadra usa “Scambia giocatori”, così le rose restano sempre uguali.</p>`:''}<div class="modal-actions">${id?'<button class="danger" id="deletePlayer">Elimina</button>':''}<button class="ghost" data-close>Chiudi</button><button class="primary" id="savePlayer">Salva</button></div>`);
+  if(!id)document.getElementById('pName').addEventListener('change',event=>{const prior=archiveProfileByName(event.target.value);if(!prior)return;document.getElementById('pRole').value=prior.role;document.getElementById('pRating').value=String(prior.lastRating);toast('Profilo storico riconosciuto');});
+  document.getElementById('savePlayer').onclick=()=>{ const name=document.getElementById('pName').value.trim();if(!name)return toast('Inserisci il nome');if(state.players.some(x=>x.id!==id&&x.name.trim().toLowerCase()===name.toLowerCase()))return toast('Esiste già un partecipante con questo nome'); const active=document.getElementById('pActive').value==='1'; if(id&&p.teamId&&!active&&!confirm('Disattivandolo la sua rosa risulterà incompleta. Continuare?'))return; const prior=archiveProfileByName(name),data={profileId:p.profileId||prior?.id||null,name:name.slice(0,80),role:document.getElementById('pRole').value,rating:+document.getElementById('pRating').value,active};createSnapshot(id?`Prima della modifica di ${p.name}`:'Prima di aggiungere un partecipante'); if(id)Object.assign(p,data);else state.players.push({id:uid('p'),teamId:null,...data});save();closeModal();renderPlayers();toast(prior&&!id?'Partecipante recuperato dallo storico':'Partecipante salvato'); };
   document.getElementById('deletePlayer')?.addEventListener('click',()=>{if(!confirm(p.teamId?'Eliminare questo partecipante? La squadra resterà incompleta finché non rigeneri le rose o inserisci un sostituto.':'Eliminare questo partecipante?'))return;createSnapshot(`Prima di eliminare ${p.name}`);state.teams.forEach(t=>{if(t.captainId===id)t.captainId=null;});state.players=state.players.filter(x=>x.id!==id);state.matches.forEach(m=>{m.stats=(m.stats||[]).filter(s=>s.playerId!==id);m.events=(m.events||[]).filter(e=>e.playerId!==id);m.ratings=(m.ratings||[]).filter(r=>r.playerId!==id);if(m.mvpPlayerId===id)m.mvpPlayerId=null;});save();closeModal();renderPlayers();toast('Partecipante eliminato');});
 }
 
@@ -2001,7 +2048,7 @@ function ensureReferee(m){
   if(!m.referee)m.referee={phase:m.status==='played'?'ended':m.status==='live'?'first':'not_started',phaseStartedAt:null,firstSeconds:0,secondSeconds:0};
   return m.referee;
 }
-function matchStat(m,playerId){let x=(m.stats||[]).find(s=>s.playerId===playerId);if(!x){x={playerId,goals:0,assists:0,yellow:0,red:0,mvp:false};m.stats.push(x);}return x;}
+function matchStat(m,playerId){let x=(m.stats||[]).find(s=>s.playerId===playerId);if(!x){x={playerId,goals:0,assists:0,fouls:0,yellow:0,red:0,mvp:false};m.stats.push(x);}return x;}
 function currentRefSeconds(m){
   const r=ensureReferee(m),now=Date.now();
   if(r.phase==='first')return (r.firstSeconds||0)+(r.phaseStartedAt?Math.max(0,(now-r.phaseStartedAt)/1000):0);
@@ -2017,7 +2064,7 @@ function refMinuteLabel(m,event=null){
   if(r.phase==='halftime')return 'INT';
   return `${min}'`;
 }
-function eventLabel(e){return ({goal:'⚽ Gol',assist:'🎯 Assist',yellow:'🟨 Giallo',red:'🟥 Rosso',teamgoal:'⚽ Gol squadra'}[e.type]||e.type);}
+function eventLabel(e){return ({goal:'⚽ Gol',assist:'🎯 Assist',foul:'⚠️ Fallo',yellow:'🟨 Giallo',red:'🟥 Rosso',teamgoal:'⚽ Gol squadra'}[e.type]||e.type);}
 function refScore(m){return `${m.homeScore??0} — ${m.awayScore??0}`;}
 function setRefPhase(m,next){
   const r=ensureReferee(m),now=Date.now();
@@ -2032,12 +2079,14 @@ function setRefPhase(m,next){
 }
 function addRefEvent(matchId,type,teamId,playerId=null){
   const m=state.matches.find(x=>x.id===matchId);if(!m)return;
+  if(['yellow','red'].includes(type)&&!state.settings.cardsEnabled)return toast('I cartellini sono disattivati dal gestore');
   ensureReferee(m);if(m.homeScore==null)m.homeScore=0;if(m.awayScore==null)m.awayScore=0;if(m.status==='scheduled')m.status='live';
   const e={id:uid('ev'),type,teamId,playerId,minuteLabel:refMinuteLabel(m),createdAt:Date.now()};
   if(type==='goal'||type==='teamgoal'){
     if(teamId===m.homeTeamId)m.homeScore=(+m.homeScore||0)+1;else if(teamId===m.awayTeamId)m.awayScore=(+m.awayScore||0)+1;
     if(type==='goal'&&playerId)matchStat(m,playerId).goals++;
   } else if(type==='assist'&&playerId)matchStat(m,playerId).assists++;
+  else if(type==='foul'&&playerId)matchStat(m,playerId).fouls++;
   else if(type==='yellow'&&playerId)matchStat(m,playerId).yellow++;
   else if(type==='red'&&playerId)matchStat(m,playerId).red++;
   m.events.push(e);save({matchId});playRefFeedback('event');renderRefereeMode(matchId);
@@ -2047,9 +2096,10 @@ function undoRefEvent(matchId,eventId){
   const e=m.events[i],st=e.playerId?(m.stats||[]).find(x=>x.playerId===e.playerId):null;
   if(e.type==='goal'||e.type==='teamgoal'){if(e.teamId===m.homeTeamId)m.homeScore=Math.max(0,(+m.homeScore||0)-1);else m.awayScore=Math.max(0,(+m.awayScore||0)-1);if(e.type==='goal'&&st)st.goals=Math.max(0,(st.goals||0)-1);}
   if(e.type==='assist'&&st)st.assists=Math.max(0,(st.assists||0)-1);
+  if(e.type==='foul'&&st)st.fouls=Math.max(0,(st.fouls||0)-1);
   if(e.type==='yellow'&&st)st.yellow=Math.max(0,(st.yellow||0)-1);
   if(e.type==='red'&&st)st.red=Math.max(0,(st.red||0)-1);
-  m.stats=(m.stats||[]).filter(x=>x.goals||x.assists||x.yellow||x.red||x.mvp);
+  m.stats=(m.stats||[]).filter(x=>x.goals||x.assists||x.fouls||x.yellow||x.red||x.mvp);
   m.events.splice(i,1);save({matchId});playRefFeedback('confirm');renderRefereeMode(matchId);toast('Evento annullato');
 }
 function setMatchMvp(m,playerId){
@@ -2059,7 +2109,8 @@ function setMatchMvp(m,playerId){
 }
 function refereeRosterHtml(m,team,readOnly=false){
   const dis=readOnly?'disabled':'';
-  return `<div class="ref-team"><div class="ref-team-title"><span>${esc(team.name)}</span><strong>${team.id===m.homeTeamId?(m.homeScore??0):(m.awayScore??0)}</strong></div><button class="ghost full ref-team-goal" data-ref-event="teamgoal" data-team="${team.id}" data-action-label="gol squadra ${esc(team.name)}" aria-label="Gol squadra o autorete per ${esc(team.name)}" ${dis}>+ Gol squadra / autorete</button><div class="ref-roster">${teamPlayers(team.id).map(p=>`<div class="ref-player"><div class="grow"><strong>${esc(p.name)}</strong><span>${roleLabel(p.role)}</span></div><button title="Gol · ${esc(p.name)}" aria-label="Gol di ${esc(p.name)}" data-action-label="gol di ${esc(p.name)}" data-ref-event="goal" data-team="${team.id}" data-player="${p.id}" ${dis}>⚽</button><button title="Assist · ${esc(p.name)}" aria-label="Assist di ${esc(p.name)}" data-action-label="assist di ${esc(p.name)}" data-ref-event="assist" data-team="${team.id}" data-player="${p.id}" ${dis}>🎯</button><button title="Giallo · ${esc(p.name)}" aria-label="Ammonizione a ${esc(p.name)}" data-action-label="giallo a ${esc(p.name)}" data-ref-event="yellow" data-team="${team.id}" data-player="${p.id}" ${dis}>🟨</button><button title="Rosso · ${esc(p.name)}" aria-label="Espulsione di ${esc(p.name)}" data-action-label="rosso a ${esc(p.name)}" data-ref-event="red" data-team="${team.id}" data-player="${p.id}" ${dis}>🟥</button></div>`).join('')}</div></div>`;
+  const cards=state.settings.cardsEnabled!==false;
+  return `<div class="ref-team"><div class="ref-team-title"><span>${esc(team.name)}</span><strong>${team.id===m.homeTeamId?(m.homeScore??0):(m.awayScore??0)}</strong></div><button class="ghost full ref-team-goal" data-ref-event="teamgoal" data-team="${team.id}" data-action-label="gol squadra ${esc(team.name)}" aria-label="Gol squadra o autorete per ${esc(team.name)}" ${dis}>+ Gol squadra / autorete</button><div class="ref-roster">${teamPlayers(team.id).map(p=>`<div class="ref-player ${cards?'':'cards-off'}"><div class="grow"><strong>${esc(p.name)}</strong><span>${roleLabel(p.role)}</span></div><button title="Gol · ${esc(p.name)}" aria-label="Gol di ${esc(p.name)}" data-action-label="gol di ${esc(p.name)}" data-ref-event="goal" data-team="${team.id}" data-player="${p.id}" ${dis}>⚽</button><button title="Assist · ${esc(p.name)}" aria-label="Assist di ${esc(p.name)}" data-action-label="assist di ${esc(p.name)}" data-ref-event="assist" data-team="${team.id}" data-player="${p.id}" ${dis}>🎯</button><button title="Fallo · ${esc(p.name)}" aria-label="Fallo di ${esc(p.name)}" data-action-label="fallo di ${esc(p.name)}" data-ref-event="foul" data-team="${team.id}" data-player="${p.id}" ${dis}>⚠️</button>${cards?`<button title="Giallo · ${esc(p.name)}" aria-label="Ammonizione a ${esc(p.name)}" data-action-label="giallo a ${esc(p.name)}" data-ref-event="yellow" data-team="${team.id}" data-player="${p.id}" ${dis}>🟨</button><button title="Rosso · ${esc(p.name)}" aria-label="Espulsione di ${esc(p.name)}" data-action-label="rosso a ${esc(p.name)}" data-ref-event="red" data-team="${team.id}" data-player="${p.id}" ${dis}>🟥</button>`:''}</div>`).join('')}</div></div>`;
 }
 function refereeEventLog(m,readOnly=false){
   const events=[...(m.events||[])].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
@@ -2116,7 +2167,7 @@ function finishRefereeMatch(id){
 }
 function openMatchModal(id){
   const m=state.matches.find(x=>x.id===id),home=teamById(m.homeTeamId),away=teamById(m.awayTeamId),players=[...teamPlayers(home.id),...teamPlayers(away.id)],existing=new Map((m.stats||[]).map(s=>[s.playerId,s]));const ko=isKnockoutMatch(m);
-  openModal(`<h2>${esc(home.name)} vs ${esc(away.name)}</h2><p class="modal-subtitle">${stageLabel(m)} · ${esc(matchDisplayTime(m))}</p><div class="form-grid"><div class="field"><label>Gol ${esc(home.name)}</label><input id="homeScore" type="number" min="0" inputmode="numeric" value="${m.homeScore??''}"></div><div class="field"><label>Gol ${esc(away.name)}</label><input id="awayScore" type="number" min="0" inputmode="numeric" value="${m.awayScore??''}"></div>${ko?`<div class="field"><label>Rigori ${esc(home.name)} (solo se pari)</label><input id="penHome" type="number" min="0" inputmode="numeric" value="${m.penHome??''}"></div><div class="field"><label>Rigori ${esc(away.name)} (solo se pari)</label><input id="penAway" type="number" min="0" inputmode="numeric" value="${m.penAway??''}"></div>`:''}<div class="field full"><label>Data / ora (facoltativa)</label><input id="matchDate" type="datetime-local" value="${m.date||''}"></div></div><h3 style="margin-top:18px">Statistiche giocatori</h3><div class="stats-editor">${players.map(p=>{const s=existing.get(p.id)||{};return `<div class="stats-player" data-stat-player="${p.id}"><div><strong>${esc(p.name)}</strong><div class="note">${esc(teamById(p.teamId)?.name||'')}</div></div><label>Gol<input type="number" min="0" data-k="goals" value="${s.goals||0}"></label><label>Assist<input type="number" min="0" data-k="assists" value="${s.assists||0}"></label><label>Gialli<input type="number" min="0" max="2" data-k="yellow" value="${s.yellow||0}"></label><label>Rossi<input type="number" min="0" max="1" data-k="red" value="${s.red||0}"></label><label>MVP<input type="checkbox" data-k="mvp" ${s.mvp?'checked':''}></label></div>`;}).join('')}</div><div class="notice info" style="margin-top:14px"><span>i</span><span>Il gestore può correggere risultato, orario e statistiche. Ogni modifica importante crea un punto di ripristino.</span></div><div class="button-row" style="margin-top:12px"><button class="ghost" id="moveMatchUp">↑ Anticipa</button><button class="ghost" id="moveMatchDown">↓ Posticipa</button>${m.status==='scheduled'?'<button class="ghost" id="swapMatchSides">⇄ Inverti squadre</button>':''}<button class="danger-outline" id="deleteMatch">Elimina partita</button></div><div class="modal-actions"><button class="ghost" id="clearResult">Segna da giocare</button><button class="ghost" data-close>Annulla</button><button class="primary" id="saveMatch">Salva tabellino</button></div>`);
+  openModal(`<h2>${esc(home.name)} vs ${esc(away.name)}</h2><p class="modal-subtitle">${stageLabel(m)} · ${esc(matchDisplayTime(m))}</p><div class="form-grid"><div class="field"><label>Gol ${esc(home.name)}</label><input id="homeScore" type="number" min="0" inputmode="numeric" value="${m.homeScore??''}"></div><div class="field"><label>Gol ${esc(away.name)}</label><input id="awayScore" type="number" min="0" inputmode="numeric" value="${m.awayScore??''}"></div>${ko?`<div class="field"><label>Rigori ${esc(home.name)} (solo se pari)</label><input id="penHome" type="number" min="0" inputmode="numeric" value="${m.penHome??''}"></div><div class="field"><label>Rigori ${esc(away.name)} (solo se pari)</label><input id="penAway" type="number" min="0" inputmode="numeric" value="${m.penAway??''}"></div>`:''}<div class="field full"><label>Data / ora (facoltativa)</label><input id="matchDate" type="datetime-local" value="${m.date||''}"></div></div><h3 style="margin-top:18px">Statistiche giocatori</h3><div class="stats-editor">${players.map(p=>{const s=existing.get(p.id)||{};return `<div class="stats-player" data-stat-player="${p.id}"><div><strong>${esc(p.name)}</strong><div class="note">${esc(teamById(p.teamId)?.name||'')}</div></div><label>Gol<input type="number" min="0" data-k="goals" value="${s.goals||0}"></label><label>Assist<input type="number" min="0" data-k="assists" value="${s.assists||0}"></label><label>Falli<input type="number" min="0" data-k="fouls" value="${s.fouls||0}"></label><label>Gialli<input type="number" min="0" max="2" data-k="yellow" value="${s.yellow||0}"></label><label>Rossi<input type="number" min="0" max="1" data-k="red" value="${s.red||0}"></label><label>MVP<input type="checkbox" data-k="mvp" ${s.mvp?'checked':''}></label></div>`;}).join('')}</div><div class="notice info" style="margin-top:14px"><span>i</span><span>Il gestore può correggere risultato, orario e statistiche. Ogni modifica importante crea un punto di ripristino.</span></div><div class="button-row" style="margin-top:12px"><button class="ghost" id="moveMatchUp">↑ Anticipa</button><button class="ghost" id="moveMatchDown">↓ Posticipa</button>${m.status==='scheduled'?'<button class="ghost" id="swapMatchSides">⇄ Inverti squadre</button>':''}<button class="danger-outline" id="deleteMatch">Elimina partita</button></div><div class="modal-actions"><button class="ghost" id="clearResult">Segna da giocare</button><button class="ghost" data-close>Annulla</button><button class="primary" id="saveMatch">Salva tabellino</button></div>`);
   const moveBy=delta=>{const index=state.matches.findIndex(x=>x.id===m.id),next=index+delta;if(index<0||next<0||next>=state.matches.length)return toast(delta<0?'La partita è già la prima':'La partita è già l’ultima');createSnapshot('Prima di riordinare il calendario');[state.matches[index],state.matches[next]]=[state.matches[next],state.matches[index]];save();closeModal(true);render();toast('Ordine partite aggiornato');};
   document.getElementById('moveMatchUp').onclick=()=>moveBy(-1);document.getElementById('moveMatchDown').onclick=()=>moveBy(1);
   document.getElementById('swapMatchSides')?.addEventListener('click',()=>{createSnapshot('Prima di invertire casa e trasferta');[m.homeTeamId,m.awayTeamId]=[m.awayTeamId,m.homeTeamId];save();closeModal(true);render();toast('Squadre invertite');});
@@ -2124,7 +2175,7 @@ function openMatchModal(id){
   document.getElementById('saveMatch').onclick=()=>{
     const hs=document.getElementById('homeScore').value,as=document.getElementById('awayScore').value;
     if(hs===''||as==='')return toast('Inserisci entrambi i risultati');
-    const draftStats=[...document.querySelectorAll('[data-stat-player]')].map(row=>{const obj={playerId:row.dataset.statPlayer,goals:0,assists:0,yellow:0,red:0,mvp:false};row.querySelectorAll('[data-k]').forEach(input=>obj[input.dataset.k]=input.type==='checkbox'?input.checked:Math.max(0,+input.value||0));return obj;});
+    const draftStats=[...document.querySelectorAll('[data-stat-player]')].map(row=>{const obj={playerId:row.dataset.statPlayer,goals:0,assists:0,fouls:0,yellow:0,red:0,mvp:false};row.querySelectorAll('[data-k]').forEach(input=>obj[input.dataset.k]=input.type==='checkbox'?input.checked:Math.max(0,+input.value||0));return obj;});
     const mvpRows=draftStats.filter(x=>x.mvp);if(mvpRows.length>1)return toast('Seleziona un solo MVP');
     let penHome=null,penAway=null;
     if(ko&&+hs===+as){penHome=document.getElementById('penHome').value;penAway=document.getElementById('penAway').value;if(penHome===''||penAway===''||+penHome===+penAway)return toast('Inserisci un vincitore ai rigori');}
@@ -2143,7 +2194,7 @@ function openMatchModal(id){
     if(ko && oldWinner && newWinner && oldWinner!==newWinner){
       removeDownstreamKnockout(m.koSize||2);
     }
-    m.stats=draftStats.filter(s=>s.goals||s.assists||s.yellow||s.red||s.mvp);m.mvpPlayerId=mvpRows[0]?.playerId||null;
+    m.stats=draftStats.filter(s=>s.goals||s.assists||s.fouls||s.yellow||s.red||s.mvp);m.mvpPlayerId=mvpRows[0]?.playerId||null;
     save();syncKnockout(false);closeModal(true);render();toast('Risultato salvato');
   };
   document.getElementById('clearResult').onclick=()=>{
@@ -2184,7 +2235,7 @@ function openRatingsModal(id,readOnly=false){
     if(!ratings.length)return toast('Inserisci almeno un voto');
     const target=state.matches.find(m=>m.id===id);if(!target)return toast('Partita non più disponibile');
     createSnapshot(`Prima di aggiornare le Copparigelle di ${home?.name||''} vs ${away?.name||''}`);target.ratings=ratings;target.ratingsPublished=published;state.meta={...(state.meta||{}),appVersion:APP_VERSION,updatedAt:new Date().toISOString()};
-    if(liveRole==='manager'){if(!liveConnected)return toast('Collegamento live interrotto: attendi la riconnessione',4200);sendLiveRatingsUpdate(id);updateSaveIndicator();}else save();
+    if(liveRole==='manager'){if(!liveConnected)return toast('Collegamento live interrotto: attendi la riconnessione',4200);syncPlayerArchiveFromState();sendLiveRatingsUpdate(id);updateSaveIndicator();}else save();
     closeModal(true);render();toast(published?'Copparigelle pubblicate':'Copparigelle salvate in bozza');
   };
   document.getElementById('saveRatingsDraft').onclick=()=>commit(false);document.getElementById('publishRatings').onclick=()=>commit(true);
@@ -2236,9 +2287,9 @@ function renderStandings(){
   view.innerHTML=s.length?`<div class="table-wrap"><table><thead><tr><th>#</th><th>Squadra</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>Pt</th></tr></thead><tbody>${s.map((x,i)=>`<tr><td><span class="rank">${i+1}</span></td><td><strong>${esc(x.team.name)}</strong>${complete&&state.settings.playoffs&&i<q?' <span class="badge green">Qualificata</span>':''}${complete&&!state.settings.playoffs&&i===0?' <span class="badge green">Vincitore</span>':''}</td><td>${x.pg}</td><td>${x.w}</td><td>${x.d}</td><td>${x.l}</td><td>${x.gf}</td><td>${x.ga}</td><td>${x.gd>0?'+':''}${x.gd}</td><td><strong>${x.pts}</strong></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty"><strong>Nessuna squadra</strong>La classifica apparirà qui.</div>';
 }
 function aggregateStats(){
-  const map=new Map(state.players.map(p=>[p.id,{player:p,goals:0,assists:0,yellow:0,red:0,mvp:0}]));
+  const map=new Map(state.players.map(p=>[p.id,{player:p,goals:0,assists:0,fouls:0,yellow:0,red:0,mvp:0}]));
   playedMatches().forEach(m=>{
-    (m.stats||[]).forEach(s=>{const x=map.get(s.playerId);if(!x)return;x.goals+=s.goals||0;x.assists+=s.assists||0;x.yellow+=s.yellow||0;x.red+=s.red||0;x.mvp+=s.mvp?1:0;});
+    (m.stats||[]).forEach(s=>{const x=map.get(s.playerId);if(!x)return;x.goals+=s.goals||0;x.assists+=s.assists||0;x.fouls+=s.fouls||0;x.yellow+=s.yellow||0;x.red+=s.red||0;x.mvp+=s.mvp?1:0;});
     if(m.mvpPlayerId&&!((m.stats||[]).some(s=>s.playerId===m.mvpPlayerId&&s.mvp))){const x=map.get(m.mvpPlayerId);if(x)x.mvp+=1;}
   });
   return [...map.values()];
@@ -2328,11 +2379,11 @@ async function copyAwardsText(){
   catch{const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();toast('Premi copiati');}
 }
 function renderStats(){
-  setHeader('Statistiche','Premi, Copparigelle, marcatori, portieri, assist, MVP e disciplina');
+  setHeader('Statistiche','Premi, Copparigelle, marcatori, portieri, assist, falli, MVP e disciplina');
   const all=aggregateStats(),keepers=goalkeeperStats(),ratings=aggregateRatings();
   const board=(key,label)=>{const arr=[...all].sort((a,b)=>b[key]-a[key]||a.player.name.localeCompare(b.player.name,'it')).filter(x=>x[key]>0).slice(0,10);return `<div class="card"><h3>${label}</h3><div class="leaderboard">${arr.map((x,i)=>`<div class="leader-row"><span class="rank">${i+1}</span><div><strong>${esc(x.player.name)}</strong><span>${esc(teamById(x.player.teamId)?.name||'Senza squadra')}</span></div><div class="leader-value">${x[key]}</div></div>`).join('')||'<div class="empty">Nessun dato ancora</div>'}</div></div>`;};
   const ratingsBoard=`<div class="card"><h3>📝 Copparigelle</h3><div class="leaderboard">${ratings.slice(0,10).map((x,i)=>`<div class="leader-row"><span class="rank">${i+1}</span><div><strong>${esc(x.player.name)}</strong><span>${esc(teamById(x.player.teamId)?.name||'Senza squadra')} · ${x.count} ${x.count===1?'voto':'voti'}</span></div><div class="leader-value">${x.average.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:2})}<small>media</small></div></div>`).join('')||'<div class="empty">Nessuna Copparigella pubblicata</div>'}</div></div>`;
-  view.innerHTML=`${awardsSectionHtml()}<div class="grid cols-2">${ratingsBoard}${board('goals','⚽ Marcatori')}${goalkeeperBoardHtml(keepers)}${board('assists','🎯 Assist')}${board('mvp','⭐ MVP')}${board('yellow','🟨 Ammonizioni')}${board('red','🟥 Espulsioni')}</div>`;
+  view.innerHTML=`${awardsSectionHtml()}<div class="grid cols-2">${ratingsBoard}${board('goals','⚽ Marcatori')}${goalkeeperBoardHtml(keepers)}${board('assists','🎯 Assist')}${board('fouls','⚠️ Falli')}${board('mvp','⭐ MVP')}${board('yellow','🟨 Ammonizioni')}${board('red','🟥 Espulsioni')}</div>`;
   document.getElementById('copyAwards')?.addEventListener('click',copyAwardsText);
 }
 
@@ -2367,6 +2418,7 @@ function readSettingsForm(){
     pointsDraw:clamp(numOr(document.getElementById('setDraw').value,1),-20,100),
     pointsLoss:clamp(numOr(document.getElementById('setLoss').value,0),-20,100),
     touchGuard:document.getElementById('setTouchGuard').value==='1',
+    cardsEnabled:document.getElementById('setCardsEnabled').checked,
     hapticFeedback:document.getElementById('setHaptic').checked,
     soundFeedback:document.getElementById('setSound').checked
   };
@@ -2387,12 +2439,13 @@ function renderSettings(){
   view.innerHTML=`
     <div class="grid cols-2">
       <div class="card"><div class="kicker">Identità</div><h3>Il tuo torneo</h3><div class="form-grid"><div class="field"><label>Nome torneo</label><input id="setName" maxlength="80" value="${esc(s.name)}"></div><div class="field"><label>Edizione</label><input id="setEdition" maxlength="80" value="${esc(s.edition)}"></div><div class="field"><label>Luogo</label><input id="setVenue" maxlength="120" value="${esc(s.venue||'')}" placeholder="Facoltativo"></div><div class="field"><label>Gestore</label><input id="setOrganizer" maxlength="120" value="${esc(s.organizer||'')}" placeholder="Facoltativo"></div></div></div>
-      <div class="card"><div class="kicker">Modalità arbitro e Live</div><h3>Protezione e feedback</h3><div class="form-grid"><div class="field full"><label>Protezione tocchi involontari</label><select id="setTouchGuard"><option value="1" ${s.touchGuard?'selected':''}>Attiva · doppio tocco intenzionale</option><option value="0" ${!s.touchGuard?'selected':''}>Disattiva · tocco singolo</option></select></div><label class="roster-row"><span class="grow"><strong>Vibrazione</strong><span class="note">Conferma eventi e fine tempo, se supportata</span></span><input id="setHaptic" type="checkbox" ${s.hapticFeedback?'checked':''}></label><label class="roster-row"><span class="grow"><strong>Suono</strong><span class="note">Avviso al tempo regolamentare</span></span><input id="setSound" type="checkbox" ${s.soundFeedback?'checked':''}></label></div>${screenWakeControlHtml()}<div class="notice info" style="margin-top:12px"><span>🔒</span><span>Con la protezione attiva, un tocco isolato non modifica mai punteggio, cartellini, timer o stato della partita.</span></div></div>
+      <div class="card"><div class="kicker">Modalità arbitro e Live</div><h3>Protezione e feedback</h3><div class="form-grid"><div class="field full"><label>Protezione tocchi involontari</label><select id="setTouchGuard"><option value="1" ${s.touchGuard?'selected':''}>Attiva · doppio tocco intenzionale</option><option value="0" ${!s.touchGuard?'selected':''}>Disattiva · tocco singolo</option></select></div><label class="roster-row" style="grid-column:1/-1"><span class="grow"><strong>Cartellini</strong><span class="note">Mostra i comandi giallo e rosso agli arbitri collegati</span></span><input id="setCardsEnabled" type="checkbox" ${s.cardsEnabled!==false?'checked':''}></label><label class="roster-row"><span class="grow"><strong>Vibrazione</strong><span class="note">Conferma eventi e fine tempo, se supportata</span></span><input id="setHaptic" type="checkbox" ${s.hapticFeedback?'checked':''}></label><label class="roster-row"><span class="grow"><strong>Suono</strong><span class="note">Avviso al tempo regolamentare</span></span><input id="setSound" type="checkbox" ${s.soundFeedback?'checked':''}></label></div>${screenWakeControlHtml()}<div class="notice info" style="margin-top:12px"><span>🔒</span><span>Le impostazioni della modalità arbitro si aggiornano automaticamente sui dispositivi collegati. Disattivare i cartellini nasconde i comandi, senza cancellare quelli già registrati.</span></div></div>
     </div>
     <div class="card" style="margin-top:16px"><div class="kicker">Formula</div><h3>Struttura e tempi</h3><div class="form-grid"><div class="field"><label>N° partecipanti</label><input type="number" min="10" max="200" id="setTarget" value="${s.targetPlayers}"></div><div class="field"><label>Giocatori per rosa</label><input type="number" min="5" max="20" id="setRoster" value="${s.rosterSize}"></div><div class="field"><label>Formula torneo</label><select id="setFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Campionato + Finale</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div><div class="field"><label>Girone</label><select id="setMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div><div class="field"><label>Finale 3° posto</label><select id="setBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div><div class="field"><label>Inizio torneo</label><input id="setStartTime" type="time" value="00:00" disabled><small>Le partite proseguono in sequenza fino alla fine.</small></div><div class="field"><label>Durata totale di gioco (min)</label><input type="number" min="2" max="120" id="setMinutes" value="${s.matchMinutes}"></div><div class="field"><label>Intervallo (min)</label><input type="number" min="0" max="30" id="setHalftime" value="${s.halftimeMinutes}"></div><div class="field"><label>Cambio campo (min)</label><input type="number" min="0" max="60" id="setChange" value="${s.changeMinutes}"></div><div class="field"><label>Punti vittoria</label><input type="number" id="setWin" value="${s.pointsWin}"></div><div class="field"><label>Punti pareggio</label><input type="number" id="setDraw" value="${s.pointsDraw}"></div><div class="field"><label>Punti sconfitta</label><input type="number" id="setLoss" value="${s.pointsLoss}"></div></div><div id="settingsPreview" style="margin-top:14px">${settingsPreviewHtml()}</div><div class="modal-actions"><button class="ghost" id="rerunSetup">Riapri configurazione guidata</button><button class="primary" id="saveSettings">Salva impostazioni</button></div></div>
-    <div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Guida del gestore</h3><p class="note">Procedura completa prima, durante e dopo il torneo, inclusa la gestione delle emergenze.</p><button class="ghost" id="settingsGuide">Apri la guida</button></div><div class="card"><h3>Backup e ripristino</h3><p class="note">I dati restano su questo dispositivo. Esporta un file prima dell’inizio e durante la serata.</p><div class="button-row"><button class="ghost" id="exportBtn2">Esporta backup</button><label class="ghost file-label">Importa backup<input type="file" id="importInput2" accept="application/json" hidden></label>${snap?`<button class="ghost" id="restoreSnapshot">↶ ${esc(snap.label)}</button>`:''}</div></div></div>
-    <div class="card danger-zone" style="margin-top:16px"><h3>Zona sensibile</h3><p class="note">L’azzeramento cancella torneo, squadre, partite e statistiche da questo dispositivo. Prima viene comunque creato un punto di ripristino.</p><button class="danger-outline" id="resetAllBtn">Azzera tutti i dati</button></div>`;
-  ['setName','setEdition','setVenue','setOrganizer','setTarget','setRoster','setFormat','setMode','setBronze','setStartTime','setMinutes','setHalftime','setChange','setWin','setDraw','setLoss','setTouchGuard','setHaptic','setSound'].forEach(id=>document.getElementById(id)?.addEventListener('input',updateSettingsPreview));
+    <div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Guida del gestore</h3><p class="note">Procedura completa prima, durante e dopo il torneo, inclusa la gestione delle emergenze.</p><button class="ghost" id="settingsGuide">Apri la guida</button></div><div class="card"><h3>Backup e ripristino</h3><p class="note">Il backup comprende torneo e archivio storico dei giocatori. Esportalo prima dell’inizio e durante la serata.</p><div class="button-row"><button class="ghost" id="exportBtn2">Esporta backup</button><label class="ghost file-label">Importa backup<input type="file" id="importInput2" accept="application/json" hidden></label>${snap?`<button class="ghost" id="restoreSnapshot">↶ ${esc(snap.label)}</button>`:''}</div></div></div>
+    <div class="card" style="margin-top:16px"><div class="kicker">Memoria tra le edizioni</div><h3>Archivio giocatori</h3><p class="note"><strong>${playerArchive.profiles.length} profili</strong> conservati. Presenze, gol, assist, falli, cartellini, MVP e Copparigelle vengono aggiornati dai referti e riutilizzati quando inserisci nuovamente lo stesso nome. Lo storico non è visibile nei link pubblico e arbitro.</p><div class="notice info" style="margin-top:12px"><span>◎</span><span>L’azzeramento del torneo non cancella questo archivio. Per proteggerlo anche in caso di cambio dispositivo, conserva un backup.</span></div></div>
+    <div class="card danger-zone" style="margin-top:16px"><h3>Zona sensibile</h3><p class="note">L’azzeramento cancella torneo, squadre, partite e statistiche dell’edizione corrente, ma conserva l’archivio storico dei giocatori. Prima viene comunque creato un punto di ripristino.</p><button class="danger-outline" id="resetAllBtn">Azzera il torneo</button></div>`;
+  ['setName','setEdition','setVenue','setOrganizer','setTarget','setRoster','setFormat','setMode','setBronze','setStartTime','setMinutes','setHalftime','setChange','setWin','setDraw','setLoss','setTouchGuard','setCardsEnabled','setHaptic','setSound'].forEach(id=>document.getElementById(id)?.addEventListener('input',updateSettingsPreview));
   bindScreenWakeControls(view);
   updateSettingsPreview();
   document.getElementById('saveSettings').onclick=()=>{
@@ -2456,20 +2509,20 @@ async function requestAppInstall(){
 }
 function openManagerGuide(initial=false){
   const localWarning=isLocalFileMode()?'<div class="notice warn" style="margin-top:10px"><span>!</span><span>Se hai ricevuto solo il file HTML e iOS lo mostra in anteprima, per il torneo è preferibile un link web aperto direttamente in Safari.</span></div>':'';
-  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Condivisione live</strong></summary><ol class="note"><li>Da Panoramica tocca “Avvia diretta”.</li><li>Invia il link pubblico a chi deve solo seguire risultati e classifiche.</li><li>Invia il link gestore soltanto agli organizzatori autorizzati.</li><li>Dopo il primo salvataggio i dati restano su Supabase: il telefono che ha avviato la Live può essere chiuso.</li><li>Evitate di modificare contemporaneamente la stessa partita da due telefoni.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> apri il link gestore sul nuovo dispositivo.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione se serve ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
+  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist, falli e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Condivisione live</strong></summary><ol class="note"><li>Da Panoramica tocca “Avvia diretta”.</li><li>Invia il link pubblico a chi deve solo seguire risultati e classifiche.</li><li>Invia il link gestore soltanto agli organizzatori autorizzati.</li><li>Dopo il primo salvataggio i dati restano su Supabase: il telefono che ha avviato la Live può essere chiuso.</li><li>Evitate di modificare contemporaneamente la stessa partita da due telefoni.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> apri il link gestore sul nuovo dispositivo.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione se serve ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
   const liveGuideDetails=[...modal.querySelectorAll('details')].find(item=>item.querySelector('summary')?.textContent.trim()==='Condivisione live');
   if(liveGuideDetails)liveGuideDetails.innerHTML=`<summary><strong>Condivisione live · istruzioni complete</strong></summary><div class="notice info" style="margin:12px 0"><span>☁</span><span><strong>Supabase è la sorgente ufficiale.</strong> Conserva il torneo e distribuisce ogni aggiornamento agli altri dispositivi anche quando il primo telefono è chiuso.</span></div><h4>1 · Avvia la diretta</h4><ol class="note"><li>Completa almeno la configurazione iniziale, poi da Panoramica tocca “Avvia diretta”.</li><li>Attendi la conferma “Diretta cloud attiva”, quindi condividi i link.</li><li>Esporta comunque un backup prima del torneo e dopo le modifiche più importanti.</li></ol><h4>2 · Scegli il link corretto</h4><ul class="note"><li><strong>Link pubblico:</strong> è sempre in sola lettura. Mostra rose e giocatori, risultati, calendario, classifica e premi; chi lo apre non può cambiare i dati.</li><li><strong>Link arbitro:</strong> consente di consultare le rose e gestire soltanto partite, timer e referti.</li><li><strong>Link gestore:</strong> offre controllo completo. Conservalo come una password.</li></ul><h4>3 · Durante il torneo</h4><ol class="note"><li>Ogni modifica confermata viene salvata nel cloud e notificata agli altri dispositivi.</li><li>Il primo telefono può essere bloccato o chiuso; un altro dispositivo con il link gestore può continuare il torneo.</li><li>Se due gestori modificano la stessa revisione, Copparì conserva la prima modifica e chiede all’altro di ripetere l’operazione.</li><li>Se Internet cade, le modifiche vengono bloccate finché non avviene la riconnessione; l’ultimo stato resta disponibile.</li></ol><h4>4 · Chiusura e sicurezza</h4><ul class="note"><li>“Termina diretta” impedisce nuove modifiche, ma conserva nel cloud i dati finali in sola lettura.</li><li>Tratta i link gestore e arbitro come password. Se vengono condivisi per errore, termina la diretta e avviane una nuova.</li><li>I segreti dei link vengono verificati nel database e non sono salvati in chiaro.</li></ul>`;
   document.getElementById('closeGuide').onclick=()=>{storageSet(GUIDE_KEY,'1');closeModal(true);};
 }
 function openRefereeQuickGuide(){
   const iosTip=isIOSDevice()?'\n• iPhone/iPad: per avere più spazio, avvia Copparì dall’icona aggiunta alla schermata Home.':'';
-  alert('PROTEZIONE TOCCHI\n\n• Primo tocco: arma ed evidenzia il comando.\n• Secondo tocco sullo stesso comando entro 2,8 secondi: conferma.\n• ↶ annulla un evento.\n• Il timer continua anche se esci e puoi riprendere la partita.\n• “Termina e aggiorna classifica” rende il risultato definitivo.'+iosTip);
+  alert('PROTEZIONE TOCCHI\n\n• Primo tocco: arma ed evidenzia il comando.\n• Secondo tocco sullo stesso comando entro 2,8 secondi: conferma.\n• ⚠️ registra un fallo sul giocatore.\n• ↶ annulla un evento.\n• Il timer continua anche se esci e puoi riprendere la partita.\n• “Termina e aggiorna classifica” rende il risultato definitivo.'+iosTip);
 }
 function maybeShowInitialGuide(){if(!storageGet(GUIDE_KEY)&&modalBackdrop.classList.contains('hidden'))openManagerGuide(true);}
 function backupFileName(){const safe=(state.settings.name||'coppari').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'coppari';return `${safe}-backup-${new Date().toISOString().slice(0,10)}.json`;}
 function downloadBackupFile(file){const a=document.createElement('a'),url=URL.createObjectURL(file);a.href=url;a.download=file.name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);}
 async function exportBackup(){
-  const file=new File([JSON.stringify(state,null,2)],backupFileName(),{type:'application/json'});
+  syncPlayerArchiveFromState();const file=new File([JSON.stringify({...state,playerArchive},null,2)],backupFileName(),{type:'application/json'});
   let shared=false;
   try{
     const canShareFiles=typeof navigator.share==='function'&&typeof navigator.canShare==='function'&&navigator.canShare({files:[file]});
@@ -2483,8 +2536,8 @@ async function exportBackup(){
   toast(shared?'Backup condiviso: salvalo in File':'Backup esportato');
   if(currentView==='home')renderHome();
 }
-function importBackup(e){const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(reader.result);if(!raw||typeof raw!=='object'||!Array.isArray(raw.players)||!Array.isArray(raw.teams)||!Array.isArray(raw.matches))throw new Error('schema');if(!confirm(`Importare il backup “${file.name}” e sostituire i dati attuali?`))return;createSnapshot('Prima di importare un backup');const data=normalizeState(raw);Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,data);save();currentView='home';sessionSet('coppari.currentView','home');closeModal(true);render();toast('Backup importato e verificato');}catch{toast('Backup non valido o danneggiato',3500);}};reader.readAsText(file);e.target.value='';}
-function openResetModal(){openModal(`<h2>Azzera tutti i dati</h2><p class="modal-subtitle">Questa azione rimuove torneo, rose, calendario, risultati e statistiche da questo dispositivo.</p><div class="notice danger"><span>!</span><span>Prima dell’azzeramento verrà creato un punto di ripristino locale.</span></div><div class="field" style="margin-top:14px"><label>Scrivi <strong>AZZERA</strong> per confermare</label><input id="resetPhrase" autocomplete="off" placeholder="AZZERA"></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="danger" id="confirmReset" disabled>Azzeramento definitivo</button></div>`);const input=document.getElementById('resetPhrase'),button=document.getElementById('confirmReset');input.addEventListener('input',()=>button.disabled=input.value.trim().toUpperCase()!=='AZZERA');button.onclick=resetAll;}
+function importBackup(e){const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(reader.result);if(!raw||typeof raw!=='object'||!Array.isArray(raw.players)||!Array.isArray(raw.teams)||!Array.isArray(raw.matches))throw new Error('schema');if(!confirm(`Importare il backup “${file.name}” e sostituire i dati attuali?`))return;createSnapshot('Prima di importare un backup');const archiveRaw=raw.playerArchive;delete raw.playerArchive;const data=normalizeState(raw);Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,data);if(archiveRaw){playerArchive=normalizePlayerArchive(archiveRaw);persistPlayerArchive();}save();currentView='home';sessionSet('coppari.currentView','home');closeModal(true);render();toast(archiveRaw?'Backup e archivio giocatori importati':'Backup importato e verificato');}catch{toast('Backup non valido o danneggiato',3500);}};reader.readAsText(file);e.target.value='';}
+function openResetModal(){openModal(`<h2>Azzera il torneo</h2><p class="modal-subtitle">Questa azione rimuove rose, calendario, risultati e statistiche dell’edizione corrente.</p><div class="notice info"><span>◎</span><span>L’archivio storico dei giocatori resta conservato e potrà essere riutilizzato nella prossima edizione.</span></div><div class="notice danger" style="margin-top:10px"><span>!</span><span>Prima dell’azzeramento verrà creato un punto di ripristino locale.</span></div><div class="field" style="margin-top:14px"><label>Scrivi <strong>AZZERA</strong> per confermare</label><input id="resetPhrase" autocomplete="off" placeholder="AZZERA"></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="danger" id="confirmReset" disabled>Azzeramento definitivo</button></div>`);const input=document.getElementById('resetPhrase'),button=document.getElementById('confirmReset');input.addEventListener('input',()=>button.disabled=input.value.trim().toUpperCase()!=='AZZERA');button.onclick=resetAll;}
 function resetAll(){createSnapshot('Prima dell’azzeramento completo');const fresh=emptyState();Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,fresh);save();currentView='home';sessionSet('coppari.currentView','home');closeModal(true);render();toast('Dati azzerati · ripristino disponibile');}
 
 document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('.nav-item');if(b)navigate(b.dataset.view);});
@@ -2501,6 +2554,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState!==
 window.addEventListener('online',()=>{if(liveRole&&!liveConnected&&!liveEnded)connectToLiveHost();});
 window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY)toast('I dati sono cambiati in un’altra scheda: ricarica per allinearli',4200);});
 const joiningLiveSession=initLiveSharing();
+if(!joiningLiveSession)syncPlayerArchiveFromState();
 render();
 updateSaveIndicator();
 updateInstallUI();
