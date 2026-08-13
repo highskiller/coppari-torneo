@@ -36,7 +36,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = pg_catalog, public
+set search_path = pg_catalog, public, extensions
 as $$
 declare
   v_row public.coppari_live_tournaments%rowtype;
@@ -88,7 +88,7 @@ returns table (
 language plpgsql
 security definer
 stable
-set search_path = pg_catalog, public
+set search_path = pg_catalog, public, extensions
 as $$
 begin
   if p_room_id !~ '^coppari-[A-Za-z0-9_-]{20,80}$' then
@@ -117,7 +117,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = pg_catalog, public
+set search_path = pg_catalog, public, extensions
 as $$
 declare
   v_row public.coppari_live_tournaments%rowtype;
@@ -173,7 +173,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = pg_catalog, public
+set search_path = pg_catalog, public, extensions
 as $$
 declare
   v_row public.coppari_live_tournaments%rowtype;
@@ -270,7 +270,7 @@ create or replace function public.coppari_live_stop(
 returns boolean
 language plpgsql
 security definer
-set search_path = pg_catalog, public
+set search_path = pg_catalog, public, extensions
 as $$
 declare
   v_hash bytea;
