@@ -18,8 +18,26 @@ create table if not exists public.coppari_live_tournaments (
     check (jsonb_typeof(state) = 'object')
 );
 
+create table if not exists public.coppari_live_rating_submissions (
+  room_id text not null references public.coppari_live_tournaments(room_id) on delete cascade,
+  match_id text not null,
+  round_id text not null,
+  voter_secret_hash bytea not null,
+  voter_name text not null,
+  ratings jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (room_id, match_id, round_id, voter_secret_hash),
+  constraint coppari_live_rating_match_id_format check (match_id ~ '^[A-Za-z0-9_-]{1,100}$'),
+  constraint coppari_live_rating_round_id_format check (round_id ~ '^[A-Za-z0-9_-]{1,100}$'),
+  constraint coppari_live_rating_voter_name_length check (char_length(voter_name) between 2 and 40),
+  constraint coppari_live_rating_payload_array check (jsonb_typeof(ratings) = 'array')
+);
+
 alter table public.coppari_live_tournaments enable row level security;
+alter table public.coppari_live_rating_submissions enable row level security;
 revoke all on table public.coppari_live_tournaments from public, anon, authenticated;
+revoke all on table public.coppari_live_rating_submissions from public, anon, authenticated;
 
 create or replace function public.coppari_live_create(
   p_room_id text,
@@ -235,6 +253,17 @@ begin
     'referee', p_match -> 'referee',
     'mvpPlayerId', p_match -> 'mvpPlayerId',
     'ratings', case when v_status = 'scheduled' then '[]'::jsonb else coalesce(v_old_match -> 'ratings', '[]'::jsonb) end,
+    'ratingsOpen', case
+      when v_status = 'scheduled' then false
+      when v_status = 'played' and coalesce(v_old_match ->> 'status', '') <> 'played' then false
+      else coalesce((v_old_match ->> 'ratingsOpen')::boolean, false)
+    end,
+    'ratingsRoundId', case
+      when v_status = 'scheduled' then null
+      when v_status = 'played' and coalesce(v_old_match ->> 'status', '') <> 'played'
+        then coalesce(nullif(p_match ->> 'ratingsRoundId', ''), 'ratings_' || encode(gen_random_bytes(12), 'hex'))
+      else v_old_match ->> 'ratingsRoundId'
+    end,
     'ratingsPublished', case when v_status = 'scheduled' then false else coalesce((v_old_match ->> 'ratingsPublished')::boolean, false) end
   );
 
@@ -262,6 +291,209 @@ begin
 
   return query
   select true, v_row.revision, v_row.state, v_row.active, v_row.updated_at;
+end;
+$$;
+
+create or replace function public.coppari_live_submit_ratings(
+  p_room_id text,
+  p_match_id text,
+  p_round_id text,
+  p_voter_token text,
+  p_voter_name text,
+  p_ratings jsonb
+)
+returns table (
+  submission_count bigint,
+  updated_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = pg_catalog, public, extensions
+as $$
+declare
+  v_row public.coppari_live_tournaments%rowtype;
+  v_match jsonb;
+  v_safe_ratings jsonb;
+  v_name text := trim(regexp_replace(coalesce(p_voter_name, ''), '[[:cntrl:]]', ' ', 'g'));
+begin
+  if p_room_id !~ '^coppari-[A-Za-z0-9_-]{20,80}$'
+     or p_match_id !~ '^[A-Za-z0-9_-]{1,100}$'
+     or p_round_id !~ '^[A-Za-z0-9_-]{1,100}$'
+     or p_voter_token !~ '^[A-Za-z0-9_-]{20,120}$' then
+    raise exception 'LIVE_RATING_INVALID';
+  end if;
+  if char_length(v_name) not between 2 and 40 then
+    raise exception 'LIVE_RATING_NAME_INVALID';
+  end if;
+  if p_ratings is null
+     or jsonb_typeof(p_ratings) <> 'array'
+     or jsonb_array_length(p_ratings) not between 1 and 200
+     or octet_length(p_ratings::text) > 100000 then
+    raise exception 'LIVE_RATING_INVALID';
+  end if;
+
+  select * into v_row
+  from public.coppari_live_tournaments as tournament
+  where tournament.room_id = p_room_id
+  for update;
+
+  if not found then raise exception 'LIVE_ROOM_NOT_FOUND'; end if;
+  if not v_row.active then raise exception 'LIVE_ENDED'; end if;
+
+  select match_item into v_match
+  from jsonb_array_elements(coalesce(v_row.state -> 'matches', '[]'::jsonb)) as match_item
+  where match_item ->> 'id' = p_match_id
+  limit 1;
+
+  if v_match is null then raise exception 'LIVE_MATCH_NOT_FOUND'; end if;
+  if coalesce(v_match ->> 'status', '') <> 'played' then raise exception 'LIVE_MATCH_NOT_PLAYED'; end if;
+  if coalesce((v_match ->> 'ratingsOpen')::boolean, false) is not true then raise exception 'LIVE_RATINGS_CLOSED'; end if;
+  if coalesce(v_match ->> 'ratingsRoundId', '') <> p_round_id then raise exception 'LIVE_RATING_ROUND_CHANGED'; end if;
+
+  if exists (
+    select 1 from jsonb_array_elements(p_ratings) as rating
+    where jsonb_typeof(rating) <> 'object'
+       or coalesce(rating ->> 'playerId', '') !~ '^[A-Za-z0-9_-]{1,100}$'
+       or case
+         when jsonb_typeof(rating -> 'score') = 'number' then
+           (rating ->> 'score')::numeric < 5
+           or (rating ->> 'score')::numeric > 10
+           or mod((rating ->> 'score')::numeric * 2, 1) <> 0
+         else true
+       end
+       or char_length(coalesce(rating ->> 'comment', '')) > 160
+  ) then
+    raise exception 'LIVE_RATING_INVALID';
+  end if;
+
+  if (select count(*) from jsonb_array_elements(p_ratings)) <>
+     (select count(distinct rating ->> 'playerId') from jsonb_array_elements(p_ratings) as rating) then
+    raise exception 'LIVE_RATING_INVALID';
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_array_elements(p_ratings) as rating
+    where not exists (
+      select 1
+      from jsonb_array_elements(coalesce(v_row.state -> 'players', '[]'::jsonb)) as player
+      where player ->> 'id' = rating ->> 'playerId'
+        and coalesce((player ->> 'active')::boolean, true)
+        and player ->> 'teamId' in (v_match ->> 'homeTeamId', v_match ->> 'awayTeamId')
+    )
+  ) then
+    raise exception 'LIVE_RATING_PLAYER_INVALID';
+  end if;
+
+  select jsonb_agg(jsonb_build_object(
+    'playerId', rating ->> 'playerId',
+    'score', round((rating ->> 'score')::numeric * 2) / 2,
+    'comment', left(trim(regexp_replace(coalesce(rating ->> 'comment', ''), '[[:cntrl:]]', ' ', 'g')), 160)
+  )) into v_safe_ratings
+  from jsonb_array_elements(p_ratings) as rating;
+
+  insert into public.coppari_live_rating_submissions (
+    room_id, match_id, round_id, voter_secret_hash, voter_name, ratings
+  ) values (
+    p_room_id, p_match_id, p_round_id, digest(p_voter_token, 'sha256'), v_name, v_safe_ratings
+  )
+  on conflict (room_id, match_id, round_id, voter_secret_hash) do update
+  set voter_name = excluded.voter_name,
+      ratings = excluded.ratings,
+      updated_at = now();
+
+  return query
+  select count(*)::bigint, max(submission.updated_at)
+  from public.coppari_live_rating_submissions as submission
+  where submission.room_id = p_room_id
+    and submission.match_id = p_match_id
+    and submission.round_id = p_round_id;
+end;
+$$;
+
+create or replace function public.coppari_live_read_rating_submissions(
+  p_room_id text,
+  p_manager_secret text,
+  p_match_id text,
+  p_round_id text
+)
+returns table (
+  submission_count bigint,
+  submissions jsonb
+)
+language plpgsql
+security definer
+stable
+set search_path = pg_catalog, public, extensions
+as $$
+declare
+  v_hash bytea;
+begin
+  select tournament.manager_secret_hash into v_hash
+  from public.coppari_live_tournaments as tournament
+  where tournament.room_id = p_room_id;
+  if not found then raise exception 'LIVE_ROOM_NOT_FOUND'; end if;
+  if v_hash <> digest(coalesce(p_manager_secret, ''), 'sha256') then raise exception 'LIVE_ACCESS_DENIED'; end if;
+
+  return query
+  select count(*)::bigint,
+         coalesce(jsonb_agg(jsonb_build_object(
+           'author', submission.voter_name,
+           'submittedAt', submission.updated_at,
+           'ratings', submission.ratings
+         ) order by submission.updated_at), '[]'::jsonb)
+  from public.coppari_live_rating_submissions as submission
+  where submission.room_id = p_room_id
+    and submission.match_id = p_match_id
+    and submission.round_id = p_round_id;
+end;
+$$;
+
+create or replace function public.coppari_live_read_published_ratings(
+  p_room_id text,
+  p_match_id text,
+  p_round_id text
+)
+returns table (
+  submission_count bigint,
+  submissions jsonb
+)
+language plpgsql
+security definer
+stable
+set search_path = pg_catalog, public, extensions
+as $$
+declare
+  v_state jsonb;
+  v_match jsonb;
+begin
+  select tournament.state into v_state
+  from public.coppari_live_tournaments as tournament
+  where tournament.room_id = p_room_id;
+  if not found then raise exception 'LIVE_ROOM_NOT_FOUND'; end if;
+
+  select match_item into v_match
+  from jsonb_array_elements(coalesce(v_state -> 'matches', '[]'::jsonb)) as match_item
+  where match_item ->> 'id' = p_match_id
+  limit 1;
+  if v_match is null
+     or coalesce(v_match ->> 'ratingsRoundId', '') <> p_round_id
+     or coalesce((v_match ->> 'ratingsPublished')::boolean, false) is not true
+     or coalesce((v_match ->> 'ratingsOpen')::boolean, false) is true then
+    raise exception 'LIVE_RATINGS_NOT_PUBLISHED';
+  end if;
+
+  return query
+  select count(*)::bigint,
+         coalesce(jsonb_agg(jsonb_build_object(
+           'author', submission.voter_name,
+           'submittedAt', submission.updated_at,
+           'ratings', submission.ratings
+         ) order by submission.updated_at), '[]'::jsonb)
+  from public.coppari_live_rating_submissions as submission
+  where submission.room_id = p_room_id
+    and submission.match_id = p_match_id
+    and submission.round_id = p_round_id;
 end;
 $$;
 
@@ -302,12 +534,18 @@ revoke all on function public.coppari_live_create(text, text, text, jsonb) from 
 revoke all on function public.coppari_live_read(text) from public;
 revoke all on function public.coppari_live_update(text, text, bigint, jsonb) from public;
 revoke all on function public.coppari_live_update_referee(text, text, bigint, jsonb) from public;
+revoke all on function public.coppari_live_submit_ratings(text, text, text, text, text, jsonb) from public;
+revoke all on function public.coppari_live_read_rating_submissions(text, text, text, text) from public;
+revoke all on function public.coppari_live_read_published_ratings(text, text, text) from public;
 revoke all on function public.coppari_live_stop(text, text) from public;
 
 grant execute on function public.coppari_live_create(text, text, text, jsonb) to anon, authenticated;
 grant execute on function public.coppari_live_read(text) to anon, authenticated;
 grant execute on function public.coppari_live_update(text, text, bigint, jsonb) to anon, authenticated;
 grant execute on function public.coppari_live_update_referee(text, text, bigint, jsonb) to anon, authenticated;
+grant execute on function public.coppari_live_submit_ratings(text, text, text, text, text, jsonb) to anon, authenticated;
+grant execute on function public.coppari_live_read_rating_submissions(text, text, text, text) to anon, authenticated;
+grant execute on function public.coppari_live_read_published_ratings(text, text, text) to anon, authenticated;
 grant execute on function public.coppari_live_stop(text, text) to anon, authenticated;
 
 comment on table public.coppari_live_tournaments is
