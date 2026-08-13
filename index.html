@@ -701,14 +701,16 @@ th,td { padding:9px 11px; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.6.1';
+const APP_VERSION = '3.7.0';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
 const LIVE_CONFIG_KEY = 'coppari.v3.live';
+const CANONICAL_ACCESS_KEY = 'coppari.v3.canonical-access';
 const WAKE_PREF_KEY = 'coppari.v3.keep-screen-awake';
 const PUBLIC_APP_URL = 'https://highskiller.github.io/coppari-torneo/';
+const CANONICAL_ROOM_ID = 'coppari-main-2026-cloud-tournament';
 const SUPABASE_URL = 'https://lndqbduvyzjehkeetywt.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_VVYN8s9nVaZQR_jiC5s3GA_p8LKZZbk';
 const SUPABASE_JS_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js';
@@ -953,6 +955,17 @@ function decidedTeamsState(){
     teamId:seeded.teams[teamIndex].id,
     active:true
   })));
+  const fixtures=[
+    [5,3],[4,1],[2,5],[3,4],[2,1],
+    [4,5],[2,3],[5,1],[2,4],[3,1]
+  ];
+  seeded.matches=fixtures.map(([home,away],index)=>({
+    id:`m_decisa_${index+1}`,
+    stage:'group',leg:1,round:index+1,
+    homeTeamId:`t_decisa_${home}`,awayTeamId:`t_decisa_${away}`,
+    date:'',status:'scheduled',homeScore:null,awayScore:null,
+    stats:[],events:[],ratings:[],ratingsPublished:false,referee:null,mvpPlayerId:null
+  }));
   seeded.meta.preloadedRoster='squadre-decise-2026';
   return seeded;
 }
@@ -996,7 +1009,10 @@ function normalizeState(data){
     const score=v=>v===null||v===undefined||v===''?null:clamp(+v||0,0,999);
     return {id:safeId(m?.id,'m'),stage,leg:clamp(+m?.leg||1,1,2),round:Math.max(1,+m?.round||1),koSize:m?.koSize?Math.max(2,+m.koSize||2):({final:2,semi:4,quarter:8,round16:16,round32:32}[stage]),slot:Math.max(1,+m?.slot||1),homeTeamId:safeRef(m?.homeTeamId),awayTeamId:safeRef(m?.awayTeamId),date:safeText(m?.date||'',30),status,homeScore:score(m?.homeScore),awayScore:score(m?.awayScore),penHome:score(m?.penHome),penAway:score(m?.penAway),events,stats,ratings,ratingsPublished:!!m?.ratingsPublished,referee,mvpPlayerId:safeRef(m?.mvpPlayerId),targetKoSize:m?.targetKoSize?Math.max(2,+m.targetKoSize||2):undefined,manual:!!m?.manual};
   });
-  merged.meta={appVersion:APP_VERSION,createdAt:safeText(merged.meta?.createdAt||fresh.meta.createdAt,40),updatedAt:safeText(merged.meta?.updatedAt||fresh.meta.updatedAt,40)};
+  const sourceMeta=merged.meta&&typeof merged.meta==='object'?merged.meta:{};
+  merged.meta={appVersion:APP_VERSION,createdAt:safeText(sourceMeta.createdAt||fresh.meta.createdAt,40),updatedAt:safeText(sourceMeta.updatedAt||fresh.meta.updatedAt,40)};
+  const cloudRoomId=cleanLiveRoomId(sourceMeta.cloudRoomId),cloudRevision=Math.max(0,+sourceMeta.cloudRevision||0);
+  if(cloudRoomId){merged.meta.cloudRoomId=cloudRoomId;merged.meta.cloudRevision=cloudRevision;}
   return merged;
 }
 function loadState(){
@@ -1016,13 +1032,13 @@ function save(options={}){
   if(liveRole==='manager'){
     if(liveApplyingRemote)return true;
     if(!liveConnected||liveEnded){toast(liveEnded?'La diretta è terminata':'Collegamento live interrotto: attendi la riconnessione',4200);return false;}
-    sendLiveManagerUpdate();updateSaveIndicator();return true;
+    state.meta.cloudRoomId=liveRoomId;state.meta.cloudRevision=liveRevision;persistStateLocally();sendLiveManagerUpdate();updateSaveIndicator();return true;
   }
   if(liveRole==='referee'){
     if(liveApplyingRemote)return true;
     if(!liveConnected||liveEnded){toast(liveEnded?'La diretta è terminata':'Collegamento arbitrale interrotto: attendi la riconnessione',4200);return false;}
     const matchId=options.matchId||activeRefereeMatchId;if(!matchId){toast('Il link arbitro può modificare soltanto un referto',4200);return false;}
-    sendLiveRefereeMatchUpdate(matchId);updateSaveIndicator();return true;
+    state.meta.cloudRoomId=liveRoomId;state.meta.cloudRevision=liveRevision;persistStateLocally();sendLiveRefereeMatchUpdate(matchId);updateSaveIndicator();return true;
   }
   if(!storageReady){toast('Salvataggio non disponibile: apri l’app in Safari',4200);return false;}
   try{
@@ -1035,7 +1051,7 @@ function toast(msg,duration=2200){ const el=document.getElementById('toast'); el
 function updateSaveIndicator(){
   const now=new Date();
   const time=now.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-  const label=liveRole==='viewer'?(liveConnected?'Diretta · sola lettura':'Diretta non collegata'):liveRole==='manager'?(liveConnected?`Sincronizzato live alle ${time}`:'Gestore non collegato'):liveRole==='referee'?(liveConnected?`Referto sincronizzato alle ${time}`:'Arbitro non collegato'):liveRole==='host'?(liveConnected?`Salvato e condiviso alle ${time}`:`Salvato sul telefono alle ${time}`):storageReady?`Salvato alle ${time}`:'Salvataggio non disponibile';
+  const label=liveRole==='viewer'?(liveConnected?'Cloud · sola lettura':'Cloud non collegato'):liveRole==='manager'?(liveConnected?`Salvato nel cloud alle ${time}`:'Gestore non collegato'):liveRole==='referee'?(liveConnected?`Referto salvato nel cloud alle ${time}`:'Arbitro non collegato'):liveRole==='host'?(liveConnected?`Salvato e condiviso alle ${time}`:`Salvato sul telefono alle ${time}`):storageReady?`Salvato alle ${time}`:'Salvataggio non disponibile';
   const top=document.getElementById('saveStatus'),side=document.getElementById('sidebarSaveStatus');
   if(top)top.textContent=label;if(side)side.textContent=label;
 }
@@ -1097,14 +1113,25 @@ function readLiveHostConfig(){
   try{const raw=JSON.parse(storageGet(LIVE_CONFIG_KEY)||'null');const roomId=cleanLiveRoomId(raw?.roomId),secret=cleanLiveSecret(raw?.secret),refereeSecret=cleanLiveSecret(raw?.refereeSecret);return roomId&&secret&&refereeSecret&&raw?.active?{roomId,secret,refereeSecret,transportVersion:+raw.transportVersion||1,active:true}:null;}catch{return null;}
 }
 function writeLiveHostConfig(config){return storageSet(LIVE_CONFIG_KEY,JSON.stringify(config));}
+function readCanonicalAccess(){
+  try{const raw=JSON.parse(storageGet(CANONICAL_ACCESS_KEY)||'null'),secret=cleanLiveSecret(raw?.secret),role=raw?.role;return secret&&['manager','referee'].includes(role)?{role,secret}:null;}catch{return null;}
+}
+function writeCanonicalAccess(access){
+  if(!access?.secret||!['manager','referee'].includes(access.role))return false;
+  return storageSet(CANONICAL_ACCESS_KEY,JSON.stringify({role:access.role,secret:access.secret,savedAt:new Date().toISOString()}));
+}
+function isCanonicalRoom(roomId=liveRoomId){return roomId===CANONICAL_ROOM_ID;}
 function parseLiveJoinFromLocation(){
-  const roomId=cleanLiveRoomId(new URLSearchParams(location.search).get('live'));if(!roomId)return null;
+  const params=new URLSearchParams(location.search),explicitRoomId=cleanLiveRoomId(params.get('live'));
   const hash=new URLSearchParams(location.hash.replace(/^#/,'')),managerSecret=cleanLiveSecret(hash.get('manage')),refereeSecret=cleanLiveSecret(hash.get('referee'));
-  return {roomId,role:managerSecret?'manager':refereeSecret?'referee':'viewer',secret:managerSecret||refereeSecret};
+  if(explicitRoomId)return {roomId:explicitRoomId,role:managerSecret?'manager':refereeSecret?'referee':'viewer',secret:managerSecret||refereeSecret,canonical:false};
+  const direct=managerSecret?{role:'manager',secret:managerSecret}:refereeSecret?{role:'referee',secret:refereeSecret}:null;
+  const remembered=hash.has('view')?null:readCanonicalAccess(),access=direct||remembered;
+  return {roomId:CANONICAL_ROOM_ID,role:access?.role||'viewer',secret:access?.secret||null,canonical:true,remember:!!direct};
 }
 function liveLinks(){
   if(!liveRoomId)return {viewer:'',manager:'',referee:''};
-  const base=new URL(isLocalFileMode()?PUBLIC_APP_URL:location.origin+location.pathname);base.searchParams.set('live',liveRoomId);
+  const base=new URL(isLocalFileMode()?PUBLIC_APP_URL:location.origin+location.pathname);if(!isCanonicalRoom())base.searchParams.set('live',liveRoomId);
   return {viewer:`${base.toString()}#view`,manager:liveSecret?`${base.toString()}#manage=${encodeURIComponent(liveSecret)}`:'',referee:liveRefereeSecret?`${base.toString()}#referee=${encodeURIComponent(liveRefereeSecret)}`:''};
 }
 function sharedStateSnapshot(){return JSON.parse(JSON.stringify(state));}
@@ -1161,16 +1188,17 @@ function updateLiveStatusUI(){
   pill.hidden=!liveRole;const online=liveConnected&&!liveEnded;pill.classList.toggle('offline',!!liveRole&&!online);
   if(liveEnded)text.textContent='Live conclusa';
   else if(liveRole==='host')text.textContent=online?(liveRealtimeConnected?`Live · ${hostConnectionCount()}`:'Live cloud'):'Live offline';
-  else if(liveRole==='manager')text.textContent=online?'Gestore live':'Riconnessione';
-  else if(liveRole==='referee')text.textContent=online?'Arbitro live':'Riconnessione';
-  else if(liveRole==='viewer')text.textContent=online?'Diretta':'Diretta offline';
-  if(button)button.textContent=liveRole==='host'?`● Live · ${hostConnectionCount()} collegati`:liveRole==='manager'?'● Gestione live':liveRole==='referee'?'● Arbitraggio live':liveRole==='viewer'?'● Info diretta':'● Condivisione live';
+  else if(liveRole==='manager')text.textContent=online?'Gestore cloud':'Riconnessione';
+  else if(liveRole==='referee')text.textContent=online?'Arbitro cloud':'Riconnessione';
+  else if(liveRole==='viewer')text.textContent=online?'Torneo cloud':'Cloud offline';
+  if(button)button.textContent=liveRole==='host'?`● Live · ${hostConnectionCount()} collegati`:liveRole==='manager'?'● Gestione cloud':liveRole==='referee'?'● Arbitraggio cloud':liveRole==='viewer'?'● Info torneo':'● Condivisione live';
   updateSaveIndicator();const count=document.getElementById('liveConnectedCount');if(count)count.textContent=String(hostConnectionCount());syncScreenWakeLock();
 }
 function liveWaitingMessage(){return liveErrorMessage||'Caricamento del torneo dal cloud…';}
 function renderLiveWaiting(){
-  setSetupMode(false);setHeader('Collegamento live',liveRole==='manager'?'Accesso gestore':liveRole==='referee'?'Accesso arbitro':'Modalità spettatore');
-  view.innerHTML=`<div class="card live-wait"><div class="live-share-icon">●</div><h2>${liveErrorMessage?'Diretta non raggiungibile':'Apertura della diretta…'}</h2><p class="note">${esc(liveWaitingMessage())}</p><div class="button-row center" style="margin-top:16px"><button class="primary" id="retryLive">Riprova</button><button class="ghost" id="leaveLive">Apri Copparì locale</button></div><p class="note">I dati restano online anche quando il telefono che ha avviato la diretta viene chiuso.</p></div>`;
+  setSetupMode(false);setHeader('Archivio cloud',liveRole==='manager'?'Accesso gestore':liveRole==='referee'?'Accesso arbitro':'Modalità spettatore');
+  const leaveButton=isCanonicalRoom()?'':'<button class="ghost" id="leaveLive">Apri Copparì locale</button>';
+  view.innerHTML=`<div class="card live-wait"><div class="live-share-icon">●</div><h2>${liveErrorMessage?'Torneo non raggiungibile':'Apertura del torneo…'}</h2><p class="note">${esc(liveWaitingMessage())}</p><div class="button-row center" style="margin-top:16px"><button class="primary" id="retryLive">Riprova</button>${leaveButton}</div><p class="note">Calendario, referti, risultati e statistiche sono conservati su Supabase.</p></div>`;
   document.getElementById('retryLive').onclick=()=>{liveErrorMessage='';connectToLiveHost();};
   document.getElementById('leaveLive').onclick=()=>{const url=new URL(location.href);url.searchParams.delete('live');url.hash='';location.href=url.toString();};updateLiveStatusUI();
 }
@@ -1182,8 +1210,9 @@ function applyLiveClientState(raw,revision,force=false){
     if(JSON.stringify(raw).length>2000000)throw new Error('too-large');
     if(!force&&Number.isFinite(+revision)&&+revision<=liveRevision&&liveHasState)return;
     const clean=normalizeState(raw),first=!liveHasState;liveApplyingRemote=true;
+    clean.meta.cloudRoomId=liveRoomId;clean.meta.cloudRevision=Math.max(0,+revision||0);
     Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,clean);liveRevision=Math.max(0,+revision||0);liveHasState=true;liveConnecting=false;liveErrorMessage='';
-    if(liveRole==='host')persistStateLocally();if(first){currentView='home';sessionSet('coppari.currentView','home');}
+    persistStateLocally();if(first){currentView='home';sessionSet('coppari.currentView','home');}
     refreshAfterLiveState();liveApplyingRemote=false;updateLiveStatusUI();
   }catch{liveApplyingRemote=false;toast('Dati live non validi',4200);}
 }
@@ -1260,7 +1289,7 @@ function queueLiveWrite(task){
 function handleLiveWriteResult(row,conflictMessage){
   if(!row)throw new Error('LIVE_WRITE_FAILED');
   if(!row.accepted){applyLiveRow(row,true);toast(conflictMessage,4600);return false;}
-  liveRevision=+row.revision||liveRevision;liveEnded=row.active===false;liveConnected=true;if(liveRole==='host')persistStateLocally();notifyLiveRefresh();updateLiveStatusUI();return true;
+  liveRevision=+row.revision||liveRevision;liveEnded=row.active===false;liveConnected=true;state.meta.cloudRoomId=liveRoomId;state.meta.cloudRevision=liveRevision;persistStateLocally();notifyLiveRefresh();updateLiveStatusUI();return true;
 }
 function sendLiveManagerUpdate(){
   if(!['host','manager'].includes(liveRole)||!liveConnected||liveEnded)return false;const snapshot=sharedStateSnapshot();
@@ -1272,14 +1301,14 @@ function sendLiveRefereeMatchUpdate(matchId){
 }
 function sendLiveRatingsUpdate(){return sendLiveManagerUpdate();}
 function spectatorLiveBarHtml(){
-  return `<div class="spectator-live-bar ${liveConnected&&!liveEnded?'':'offline'}"><span class="live-dot"></span><span>${liveEnded?'Diretta conclusa · dati finali disponibili':liveConnected?'Diretta cloud collegata · aggiornamento automatico':'Connessione interrotta · ultimo aggiornamento visibile'}</span></div>`;
+  return `<div class="spectator-live-bar ${liveConnected&&!liveEnded?'':'offline'}"><span class="live-dot"></span><span>${liveEnded?'Torneo concluso · dati finali disponibili':liveConnected?'Archivio cloud collegato · aggiornamento automatico':'Connessione interrotta · ultimo aggiornamento salvato visibile'}</span></div>`;
 }
 function publicMatchRow(m){
   const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live',pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';
   return `<div class="match"><div class="stage-label">${stageLabel(m)} · ${esc(matchDisplayTime(m))}${live?' · ● IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div>${played&&m.ratingsPublished&&m.ratings?.length?`<div class="match-actions"><button class="ghost" data-ratings-match="${m.id}">Copparigelle</button></div>`:''}</div>`;
 }
 function renderSpectatorHome(){
-  setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Diretta pubblica · sola lettura');
+  setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Torneo pubblico · sola lettura');
   if(!state.settings.configured){view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">Copparì Live</div><h2>Il torneo è in preparazione</h2><p class="note">La pagina si aggiornerà automaticamente quando il gestore completerà la configurazione.</p></div>`;return;}
   const played=playedMatches().length,total=Math.max(state.matches.length,totalGamesExpected()),goals=playedMatches().reduce((sum,m)=>sum+(+m.homeScore||0)+(+m.awayScore||0),0),next=nextScheduledMatch(),table=standings();
   view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">${esc(state.settings.edition)} · Copparì Live</div><h2>${esc(state.settings.name)}</h2><p class="note">Risultati, classifica e premi restano disponibili nel cloud anche se il primo telefono viene chiuso.</p></div><div class="grid cols-4" style="margin-top:16px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',next?next.status==='live'?'In campo':'In programma':'Concluso')}</div>${next?`<div class="card next-match-card" style="margin-top:16px"><div class="next-match-stage">${next.status==='live'?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${stageLabel(next)}</div><div class="next-match-teams"><div class="next-match-team">${esc(teamById(next.homeTeamId)?.name||'?')}</div><div class="next-match-vs">${next.status==='live'?`<strong style="font-size:24px">${refScore(next)}</strong>`:'VS'}</div><div class="next-match-team">${esc(teamById(next.awayTeamId)?.name||'?')}</div></div></div>`:''}<div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Classifica live</h3>${table.length?`<div class="leaderboard">${table.map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}</div></div>`;
@@ -1352,7 +1381,11 @@ async function stopLiveHost(){
 }
 function initLiveSharing(){
   const join=parseLiveJoinFromLocation();
-  if(join){liveRole=join.role;liveRoomId=join.roomId;if(join.role==='manager')liveSecret=join.secret;if(join.role==='referee')liveRefereeSecret=join.secret;liveConnecting=true;liveHasState=false;connectToLiveHost();return true;}
+  if(join){
+    if(join.canonical&&join.remember){writeCanonicalAccess({role:join.role,secret:join.secret});const cleanUrl=new URL(location.href);cleanUrl.hash='';history.replaceState(null,'',cleanUrl.toString());}
+    liveRole=join.role;liveRoomId=join.roomId;if(join.role==='manager')liveSecret=join.secret;if(join.role==='referee')liveRefereeSecret=join.secret;
+    liveHasState=state.meta?.cloudRoomId===join.roomId;liveRevision=liveHasState?Math.max(0,+state.meta?.cloudRevision||0):0;liveConnecting=!liveHasState;connectToLiveHost();return true;
+  }
   const host=readLiveHostConfig();if(host){liveRole='host';liveRoomId=host.roomId;liveSecret=host.secret;liveRefereeSecret=host.refereeSecret;startLiveHost({resume:true});}
   return false;
 }
