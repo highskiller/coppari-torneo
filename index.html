@@ -917,7 +917,7 @@ body.spectator-mode .topbar-actions > .save-pill:not(.live-pill) { display:none;
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span><span id="brandModeLabel">cabina di regia</span> · v<span id="appVersionLabel">3.9.1</span></span>
+          <span><span id="brandModeLabel">cabina di regia</span> · v<span id="appVersionLabel">3.9.2</span></span>
         </div>
       </div>
 
@@ -979,11 +979,12 @@ body.spectator-mode .topbar-actions > .save-pill:not(.live-pill) { display:none;
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.9.1';
+const APP_VERSION = '3.9.2';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
+const PUBLIC_GUIDE_KEY_PREFIX = 'coppari.v3.public-guide.seen.';
 const LIVE_CONFIG_KEY = 'coppari.v3.live';
 const PLAYER_ARCHIVE_KEY = 'coppari.v3.player-profiles';
 const WAKE_PREF_KEY = 'coppari.v3.keep-screen-awake';
@@ -1063,6 +1064,7 @@ let livePresenceCount = 0;
 let liveRealtimeConnected = false;
 let liveLibraryPromise = null;
 let liveWriteQueue = Promise.resolve();
+let publicGuidePromptedKey = '';
 
 const view = document.getElementById('view');
 const pageTitle = document.getElementById('pageTitle');
@@ -1415,7 +1417,7 @@ function render(){
     if(!['home','teams','calendar','standings','stats'].includes(currentView))currentView='home';
     syncRoleNavigation();
     const spectatorRenders={home:renderSpectatorHome,teams:renderReadOnlyTeams,calendar:renderSpectatorCalendar,standings:renderStandings,stats:renderStats};
-    (spectatorRenders[currentView]||renderSpectatorHome)();updateLiveStatusUI();return;
+    (spectatorRenders[currentView]||renderSpectatorHome)();updateLiveStatusUI();maybeShowPublicGuide();return;
   }
   if(liveRole==='referee'){
     setSetupMode(false);
@@ -1668,10 +1670,18 @@ function renderPublicMatchDetails(id,preserveFocus=false){
   updateClock();if(match.status==='live')refereeTicker=setInterval(updateClock,1000);
 }
 function openPublicMatchDetails(id){renderPublicMatchDetails(id,false);}
-function openPublicGuide(){
-  openModal(`<div class="kicker">Guida del pubblico · sempre disponibile</div><h2 style="margin-top:6px">Segui Copparì in 30 secondi</h2><p class="modal-subtitle">Puoi consultare squadre, programma e regole della diretta anche prima del calcio d'inizio.</p><div class="public-guide-grid"><div class="public-guide-step"><span class="public-guide-number">1</span><span><strong>Prima del torneo</strong><span>Controlla squadre, rose, orari e prossima partita: le informazioni compaiono appena il gestore le prepara.</span></span></div><div class="public-guide-step"><span class="public-guide-number">2</span><span><strong>Durante le partite</strong><span>La diretta si aggiorna automaticamente. Apri “Dettagli” per punteggio, timer ed eventi registrati.</span></span></div><div class="public-guide-step"><span class="public-guide-number">3</span><span><strong>Fai la tua pagella</strong><span>Dopo la partita, quando la raccolta è aperta, assegna voto e commento a un giocatore alla volta. Gli altri giudizi restano nascosti.</span></span></div><div class="public-guide-step"><span class="public-guide-number">4</span><span><strong>Scopri i risultati</strong><span>Segui classifica e premi. Dopo la pubblicazione puoi leggere la Copparigella definitiva e, se vuoi, i contributi originali.</span></span></div></div><div class="notice info"><span>👁</span><span>Il link pubblico non permette di modificare torneo o referti. Puoi soltanto inviare la tua pagella quando il gestore apre la raccolta.</span></div><div class="modal-actions"><button class="primary" data-close>Ho capito</button></div>`);
+function openPublicGuide(initial=false){
+  openModal(`<div class="kicker">${initial?'Prima visita · guida rapida':'Guida del pubblico · sempre disponibile'}</div><h2 style="margin-top:6px">${initial?'Benvenuto nella diretta':'Segui Copparì in 30 secondi'}</h2><p class="modal-subtitle">Puoi consultare squadre, programma e regole della diretta anche prima del calcio d'inizio.</p><div class="public-guide-grid"><div class="public-guide-step"><span class="public-guide-number">1</span><span><strong>Prima del torneo</strong><span>Controlla squadre, rose, orari e prossima partita: le informazioni compaiono appena il gestore le prepara.</span></span></div><div class="public-guide-step"><span class="public-guide-number">2</span><span><strong>Durante le partite</strong><span>La diretta si aggiorna automaticamente. Apri “Dettagli” per punteggio, timer ed eventi registrati.</span></span></div><div class="public-guide-step"><span class="public-guide-number">3</span><span><strong>Fai la tua pagella</strong><span>Dopo la partita tocca “Fai la pagella”: inserisci il soprannome, scegli un voto da 5 a 10 e, se vuoi, aggiungi un commento. Valuti un giocatore alla volta.</span></span></div><div class="public-guide-step"><span class="public-guide-number">4</span><span><strong>Scopri i risultati</strong><span>Segui classifica e premi. Dopo la pubblicazione puoi leggere la Copparigella definitiva e, se vuoi, i contributi originali.</span></span></div></div><div class="notice info"><span>👁</span><span>Il link pubblico non permette di modificare torneo o referti. I giudizi degli altri restano nascosti mentre voti.</span></div><div class="modal-actions"><button class="primary" data-close>${initial?'Inizia a seguire':'Ho capito'}</button></div>`);
 }
-function bindPublicGuideButtons(root=view){root.querySelectorAll('[data-public-guide]').forEach(button=>button.onclick=openPublicGuide);}
+function bindPublicGuideButtons(root=view){root.querySelectorAll('[data-public-guide]').forEach(button=>button.onclick=()=>openPublicGuide(false));}
+function publicGuideSeenKey(){return `${PUBLIC_GUIDE_KEY_PREFIX}${liveRoomId||'public'}`;}
+function publicGuideWasSeen(key){return storageGet(key)==='1'||sessionGet(key)==='1';}
+function rememberPublicGuide(key){if(!storageSet(key,'1'))sessionSet(key,'1');}
+function maybeShowPublicGuide(){
+  if(liveRole!=='viewer'||!liveHasState||!modalBackdrop.classList.contains('hidden'))return;
+  const key=publicGuideSeenKey();if(publicGuidePromptedKey===key||publicGuideWasSeen(key))return;
+  openPublicGuide(true);publicGuidePromptedKey=key;rememberPublicGuide(key);
+}
 function renderSpectatorHome(){
   setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Diretta pubblica · pagelle degli amici');
   if(!state.settings.configured){view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="spectator-hero-main"><div class="spectator-hero-copy"><div class="kicker">Copparì Live</div><h2>Torneo in preparazione</h2><p class="note">Questa pagina si aggiorna automaticamente appena il gestore completa la configurazione.</p></div><button class="ghost spectator-guide-btn" data-public-guide>? Come funziona</button></div></div>`;bindPublicGuideButtons();return;}
