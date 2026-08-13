@@ -643,7 +643,7 @@ th,td { padding:9px 11px; }
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v<span id="appVersionLabel">3.6.0</span></span>
+          <span>cabina di regia · v<span id="appVersionLabel">3.6.1</span></span>
         </div>
       </div>
 
@@ -701,7 +701,7 @@ th,td { padding:9px 11px; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.6.0';
+const APP_VERSION = '3.6.1';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
@@ -773,9 +773,11 @@ let liveApplyingRemote = false;
 let liveRevision = 0;
 let liveErrorMessage = '';
 let liveReconnectTimer = null;
+let livePollingTimer = null;
 let liveTransportGeneration = 0;
 let liveReconnectAttempts = 0;
 let livePresenceCount = 0;
+let liveRealtimeConnected = false;
 let liveLibraryPromise = null;
 let liveWriteQueue = Promise.resolve();
 
@@ -1123,8 +1125,12 @@ async function getLiveClient(){
   return liveSupabaseClient;
 }
 async function liveRpc(name,args){
-  const client=await getLiveClient(),{data,error}=await client.rpc(name,args);
-  if(error)throw error;
+  let response;
+  try{
+    response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(name)}`,{method:'POST',headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(args||{})});
+  }catch(error){throw new Error(`LIVE_NETWORK_ERROR: ${error?.message||error}`);}
+  let data=null;try{data=await response.json();}catch{}
+  if(!response.ok){const error=new Error(data?.message||data?.details||`Supabase HTTP ${response.status}`);error.code=data?.code||String(response.status);error.details=data?.details;error.hint=data?.hint;throw error;}
   return Array.isArray(data)?data[0]||null:data;
 }
 function liveErrorText(error){
@@ -1139,17 +1145,21 @@ function liveErrorText(error){
   if(/failed to fetch|network|timeout/i.test(text))return 'Supabase non è raggiungibile. Controlla la connessione Internet.';
   return 'Servizio Live temporaneamente non disponibile.';
 }
-function closeLiveTransport(){
+function closeLiveChannel(){
   liveTransportGeneration++;clearTimeout(liveReconnectTimer);liveReconnectTimer=null;
   const channel=liveChannel;liveChannel=null;if(channel&&liveSupabaseClient)liveSupabaseClient.removeChannel(channel).catch(()=>{});
-  liveConnected=false;livePresenceCount=0;syncScreenWakeLock();
+  liveRealtimeConnected=false;livePresenceCount=0;
+}
+function stopLivePolling(){clearTimeout(livePollingTimer);livePollingTimer=null;}
+function closeLiveTransport(){
+  stopLivePolling();closeLiveChannel();liveConnected=false;syncScreenWakeLock();
 }
 function hostConnectionCount(){return livePresenceCount;}
 function updateLiveStatusUI(){
   const pill=document.getElementById('liveStatusPill'),text=document.getElementById('liveStatusText'),button=document.getElementById('liveShareBtn');if(!pill||!text)return;
   pill.hidden=!liveRole;const online=liveConnected&&!liveEnded;pill.classList.toggle('offline',!!liveRole&&!online);
   if(liveEnded)text.textContent='Live conclusa';
-  else if(liveRole==='host')text.textContent=online?`Live · ${hostConnectionCount()}`:'Live offline';
+  else if(liveRole==='host')text.textContent=online?(liveRealtimeConnected?`Live · ${hostConnectionCount()}`:'Live cloud'):'Live offline';
   else if(liveRole==='manager')text.textContent=online?'Gestore live':'Riconnessione';
   else if(liveRole==='referee')text.textContent=online?'Arbitro live':'Riconnessione';
   else if(liveRole==='viewer')text.textContent=online?'Diretta':'Diretta offline';
@@ -1178,10 +1188,18 @@ function applyLiveClientState(raw,revision,force=false){
 }
 function applyLiveRow(row,force=false){
   if(!row?.state)throw new Error('LIVE_ROOM_NOT_FOUND');
-  liveEnded=row.active===false;liveConnected=true;applyLiveClientState(row.state,row.revision,force);
+  liveEnded=row.active===false;liveConnected=true;liveConnecting=false;liveErrorMessage='';applyLiveClientState(row.state,row.revision,force);
 }
 async function fetchLiveState(force=false){
   const row=await liveRpc('coppari_live_read',{p_room_id:liveRoomId});applyLiveRow(row,force);return row;
+}
+function scheduleLivePolling(delay=4000){
+  stopLivePolling();if(!liveRoomId||!liveRole||liveEnded)return;
+  livePollingTimer=setTimeout(async()=>{
+    try{await fetchLiveState(false);liveReconnectAttempts=0;updateLiveStatusUI();}
+    catch(error){liveConnected=false;liveErrorMessage=liveErrorText(error);if(!liveHasState){liveConnecting=true;render();}updateLiveStatusUI();}
+    finally{if(liveRoomId&&liveRole&&!liveEnded)scheduleLivePolling(liveConnected?4000:2500);}
+  },delay);
 }
 function updateLivePresence(){
   if(!liveChannel)return;const total=Object.values(liveChannel.presenceState()||{}).reduce((sum,entries)=>sum+(Array.isArray(entries)?entries.length:0),0);
@@ -1192,7 +1210,7 @@ function notifyLiveRefresh(){
   liveChannel.send({type:'broadcast',event:'refresh',payload:{revision:liveRevision}}).catch(()=>{});
 }
 async function connectLiveChannel({fetchState=true}={}){
-  const client=await getLiveClient();closeLiveTransport();const generation=liveTransportGeneration;
+  const client=await getLiveClient();closeLiveChannel();const generation=liveTransportGeneration;
   return await new Promise((resolve,reject)=>{
     let settled=false;const channel=client.channel(`coppari-live:${liveRoomId}`,{config:{broadcast:{self:false},presence:{key:randomLiveToken(9)},private:false}});liveChannel=channel;
     const finishError=error=>{if(settled)return;settled=true;reject(error instanceof Error?error:new Error(String(error||'LIVE_CHANNEL_ERROR')));};
@@ -1202,10 +1220,10 @@ async function connectLiveChannel({fetchState=true}={}){
     channel.subscribe(async status=>{
       if(generation!==liveTransportGeneration||liveChannel!==channel)return;
       if(status==='SUBSCRIBED'){
-        try{liveConnected=true;liveConnecting=false;liveReconnectAttempts=0;await channel.track({role:liveRole,onlineAt:new Date().toISOString()});if(fetchState)await fetchLiveState(true);updateLivePresence();clearTimeout(timer);if(!settled){settled=true;resolve(true);}}
+        try{liveRealtimeConnected=true;liveConnected=true;liveConnecting=false;liveReconnectAttempts=0;await channel.track({role:liveRole,onlineAt:new Date().toISOString()});if(fetchState)await fetchLiveState(true);updateLivePresence();clearTimeout(timer);if(!settled){settled=true;resolve(true);}}
         catch(error){clearTimeout(timer);finishError(error);}
       }else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)){
-        liveConnected=false;updateLiveStatusUI();clearTimeout(timer);finishError(new Error(status));
+        liveRealtimeConnected=false;updateLiveStatusUI();clearTimeout(timer);finishError(new Error(status));
       }
     });
   });
@@ -1222,7 +1240,7 @@ async function startLiveHost({resume=false}={}){
   liveRole='host';liveRoomId=config.roomId;liveSecret=config.secret;liveRefereeSecret=config.refereeSecret;liveConnecting=true;liveEnded=false;liveErrorMessage='';updateLiveStatusUI();
   try{
     const row=await liveRpc('coppari_live_create',{p_room_id:liveRoomId,p_manager_secret:liveSecret,p_referee_secret:liveRefereeSecret,p_state:sharedStateSnapshot()});
-    applyLiveRow(row,true);writeLiveHostConfig(config);await connectLiveChannel({fetchState:true});return true;
+    applyLiveRow(row,true);writeLiveHostConfig(config);scheduleLivePolling();connectLiveChannel({fetchState:false}).catch(()=>{});return true;
   }catch(error){liveConnecting=false;liveErrorMessage=liveErrorText(error);if(!resume)toast(liveErrorMessage,5200);updateLiveStatusUI();return false;}
 }
 function scheduleLiveReconnect(delay){
@@ -1233,7 +1251,7 @@ function scheduleLiveReconnect(delay){
 async function connectToLiveHost(){
   if(!liveRoomId||!liveRole)return;
   liveConnecting=!liveHasState;liveConnected=false;liveErrorMessage='';if(!liveHasState)render();
-  try{await connectLiveChannel({fetchState:true});}catch(error){handleLiveConnectionError(error);}
+  try{await fetchLiveState(true);liveReconnectAttempts=0;scheduleLivePolling();connectLiveChannel({fetchState:false}).catch(()=>{});updateLiveStatusUI();}catch(error){handleLiveConnectionError(error);}
 }
 function queueLiveWrite(task){
   liveWriteQueue=liveWriteQueue.then(task,task).catch(error=>{liveConnected=false;liveErrorMessage=liveErrorText(error);toast(liveErrorMessage,5200);updateLiveStatusUI();if(!liveEnded)scheduleLiveReconnect();});return true;
@@ -1282,7 +1300,7 @@ function renderRemoteRefereeHome(){
   view.querySelectorAll('[data-ref-match]').forEach(button=>button.onclick=()=>openRefereeMode(button.dataset.refMatch));
 }
 function liveShareCardHtml(){
-  if(liveRole==='host')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Diretta cloud attiva</h3><p class="note"><strong>${hostConnectionCount()}</strong> dispositivi collegati. Il torneo resta online anche chiudendo questo telefono.</p></div><div class="live-share-actions"><button class="primary" id="openLiveShare">Gestisci link</button></div></div>`;
+  if(liveRole==='host')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Diretta cloud attiva</h3><p class="note">${liveRealtimeConnected?`<strong>${hostConnectionCount()}</strong> dispositivi collegati. `:'Aggiornamento cloud automatico attivo. '}Il torneo resta online anche chiudendo questo telefono.</p></div><div class="live-share-actions"><button class="primary" id="openLiveShare">Gestisci link</button></div></div>`;
   if(liveRole==='manager')return `<div class="card live-share-card"><span class="live-share-icon">●</span><div><h3>Gestore collegato</h3><p class="note">Ogni modifica confermata viene salvata nel cloud. Evitate modifiche contemporanee.</p></div><div class="live-share-actions"><button class="ghost" id="openLiveShare">Info diretta</button></div></div>`;
   if(liveRole==='referee')return `<div class="card live-share-card"><span class="live-share-icon">⚑</span><div><h3>Arbitro collegato</h3><p class="note">Puoi gestire soltanto referti e arbitraggio. Le altre aree restano in sola lettura.</p></div><div class="live-share-actions"><button class="ghost" id="openLiveShare">Info accesso</button></div></div>`;
   return `<div class="card live-share-card"><span class="live-share-icon">↗</span><div><h3>Fai seguire il torneo a tutti</h3><p class="note">Crea link separati per pubblico, arbitro e gestore. Nessun account richiesto.</p></div><div class="live-share-actions"><button class="primary" id="startLiveFromHome">Avvia diretta</button></div></div>`;
@@ -1302,8 +1320,8 @@ function screenWakeControlHtml(){
 }
 function liveModalHtml(){
   if(!liveRole)return `<div data-live-modal><div class="kicker">Condivisione senza account</div><h2 style="margin-top:6px">Avvia la diretta cloud</h2><p class="modal-subtitle">Il torneo viene salvato su Supabase e resta raggiungibile anche quando questo telefono è chiuso.</p><div class="notice info"><span>●</span><span>Verranno creati tre accessi: pubblico in sola lettura, arbitro limitato a partite e referti, gestore con controllo completo.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveNow">Avvia e crea i link</button></div></div>`;
-  const links=liveLinks(),status=liveRole==='host'?`Diretta attiva · <strong id="liveConnectedCount">${hostConnectionCount()}</strong> collegati`:liveRole==='manager'?'Collegato come gestore':liveRole==='referee'?'Collegato come arbitro':'Collegato come spettatore';
-  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione persistente tramite Supabase Realtime.</p>${liveAccessHtml(links)}${liveRole==='referee'?screenWakeControlHtml():''}<div class="notice info" style="margin-top:14px"><span>☁</span><span>I dati restano disponibili nel cloud. Il telefono che ha creato la diretta può essere chiuso; un altro gestore autorizzato può continuare il torneo.</span></div>${liveRole==='host'?'<div class="notice warn" style="margin-top:12px"><span>↩</span><span>Se questa sessione è bloccata, “Scollega questo telefono” rimuove soltanto il collegamento locale e conserva tutti i dati del torneo.</span></div>':''}<div class="modal-actions">${liveRole==='host'?'<button class="ghost" id="leaveLiveLocal">Scollega questo telefono</button><button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
+  const links=liveLinks(),status=liveRole==='host'?(liveRealtimeConnected?`Diretta attiva · <strong id="liveConnectedCount">${hostConnectionCount()}</strong> collegati`:'Diretta cloud attiva'):liveRole==='manager'?'Collegato come gestore':liveRole==='referee'?'Collegato come arbitro':'Collegato come spettatore';
+  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione persistente tramite Supabase, con aggiornamento automatico di riserva.</p>${liveAccessHtml(links)}${liveRole==='referee'?screenWakeControlHtml():''}<div class="notice info" style="margin-top:14px"><span>☁</span><span>I dati restano disponibili nel cloud. Il telefono che ha creato la diretta può essere chiuso; un altro gestore autorizzato può continuare il torneo.</span></div>${liveRole==='host'?'<div class="notice warn" style="margin-top:12px"><span>↩</span><span>Se questa sessione è bloccata, “Scollega questo telefono” rimuove soltanto il collegamento locale e conserva tutti i dati del torneo.</span></div>':''}<div class="modal-actions">${liveRole==='host'?'<button class="ghost" id="leaveLiveLocal">Scollega questo telefono</button><button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
 }
 function bindLiveModalActions(){
   modal.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>closeModal());
