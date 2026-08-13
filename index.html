@@ -701,16 +701,14 @@ th,td { padding:9px 11px; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.7.1';
+const APP_VERSION = '3.6.1';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
 const GUIDE_KEY = 'coppari.v3.guide.seen';
 const LIVE_CONFIG_KEY = 'coppari.v3.live';
-const CANONICAL_ACCESS_KEY = 'coppari.v3.canonical-access';
 const WAKE_PREF_KEY = 'coppari.v3.keep-screen-awake';
 const PUBLIC_APP_URL = 'https://highskiller.github.io/coppari-torneo/';
-const CANONICAL_ROOM_ID = 'coppari-main-2026-cloud-tournament';
 const SUPABASE_URL = 'https://lndqbduvyzjehkeetywt.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_VVYN8s9nVaZQR_jiC5s3GA_p8LKZZbk';
 const SUPABASE_JS_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js';
@@ -955,17 +953,6 @@ function decidedTeamsState(){
     teamId:seeded.teams[teamIndex].id,
     active:true
   })));
-  const fixtures=[
-    [5,3],[4,1],[2,5],[3,4],[2,1],
-    [4,5],[2,3],[5,1],[2,4],[3,1]
-  ];
-  seeded.matches=fixtures.map(([home,away],index)=>({
-    id:`m_decisa_${index+1}`,
-    stage:'group',leg:1,round:index+1,
-    homeTeamId:`t_decisa_${home}`,awayTeamId:`t_decisa_${away}`,
-    date:'',status:'scheduled',homeScore:null,awayScore:null,
-    stats:[],events:[],ratings:[],ratingsPublished:false,referee:null,mvpPlayerId:null
-  }));
   seeded.meta.preloadedRoster='squadre-decise-2026';
   return seeded;
 }
@@ -1001,18 +988,15 @@ function normalizeState(data){
   merged.matches=(Array.isArray(merged.matches)?merged.matches:[]).slice(0,2000).map(m=>{
     const rawStage=String(m?.stage||'group'),stage=/^(group|prelim|bronze|final|semi|quarter|round16|round32|round\d+)$/.test(rawStage)?rawStage:'group';
     const status=['scheduled','live','played'].includes(m?.status)?m.status:'scheduled';
-    const events=(Array.isArray(m?.events)?m.events:[]).slice(0,5000).map(e=>({id:safeId(e?.id,'ev'),type:['goal','teamgoal','assist','foul','yellow','red'].includes(e?.type)?e.type:'teamgoal',teamId:safeRef(e?.teamId),playerId:safeRef(e?.playerId),minuteLabel:safeText(e?.minuteLabel||'—',12),createdAt:Number.isFinite(+e?.createdAt)?+e.createdAt:Date.now()}));
-    const stats=(Array.isArray(m?.stats)?m.stats:[]).slice(0,500).map(x=>({playerId:safeRef(x?.playerId),goals:clamp(+x?.goals||0,0,999),assists:clamp(+x?.assists||0,0,999),fouls:clamp(+x?.fouls||0,0,999),yellow:clamp(+x?.yellow||0,0,99),red:clamp(+x?.red||0,0,99),mvp:!!x?.mvp})).filter(x=>x.playerId);
+    const events=(Array.isArray(m?.events)?m.events:[]).slice(0,5000).map(e=>({id:safeId(e?.id,'ev'),type:['goal','teamgoal','assist','yellow','red'].includes(e?.type)?e.type:'teamgoal',teamId:safeRef(e?.teamId),playerId:safeRef(e?.playerId),minuteLabel:safeText(e?.minuteLabel||'—',12),createdAt:Number.isFinite(+e?.createdAt)?+e.createdAt:Date.now()}));
+    const stats=(Array.isArray(m?.stats)?m.stats:[]).slice(0,500).map(x=>({playerId:safeRef(x?.playerId),goals:clamp(+x?.goals||0,0,999),assists:clamp(+x?.assists||0,0,999),yellow:clamp(+x?.yellow||0,0,99),red:clamp(+x?.red||0,0,99),mvp:!!x?.mvp})).filter(x=>x.playerId);
     const ratings=(Array.isArray(m?.ratings)?m.ratings:[]).slice(0,500).map(x=>{const raw=Number(x?.score),score=Number.isFinite(raw)&&raw>=5?Math.round(clamp(raw,5,10)*2)/2:null;return {playerId:safeRef(x?.playerId),score,comment:safeText(x?.comment||'',160)};}).filter(x=>x.playerId&&x.score!==null);
     const rr=m?.referee&&typeof m.referee==='object'?m.referee:null,phase=rr&&['not_started','first','halftime','second','ended'].includes(rr.phase)?rr.phase:status==='played'?'ended':'not_started';
     const referee=rr?{phase,phaseStartedAt:Number.isFinite(+rr.phaseStartedAt)?+rr.phaseStartedAt:null,firstSeconds:Math.max(0,+rr.firstSeconds||0),secondSeconds:Math.max(0,+rr.secondSeconds||0),halftimeSeconds:Math.max(0,+rr.halftimeSeconds||0),alertedPhases:rr.alertedPhases&&typeof rr.alertedPhases==='object'?rr.alertedPhases:{}}:null;
     const score=v=>v===null||v===undefined||v===''?null:clamp(+v||0,0,999);
     return {id:safeId(m?.id,'m'),stage,leg:clamp(+m?.leg||1,1,2),round:Math.max(1,+m?.round||1),koSize:m?.koSize?Math.max(2,+m.koSize||2):({final:2,semi:4,quarter:8,round16:16,round32:32}[stage]),slot:Math.max(1,+m?.slot||1),homeTeamId:safeRef(m?.homeTeamId),awayTeamId:safeRef(m?.awayTeamId),date:safeText(m?.date||'',30),status,homeScore:score(m?.homeScore),awayScore:score(m?.awayScore),penHome:score(m?.penHome),penAway:score(m?.penAway),events,stats,ratings,ratingsPublished:!!m?.ratingsPublished,referee,mvpPlayerId:safeRef(m?.mvpPlayerId),targetKoSize:m?.targetKoSize?Math.max(2,+m.targetKoSize||2):undefined,manual:!!m?.manual};
   });
-  const sourceMeta=merged.meta&&typeof merged.meta==='object'?merged.meta:{};
-  merged.meta={appVersion:APP_VERSION,createdAt:safeText(sourceMeta.createdAt||fresh.meta.createdAt,40),updatedAt:safeText(sourceMeta.updatedAt||fresh.meta.updatedAt,40)};
-  const cloudRoomId=cleanLiveRoomId(sourceMeta.cloudRoomId),cloudRevision=Math.max(0,+sourceMeta.cloudRevision||0);
-  if(cloudRoomId){merged.meta.cloudRoomId=cloudRoomId;merged.meta.cloudRevision=cloudRevision;}
+  merged.meta={appVersion:APP_VERSION,createdAt:safeText(merged.meta?.createdAt||fresh.meta.createdAt,40),updatedAt:safeText(merged.meta?.updatedAt||fresh.meta.updatedAt,40)};
   return merged;
 }
 function loadState(){
@@ -1032,13 +1016,13 @@ function save(options={}){
   if(liveRole==='manager'){
     if(liveApplyingRemote)return true;
     if(!liveConnected||liveEnded){toast(liveEnded?'La diretta è terminata':'Collegamento live interrotto: attendi la riconnessione',4200);return false;}
-    state.meta.cloudRoomId=liveRoomId;state.meta.cloudRevision=liveRevision;persistStateLocally();sendLiveManagerUpdate();updateSaveIndicator();return true;
+    sendLiveManagerUpdate();updateSaveIndicator();return true;
   }
   if(liveRole==='referee'){
     if(liveApplyingRemote)return true;
     if(!liveConnected||liveEnded){toast(liveEnded?'La diretta è terminata':'Collegamento arbitrale interrotto: attendi la riconnessione',4200);return false;}
     const matchId=options.matchId||activeRefereeMatchId;if(!matchId){toast('Il link arbitro può modificare soltanto un referto',4200);return false;}
-    state.meta.cloudRoomId=liveRoomId;state.meta.cloudRevision=liveRevision;persistStateLocally();sendLiveRefereeMatchUpdate(matchId);updateSaveIndicator();return true;
+    sendLiveRefereeMatchUpdate(matchId);updateSaveIndicator();return true;
   }
   if(!storageReady){toast('Salvataggio non disponibile: apri l’app in Safari',4200);return false;}
   try{
@@ -1051,7 +1035,7 @@ function toast(msg,duration=2200){ const el=document.getElementById('toast'); el
 function updateSaveIndicator(){
   const now=new Date();
   const time=now.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-  const label=liveRole==='viewer'?(liveConnected?'Cloud · sola lettura':'Cloud non collegato'):liveRole==='manager'?(liveConnected?`Salvato nel cloud alle ${time}`:'Gestore non collegato'):liveRole==='referee'?(liveConnected?`Referto salvato nel cloud alle ${time}`:'Arbitro non collegato'):liveRole==='host'?(liveConnected?`Salvato e condiviso alle ${time}`:`Salvato sul telefono alle ${time}`):storageReady?`Salvato alle ${time}`:'Salvataggio non disponibile';
+  const label=liveRole==='viewer'?(liveConnected?'Diretta · sola lettura':'Diretta non collegata'):liveRole==='manager'?(liveConnected?`Sincronizzato live alle ${time}`:'Gestore non collegato'):liveRole==='referee'?(liveConnected?`Referto sincronizzato alle ${time}`:'Arbitro non collegato'):liveRole==='host'?(liveConnected?`Salvato e condiviso alle ${time}`:`Salvato sul telefono alle ${time}`):storageReady?`Salvato alle ${time}`:'Salvataggio non disponibile';
   const top=document.getElementById('saveStatus'),side=document.getElementById('sidebarSaveStatus');
   if(top)top.textContent=label;if(side)side.textContent=label;
 }
@@ -1113,25 +1097,14 @@ function readLiveHostConfig(){
   try{const raw=JSON.parse(storageGet(LIVE_CONFIG_KEY)||'null');const roomId=cleanLiveRoomId(raw?.roomId),secret=cleanLiveSecret(raw?.secret),refereeSecret=cleanLiveSecret(raw?.refereeSecret);return roomId&&secret&&refereeSecret&&raw?.active?{roomId,secret,refereeSecret,transportVersion:+raw.transportVersion||1,active:true}:null;}catch{return null;}
 }
 function writeLiveHostConfig(config){return storageSet(LIVE_CONFIG_KEY,JSON.stringify(config));}
-function readCanonicalAccess(){
-  try{const raw=JSON.parse(storageGet(CANONICAL_ACCESS_KEY)||'null'),secret=cleanLiveSecret(raw?.secret),role=raw?.role;return secret&&['manager','referee'].includes(role)?{role,secret}:null;}catch{return null;}
-}
-function writeCanonicalAccess(access){
-  if(!access?.secret||!['manager','referee'].includes(access.role))return false;
-  return storageSet(CANONICAL_ACCESS_KEY,JSON.stringify({role:access.role,secret:access.secret,savedAt:new Date().toISOString()}));
-}
-function isCanonicalRoom(roomId=liveRoomId){return roomId===CANONICAL_ROOM_ID;}
 function parseLiveJoinFromLocation(){
-  const params=new URLSearchParams(location.search),explicitRoomId=cleanLiveRoomId(params.get('live'));
+  const roomId=cleanLiveRoomId(new URLSearchParams(location.search).get('live'));if(!roomId)return null;
   const hash=new URLSearchParams(location.hash.replace(/^#/,'')),managerSecret=cleanLiveSecret(hash.get('manage')),refereeSecret=cleanLiveSecret(hash.get('referee'));
-  if(explicitRoomId)return {roomId:explicitRoomId,role:managerSecret?'manager':refereeSecret?'referee':'viewer',secret:managerSecret||refereeSecret,canonical:false};
-  const direct=managerSecret?{role:'manager',secret:managerSecret}:refereeSecret?{role:'referee',secret:refereeSecret}:null;
-  const remembered=hash.has('view')?null:readCanonicalAccess(),access=direct||remembered;
-  return {roomId:CANONICAL_ROOM_ID,role:access?.role||'viewer',secret:access?.secret||null,canonical:true,remember:!!direct};
+  return {roomId,role:managerSecret?'manager':refereeSecret?'referee':'viewer',secret:managerSecret||refereeSecret};
 }
 function liveLinks(){
   if(!liveRoomId)return {viewer:'',manager:'',referee:''};
-  const base=new URL(isLocalFileMode()?PUBLIC_APP_URL:location.origin+location.pathname);if(!isCanonicalRoom())base.searchParams.set('live',liveRoomId);
+  const base=new URL(isLocalFileMode()?PUBLIC_APP_URL:location.origin+location.pathname);base.searchParams.set('live',liveRoomId);
   return {viewer:`${base.toString()}#view`,manager:liveSecret?`${base.toString()}#manage=${encodeURIComponent(liveSecret)}`:'',referee:liveRefereeSecret?`${base.toString()}#referee=${encodeURIComponent(liveRefereeSecret)}`:''};
 }
 function sharedStateSnapshot(){return JSON.parse(JSON.stringify(state));}
@@ -1188,17 +1161,16 @@ function updateLiveStatusUI(){
   pill.hidden=!liveRole;const online=liveConnected&&!liveEnded;pill.classList.toggle('offline',!!liveRole&&!online);
   if(liveEnded)text.textContent='Live conclusa';
   else if(liveRole==='host')text.textContent=online?(liveRealtimeConnected?`Live · ${hostConnectionCount()}`:'Live cloud'):'Live offline';
-  else if(liveRole==='manager')text.textContent=online?'Gestore cloud':'Riconnessione';
-  else if(liveRole==='referee')text.textContent=online?'Arbitro cloud':'Riconnessione';
-  else if(liveRole==='viewer')text.textContent=online?'Torneo cloud':'Cloud offline';
-  if(button)button.textContent=liveRole==='host'?`● Live · ${hostConnectionCount()} collegati`:liveRole==='manager'?'● Gestione cloud':liveRole==='referee'?'● Arbitraggio cloud':liveRole==='viewer'?'● Info torneo':'● Condivisione live';
+  else if(liveRole==='manager')text.textContent=online?'Gestore live':'Riconnessione';
+  else if(liveRole==='referee')text.textContent=online?'Arbitro live':'Riconnessione';
+  else if(liveRole==='viewer')text.textContent=online?'Diretta':'Diretta offline';
+  if(button)button.textContent=liveRole==='host'?`● Live · ${hostConnectionCount()} collegati`:liveRole==='manager'?'● Gestione live':liveRole==='referee'?'● Arbitraggio live':liveRole==='viewer'?'● Info diretta':'● Condivisione live';
   updateSaveIndicator();const count=document.getElementById('liveConnectedCount');if(count)count.textContent=String(hostConnectionCount());syncScreenWakeLock();
 }
 function liveWaitingMessage(){return liveErrorMessage||'Caricamento del torneo dal cloud…';}
 function renderLiveWaiting(){
-  setSetupMode(false);setHeader('Archivio cloud',liveRole==='manager'?'Accesso gestore':liveRole==='referee'?'Accesso arbitro':'Modalità spettatore');
-  const leaveButton=isCanonicalRoom()?'':'<button class="ghost" id="leaveLive">Apri Copparì locale</button>';
-  view.innerHTML=`<div class="card live-wait"><div class="live-share-icon">●</div><h2>${liveErrorMessage?'Torneo non raggiungibile':'Apertura del torneo…'}</h2><p class="note">${esc(liveWaitingMessage())}</p><div class="button-row center" style="margin-top:16px"><button class="primary" id="retryLive">Riprova</button>${leaveButton}</div><p class="note">Calendario, referti, risultati e statistiche sono conservati su Supabase.</p></div>`;
+  setSetupMode(false);setHeader('Collegamento live',liveRole==='manager'?'Accesso gestore':liveRole==='referee'?'Accesso arbitro':'Modalità spettatore');
+  view.innerHTML=`<div class="card live-wait"><div class="live-share-icon">●</div><h2>${liveErrorMessage?'Diretta non raggiungibile':'Apertura della diretta…'}</h2><p class="note">${esc(liveWaitingMessage())}</p><div class="button-row center" style="margin-top:16px"><button class="primary" id="retryLive">Riprova</button><button class="ghost" id="leaveLive">Apri Copparì locale</button></div><p class="note">I dati restano online anche quando il telefono che ha avviato la diretta viene chiuso.</p></div>`;
   document.getElementById('retryLive').onclick=()=>{liveErrorMessage='';connectToLiveHost();};
   document.getElementById('leaveLive').onclick=()=>{const url=new URL(location.href);url.searchParams.delete('live');url.hash='';location.href=url.toString();};updateLiveStatusUI();
 }
@@ -1210,9 +1182,8 @@ function applyLiveClientState(raw,revision,force=false){
     if(JSON.stringify(raw).length>2000000)throw new Error('too-large');
     if(!force&&Number.isFinite(+revision)&&+revision<=liveRevision&&liveHasState)return;
     const clean=normalizeState(raw),first=!liveHasState;liveApplyingRemote=true;
-    clean.meta.cloudRoomId=liveRoomId;clean.meta.cloudRevision=Math.max(0,+revision||0);
     Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,clean);liveRevision=Math.max(0,+revision||0);liveHasState=true;liveConnecting=false;liveErrorMessage='';
-    persistStateLocally();if(first){currentView='home';sessionSet('coppari.currentView','home');}
+    if(liveRole==='host')persistStateLocally();if(first){currentView='home';sessionSet('coppari.currentView','home');}
     refreshAfterLiveState();liveApplyingRemote=false;updateLiveStatusUI();
   }catch{liveApplyingRemote=false;toast('Dati live non validi',4200);}
 }
@@ -1289,7 +1260,7 @@ function queueLiveWrite(task){
 function handleLiveWriteResult(row,conflictMessage){
   if(!row)throw new Error('LIVE_WRITE_FAILED');
   if(!row.accepted){applyLiveRow(row,true);toast(conflictMessage,4600);return false;}
-  liveRevision=+row.revision||liveRevision;liveEnded=row.active===false;liveConnected=true;state.meta.cloudRoomId=liveRoomId;state.meta.cloudRevision=liveRevision;persistStateLocally();notifyLiveRefresh();updateLiveStatusUI();return true;
+  liveRevision=+row.revision||liveRevision;liveEnded=row.active===false;liveConnected=true;if(liveRole==='host')persistStateLocally();notifyLiveRefresh();updateLiveStatusUI();return true;
 }
 function sendLiveManagerUpdate(){
   if(!['host','manager'].includes(liveRole)||!liveConnected||liveEnded)return false;const snapshot=sharedStateSnapshot();
@@ -1301,14 +1272,14 @@ function sendLiveRefereeMatchUpdate(matchId){
 }
 function sendLiveRatingsUpdate(){return sendLiveManagerUpdate();}
 function spectatorLiveBarHtml(){
-  return `<div class="spectator-live-bar ${liveConnected&&!liveEnded?'':'offline'}"><span class="live-dot"></span><span>${liveEnded?'Torneo concluso · dati finali disponibili':liveConnected?'Archivio cloud collegato · aggiornamento automatico':'Connessione interrotta · ultimo aggiornamento salvato visibile'}</span></div>`;
+  return `<div class="spectator-live-bar ${liveConnected&&!liveEnded?'':'offline'}"><span class="live-dot"></span><span>${liveEnded?'Diretta conclusa · dati finali disponibili':liveConnected?'Diretta cloud collegata · aggiornamento automatico':'Connessione interrotta · ultimo aggiornamento visibile'}</span></div>`;
 }
 function publicMatchRow(m){
   const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId),played=m.status==='played',live=m.status==='live',pens=played&&m.penHome!=null&&m.penAway!=null&&m.homeScore===m.awayScore?` <small>(${m.penHome}-${m.penAway} rig.)</small>`:'';
   return `<div class="match"><div class="stage-label">${stageLabel(m)} · ${esc(matchDisplayTime(m))}${live?' · ● IN CORSO':played?' · CONCLUSA':''}</div><div class="home">${esc(h?.name||'?')}</div><div class="score">${played?`${m.homeScore} - ${m.awayScore}${pens}`:live?refScore(m):'vs'}</div><div class="away">${esc(a?.name||'?')}</div>${played&&m.ratingsPublished&&m.ratings?.length?`<div class="match-actions"><button class="ghost" data-ratings-match="${m.id}">Copparigelle</button></div>`:''}</div>`;
 }
 function renderSpectatorHome(){
-  setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Torneo pubblico · sola lettura');
+  setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Diretta pubblica · sola lettura');
   if(!state.settings.configured){view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">Copparì Live</div><h2>Il torneo è in preparazione</h2><p class="note">La pagina si aggiornerà automaticamente quando il gestore completerà la configurazione.</p></div>`;return;}
   const played=playedMatches().length,total=Math.max(state.matches.length,totalGamesExpected()),goals=playedMatches().reduce((sum,m)=>sum+(+m.homeScore||0)+(+m.awayScore||0),0),next=nextScheduledMatch(),table=standings();
   view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="kicker">${esc(state.settings.edition)} · Copparì Live</div><h2>${esc(state.settings.name)}</h2><p class="note">Risultati, classifica e premi restano disponibili nel cloud anche se il primo telefono viene chiuso.</p></div><div class="grid cols-4" style="margin-top:16px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',next?next.status==='live'?'In campo':'In programma':'Concluso')}</div>${next?`<div class="card next-match-card" style="margin-top:16px"><div class="next-match-stage">${next.status==='live'?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${stageLabel(next)}</div><div class="next-match-teams"><div class="next-match-team">${esc(teamById(next.homeTeamId)?.name||'?')}</div><div class="next-match-vs">${next.status==='live'?`<strong style="font-size:24px">${refScore(next)}</strong>`:'VS'}</div><div class="next-match-team">${esc(teamById(next.awayTeamId)?.name||'?')}</div></div></div>`:''}<div class="grid cols-2" style="margin-top:16px"><div class="card"><h3>Classifica live</h3>${table.length?`<div class="leaderboard">${table.map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}</div></div>`;
@@ -1381,11 +1352,7 @@ async function stopLiveHost(){
 }
 function initLiveSharing(){
   const join=parseLiveJoinFromLocation();
-  if(join){
-    if(join.canonical&&join.remember){writeCanonicalAccess({role:join.role,secret:join.secret});const cleanUrl=new URL(location.href);cleanUrl.hash='';history.replaceState(null,'',cleanUrl.toString());}
-    liveRole=join.role;liveRoomId=join.roomId;if(join.role==='manager')liveSecret=join.secret;if(join.role==='referee')liveRefereeSecret=join.secret;
-    liveHasState=state.meta?.cloudRoomId===join.roomId;liveRevision=liveHasState?Math.max(0,+state.meta?.cloudRevision||0):0;liveConnecting=!liveHasState;connectToLiveHost();return true;
-  }
+  if(join){liveRole=join.role;liveRoomId=join.roomId;if(join.role==='manager')liveSecret=join.secret;if(join.role==='referee')liveRefereeSecret=join.secret;liveConnecting=true;liveHasState=false;connectToLiveHost();return true;}
   const host=readLiveHostConfig();if(host){liveRole='host';liveRoomId=host.roomId;liveSecret=host.secret;liveRefereeSecret=host.refereeSecret;startLiveHost({resume:true});}
   return false;
 }
@@ -1979,7 +1946,7 @@ function ensureReferee(m){
   if(!m.referee)m.referee={phase:m.status==='played'?'ended':m.status==='live'?'first':'not_started',phaseStartedAt:null,firstSeconds:0,secondSeconds:0};
   return m.referee;
 }
-function matchStat(m,playerId){let x=(m.stats||[]).find(s=>s.playerId===playerId);if(!x){x={playerId,goals:0,assists:0,fouls:0,yellow:0,red:0,mvp:false};m.stats.push(x);}return x;}
+function matchStat(m,playerId){let x=(m.stats||[]).find(s=>s.playerId===playerId);if(!x){x={playerId,goals:0,assists:0,yellow:0,red:0,mvp:false};m.stats.push(x);}return x;}
 function currentRefSeconds(m){
   const r=ensureReferee(m),now=Date.now();
   if(r.phase==='first')return (r.firstSeconds||0)+(r.phaseStartedAt?Math.max(0,(now-r.phaseStartedAt)/1000):0);
@@ -1995,7 +1962,7 @@ function refMinuteLabel(m,event=null){
   if(r.phase==='halftime')return 'INT';
   return `${min}'`;
 }
-function eventLabel(e){return ({goal:'⚽ Gol',assist:'🎯 Assist',foul:'⚠️ Fallo',yellow:'🟨 Giallo',red:'🟥 Rosso',teamgoal:'⚽ Gol squadra'}[e.type]||e.type);}
+function eventLabel(e){return ({goal:'⚽ Gol',assist:'🎯 Assist',yellow:'🟨 Giallo',red:'🟥 Rosso',teamgoal:'⚽ Gol squadra'}[e.type]||e.type);}
 function refScore(m){return `${m.homeScore??0} — ${m.awayScore??0}`;}
 function setRefPhase(m,next){
   const r=ensureReferee(m),now=Date.now();
@@ -2016,7 +1983,6 @@ function addRefEvent(matchId,type,teamId,playerId=null){
     if(teamId===m.homeTeamId)m.homeScore=(+m.homeScore||0)+1;else if(teamId===m.awayTeamId)m.awayScore=(+m.awayScore||0)+1;
     if(type==='goal'&&playerId)matchStat(m,playerId).goals++;
   } else if(type==='assist'&&playerId)matchStat(m,playerId).assists++;
-  else if(type==='foul'&&playerId)matchStat(m,playerId).fouls++;
   else if(type==='yellow'&&playerId)matchStat(m,playerId).yellow++;
   else if(type==='red'&&playerId)matchStat(m,playerId).red++;
   m.events.push(e);save({matchId});playRefFeedback('event');renderRefereeMode(matchId);
@@ -2026,10 +1992,9 @@ function undoRefEvent(matchId,eventId){
   const e=m.events[i],st=e.playerId?(m.stats||[]).find(x=>x.playerId===e.playerId):null;
   if(e.type==='goal'||e.type==='teamgoal'){if(e.teamId===m.homeTeamId)m.homeScore=Math.max(0,(+m.homeScore||0)-1);else m.awayScore=Math.max(0,(+m.awayScore||0)-1);if(e.type==='goal'&&st)st.goals=Math.max(0,(st.goals||0)-1);}
   if(e.type==='assist'&&st)st.assists=Math.max(0,(st.assists||0)-1);
-  if(e.type==='foul'&&st)st.fouls=Math.max(0,(st.fouls||0)-1);
   if(e.type==='yellow'&&st)st.yellow=Math.max(0,(st.yellow||0)-1);
   if(e.type==='red'&&st)st.red=Math.max(0,(st.red||0)-1);
-  m.stats=(m.stats||[]).filter(x=>x.goals||x.assists||x.fouls||x.yellow||x.red||x.mvp);
+  m.stats=(m.stats||[]).filter(x=>x.goals||x.assists||x.yellow||x.red||x.mvp);
   m.events.splice(i,1);save({matchId});playRefFeedback('confirm');renderRefereeMode(matchId);toast('Evento annullato');
 }
 function setMatchMvp(m,playerId){
@@ -2039,7 +2004,7 @@ function setMatchMvp(m,playerId){
 }
 function refereeRosterHtml(m,team,readOnly=false){
   const dis=readOnly?'disabled':'';
-  return `<div class="ref-team"><div class="ref-team-title"><span>${esc(team.name)}</span><strong>${team.id===m.homeTeamId?(m.homeScore??0):(m.awayScore??0)}</strong></div><button class="ghost full ref-team-goal" data-ref-event="teamgoal" data-team="${team.id}" data-action-label="gol squadra ${esc(team.name)}" aria-label="Gol squadra o autorete per ${esc(team.name)}" ${dis}>+ Gol squadra / autorete</button><div class="ref-roster">${teamPlayers(team.id).map(p=>`<div class="ref-player"><div class="grow"><strong>${esc(p.name)}</strong><span>${roleLabel(p.role)}</span></div><button title="Gol · ${esc(p.name)}" aria-label="Gol di ${esc(p.name)}" data-action-label="gol di ${esc(p.name)}" data-ref-event="goal" data-team="${team.id}" data-player="${p.id}" ${dis}>⚽</button><button title="Assist · ${esc(p.name)}" aria-label="Assist di ${esc(p.name)}" data-action-label="assist di ${esc(p.name)}" data-ref-event="assist" data-team="${team.id}" data-player="${p.id}" ${dis}>🎯</button><button title="Fallo · ${esc(p.name)}" aria-label="Fallo di ${esc(p.name)}" data-action-label="fallo di ${esc(p.name)}" data-ref-event="foul" data-team="${team.id}" data-player="${p.id}" ${dis}>⚠️</button><button title="Giallo · ${esc(p.name)}" aria-label="Ammonizione a ${esc(p.name)}" data-action-label="giallo a ${esc(p.name)}" data-ref-event="yellow" data-team="${team.id}" data-player="${p.id}" ${dis}>🟨</button><button title="Rosso · ${esc(p.name)}" aria-label="Espulsione di ${esc(p.name)}" data-action-label="rosso a ${esc(p.name)}" data-ref-event="red" data-team="${team.id}" data-player="${p.id}" ${dis}>🟥</button></div>`).join('')}</div></div>`;
+  return `<div class="ref-team"><div class="ref-team-title"><span>${esc(team.name)}</span><strong>${team.id===m.homeTeamId?(m.homeScore??0):(m.awayScore??0)}</strong></div><button class="ghost full ref-team-goal" data-ref-event="teamgoal" data-team="${team.id}" data-action-label="gol squadra ${esc(team.name)}" aria-label="Gol squadra o autorete per ${esc(team.name)}" ${dis}>+ Gol squadra / autorete</button><div class="ref-roster">${teamPlayers(team.id).map(p=>`<div class="ref-player"><div class="grow"><strong>${esc(p.name)}</strong><span>${roleLabel(p.role)}</span></div><button title="Gol · ${esc(p.name)}" aria-label="Gol di ${esc(p.name)}" data-action-label="gol di ${esc(p.name)}" data-ref-event="goal" data-team="${team.id}" data-player="${p.id}" ${dis}>⚽</button><button title="Assist · ${esc(p.name)}" aria-label="Assist di ${esc(p.name)}" data-action-label="assist di ${esc(p.name)}" data-ref-event="assist" data-team="${team.id}" data-player="${p.id}" ${dis}>🎯</button><button title="Giallo · ${esc(p.name)}" aria-label="Ammonizione a ${esc(p.name)}" data-action-label="giallo a ${esc(p.name)}" data-ref-event="yellow" data-team="${team.id}" data-player="${p.id}" ${dis}>🟨</button><button title="Rosso · ${esc(p.name)}" aria-label="Espulsione di ${esc(p.name)}" data-action-label="rosso a ${esc(p.name)}" data-ref-event="red" data-team="${team.id}" data-player="${p.id}" ${dis}>🟥</button></div>`).join('')}</div></div>`;
 }
 function refereeEventLog(m,readOnly=false){
   const events=[...(m.events||[])].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
@@ -2096,7 +2061,7 @@ function finishRefereeMatch(id){
 }
 function openMatchModal(id){
   const m=state.matches.find(x=>x.id===id),home=teamById(m.homeTeamId),away=teamById(m.awayTeamId),players=[...teamPlayers(home.id),...teamPlayers(away.id)],existing=new Map((m.stats||[]).map(s=>[s.playerId,s]));const ko=isKnockoutMatch(m);
-  openModal(`<h2>${esc(home.name)} vs ${esc(away.name)}</h2><p class="modal-subtitle">${stageLabel(m)} · ${esc(matchDisplayTime(m))}</p><div class="form-grid"><div class="field"><label>Gol ${esc(home.name)}</label><input id="homeScore" type="number" min="0" inputmode="numeric" value="${m.homeScore??''}"></div><div class="field"><label>Gol ${esc(away.name)}</label><input id="awayScore" type="number" min="0" inputmode="numeric" value="${m.awayScore??''}"></div>${ko?`<div class="field"><label>Rigori ${esc(home.name)} (solo se pari)</label><input id="penHome" type="number" min="0" inputmode="numeric" value="${m.penHome??''}"></div><div class="field"><label>Rigori ${esc(away.name)} (solo se pari)</label><input id="penAway" type="number" min="0" inputmode="numeric" value="${m.penAway??''}"></div>`:''}<div class="field full"><label>Data / ora (facoltativa)</label><input id="matchDate" type="datetime-local" value="${m.date||''}"></div></div><h3 style="margin-top:18px">Statistiche giocatori</h3><div class="stats-editor">${players.map(p=>{const s=existing.get(p.id)||{};return `<div class="stats-player" data-stat-player="${p.id}"><div><strong>${esc(p.name)}</strong><div class="note">${esc(teamById(p.teamId)?.name||'')}</div></div><label>Gol<input type="number" min="0" data-k="goals" value="${s.goals||0}"></label><label>Assist<input type="number" min="0" data-k="assists" value="${s.assists||0}"></label><label>Falli<input type="number" min="0" data-k="fouls" value="${s.fouls||0}"></label><label>Gialli<input type="number" min="0" max="2" data-k="yellow" value="${s.yellow||0}"></label><label>Rossi<input type="number" min="0" max="1" data-k="red" value="${s.red||0}"></label><label>MVP<input type="checkbox" data-k="mvp" ${s.mvp?'checked':''}></label></div>`;}).join('')}</div><div class="notice info" style="margin-top:14px"><span>i</span><span>Il gestore può correggere risultato, orario e statistiche. Ogni modifica importante crea un punto di ripristino.</span></div><div class="button-row" style="margin-top:12px"><button class="ghost" id="moveMatchUp">↑ Anticipa</button><button class="ghost" id="moveMatchDown">↓ Posticipa</button>${m.status==='scheduled'?'<button class="ghost" id="swapMatchSides">⇄ Inverti squadre</button>':''}<button class="danger-outline" id="deleteMatch">Elimina partita</button></div><div class="modal-actions"><button class="ghost" id="clearResult">Segna da giocare</button><button class="ghost" data-close>Annulla</button><button class="primary" id="saveMatch">Salva tabellino</button></div>`);
+  openModal(`<h2>${esc(home.name)} vs ${esc(away.name)}</h2><p class="modal-subtitle">${stageLabel(m)} · ${esc(matchDisplayTime(m))}</p><div class="form-grid"><div class="field"><label>Gol ${esc(home.name)}</label><input id="homeScore" type="number" min="0" inputmode="numeric" value="${m.homeScore??''}"></div><div class="field"><label>Gol ${esc(away.name)}</label><input id="awayScore" type="number" min="0" inputmode="numeric" value="${m.awayScore??''}"></div>${ko?`<div class="field"><label>Rigori ${esc(home.name)} (solo se pari)</label><input id="penHome" type="number" min="0" inputmode="numeric" value="${m.penHome??''}"></div><div class="field"><label>Rigori ${esc(away.name)} (solo se pari)</label><input id="penAway" type="number" min="0" inputmode="numeric" value="${m.penAway??''}"></div>`:''}<div class="field full"><label>Data / ora (facoltativa)</label><input id="matchDate" type="datetime-local" value="${m.date||''}"></div></div><h3 style="margin-top:18px">Statistiche giocatori</h3><div class="stats-editor">${players.map(p=>{const s=existing.get(p.id)||{};return `<div class="stats-player" data-stat-player="${p.id}"><div><strong>${esc(p.name)}</strong><div class="note">${esc(teamById(p.teamId)?.name||'')}</div></div><label>Gol<input type="number" min="0" data-k="goals" value="${s.goals||0}"></label><label>Assist<input type="number" min="0" data-k="assists" value="${s.assists||0}"></label><label>Gialli<input type="number" min="0" max="2" data-k="yellow" value="${s.yellow||0}"></label><label>Rossi<input type="number" min="0" max="1" data-k="red" value="${s.red||0}"></label><label>MVP<input type="checkbox" data-k="mvp" ${s.mvp?'checked':''}></label></div>`;}).join('')}</div><div class="notice info" style="margin-top:14px"><span>i</span><span>Il gestore può correggere risultato, orario e statistiche. Ogni modifica importante crea un punto di ripristino.</span></div><div class="button-row" style="margin-top:12px"><button class="ghost" id="moveMatchUp">↑ Anticipa</button><button class="ghost" id="moveMatchDown">↓ Posticipa</button>${m.status==='scheduled'?'<button class="ghost" id="swapMatchSides">⇄ Inverti squadre</button>':''}<button class="danger-outline" id="deleteMatch">Elimina partita</button></div><div class="modal-actions"><button class="ghost" id="clearResult">Segna da giocare</button><button class="ghost" data-close>Annulla</button><button class="primary" id="saveMatch">Salva tabellino</button></div>`);
   const moveBy=delta=>{const index=state.matches.findIndex(x=>x.id===m.id),next=index+delta;if(index<0||next<0||next>=state.matches.length)return toast(delta<0?'La partita è già la prima':'La partita è già l’ultima');createSnapshot('Prima di riordinare il calendario');[state.matches[index],state.matches[next]]=[state.matches[next],state.matches[index]];save();closeModal(true);render();toast('Ordine partite aggiornato');};
   document.getElementById('moveMatchUp').onclick=()=>moveBy(-1);document.getElementById('moveMatchDown').onclick=()=>moveBy(1);
   document.getElementById('swapMatchSides')?.addEventListener('click',()=>{createSnapshot('Prima di invertire casa e trasferta');[m.homeTeamId,m.awayTeamId]=[m.awayTeamId,m.homeTeamId];save();closeModal(true);render();toast('Squadre invertite');});
@@ -2104,7 +2069,7 @@ function openMatchModal(id){
   document.getElementById('saveMatch').onclick=()=>{
     const hs=document.getElementById('homeScore').value,as=document.getElementById('awayScore').value;
     if(hs===''||as==='')return toast('Inserisci entrambi i risultati');
-    const draftStats=[...document.querySelectorAll('[data-stat-player]')].map(row=>{const obj={playerId:row.dataset.statPlayer,goals:0,assists:0,fouls:0,yellow:0,red:0,mvp:false};row.querySelectorAll('[data-k]').forEach(input=>obj[input.dataset.k]=input.type==='checkbox'?input.checked:Math.max(0,+input.value||0));return obj;});
+    const draftStats=[...document.querySelectorAll('[data-stat-player]')].map(row=>{const obj={playerId:row.dataset.statPlayer,goals:0,assists:0,yellow:0,red:0,mvp:false};row.querySelectorAll('[data-k]').forEach(input=>obj[input.dataset.k]=input.type==='checkbox'?input.checked:Math.max(0,+input.value||0));return obj;});
     const mvpRows=draftStats.filter(x=>x.mvp);if(mvpRows.length>1)return toast('Seleziona un solo MVP');
     let penHome=null,penAway=null;
     if(ko&&+hs===+as){penHome=document.getElementById('penHome').value;penAway=document.getElementById('penAway').value;if(penHome===''||penAway===''||+penHome===+penAway)return toast('Inserisci un vincitore ai rigori');}
@@ -2123,7 +2088,7 @@ function openMatchModal(id){
     if(ko && oldWinner && newWinner && oldWinner!==newWinner){
       removeDownstreamKnockout(m.koSize||2);
     }
-    m.stats=draftStats.filter(s=>s.goals||s.assists||s.fouls||s.yellow||s.red||s.mvp);m.mvpPlayerId=mvpRows[0]?.playerId||null;
+    m.stats=draftStats.filter(s=>s.goals||s.assists||s.yellow||s.red||s.mvp);m.mvpPlayerId=mvpRows[0]?.playerId||null;
     save();syncKnockout(false);closeModal(true);render();toast('Risultato salvato');
   };
   document.getElementById('clearResult').onclick=()=>{
@@ -2216,9 +2181,9 @@ function renderStandings(){
   view.innerHTML=s.length?`<div class="table-wrap"><table><thead><tr><th>#</th><th>Squadra</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>Pt</th></tr></thead><tbody>${s.map((x,i)=>`<tr><td><span class="rank">${i+1}</span></td><td><strong>${esc(x.team.name)}</strong>${complete&&state.settings.playoffs&&i<q?' <span class="badge green">Qualificata</span>':''}${complete&&!state.settings.playoffs&&i===0?' <span class="badge green">Vincitore</span>':''}</td><td>${x.pg}</td><td>${x.w}</td><td>${x.d}</td><td>${x.l}</td><td>${x.gf}</td><td>${x.ga}</td><td>${x.gd>0?'+':''}${x.gd}</td><td><strong>${x.pts}</strong></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty"><strong>Nessuna squadra</strong>La classifica apparirà qui.</div>';
 }
 function aggregateStats(){
-  const map=new Map(state.players.map(p=>[p.id,{player:p,goals:0,assists:0,fouls:0,yellow:0,red:0,mvp:0}]));
+  const map=new Map(state.players.map(p=>[p.id,{player:p,goals:0,assists:0,yellow:0,red:0,mvp:0}]));
   playedMatches().forEach(m=>{
-    (m.stats||[]).forEach(s=>{const x=map.get(s.playerId);if(!x)return;x.goals+=s.goals||0;x.assists+=s.assists||0;x.fouls+=s.fouls||0;x.yellow+=s.yellow||0;x.red+=s.red||0;x.mvp+=s.mvp?1:0;});
+    (m.stats||[]).forEach(s=>{const x=map.get(s.playerId);if(!x)return;x.goals+=s.goals||0;x.assists+=s.assists||0;x.yellow+=s.yellow||0;x.red+=s.red||0;x.mvp+=s.mvp?1:0;});
     if(m.mvpPlayerId&&!((m.stats||[]).some(s=>s.playerId===m.mvpPlayerId&&s.mvp))){const x=map.get(m.mvpPlayerId);if(x)x.mvp+=1;}
   });
   return [...map.values()];
@@ -2308,11 +2273,11 @@ async function copyAwardsText(){
   catch{const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();toast('Premi copiati');}
 }
 function renderStats(){
-  setHeader('Statistiche','Premi, Copparigelle, marcatori, portieri, assist, falli, MVP e disciplina');
+  setHeader('Statistiche','Premi, Copparigelle, marcatori, portieri, assist, MVP e disciplina');
   const all=aggregateStats(),keepers=goalkeeperStats(),ratings=aggregateRatings();
   const board=(key,label)=>{const arr=[...all].sort((a,b)=>b[key]-a[key]||a.player.name.localeCompare(b.player.name,'it')).filter(x=>x[key]>0).slice(0,10);return `<div class="card"><h3>${label}</h3><div class="leaderboard">${arr.map((x,i)=>`<div class="leader-row"><span class="rank">${i+1}</span><div><strong>${esc(x.player.name)}</strong><span>${esc(teamById(x.player.teamId)?.name||'Senza squadra')}</span></div><div class="leader-value">${x[key]}</div></div>`).join('')||'<div class="empty">Nessun dato ancora</div>'}</div></div>`;};
   const ratingsBoard=`<div class="card"><h3>📝 Copparigelle</h3><div class="leaderboard">${ratings.slice(0,10).map((x,i)=>`<div class="leader-row"><span class="rank">${i+1}</span><div><strong>${esc(x.player.name)}</strong><span>${esc(teamById(x.player.teamId)?.name||'Senza squadra')} · ${x.count} ${x.count===1?'voto':'voti'}</span></div><div class="leader-value">${x.average.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:2})}<small>media</small></div></div>`).join('')||'<div class="empty">Nessuna Copparigella pubblicata</div>'}</div></div>`;
-  view.innerHTML=`${awardsSectionHtml()}<div class="grid cols-2">${ratingsBoard}${board('goals','⚽ Marcatori')}${goalkeeperBoardHtml(keepers)}${board('assists','🎯 Assist')}${board('fouls','⚠️ Falli')}${board('mvp','⭐ MVP')}${board('yellow','🟨 Ammonizioni')}${board('red','🟥 Espulsioni')}</div>`;
+  view.innerHTML=`${awardsSectionHtml()}<div class="grid cols-2">${ratingsBoard}${board('goals','⚽ Marcatori')}${goalkeeperBoardHtml(keepers)}${board('assists','🎯 Assist')}${board('mvp','⭐ MVP')}${board('yellow','🟨 Ammonizioni')}${board('red','🟥 Espulsioni')}</div>`;
   document.getElementById('copyAwards')?.addEventListener('click',copyAwardsText);
 }
 
