@@ -13,6 +13,7 @@
   <meta name="format-detection" content="telephone=no" />
   <link rel="icon" type="image/png" sizes="192x192" href="./assets/coppari-icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png" />
+  <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="preload" as="image" type="image/webp" href="./assets/coppari-logo.webp" />
   <title>Copparì — Cabina di regia</title>
   <style>
@@ -32,6 +33,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display:none !important; }
 html, body { margin: 0; min-height: 100%; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
@@ -468,9 +470,57 @@ tr:hover td { background:#fbfcf8; }
 .undo-card > div { flex:1; }
 .sr-only { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
+/* Copparì v3.6 — layout compatto e installazione */
+.app-shell { grid-template-columns:256px minmax(0,1fr); }
+.sidebar { width:256px; padding:18px 14px; overflow-y:auto; }
+.brand { padding:0 7px 16px; }
+.brand-mark { width:46px; height:46px; }
+.nav { gap:4px; }
+.nav-item { min-height:40px; padding:8px 11px; }
+.sidebar-footer { gap:7px; padding-top:12px; }
+.sidebar-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+.sidebar-actions .ghost,.sidebar-actions .file-label { min-height:36px; padding:7px 6px; font-size:11px; display:grid; place-items:center; }
+.sidebar-actions .sidebar-live-action { grid-column:1/-1; }
+.sidebar-status { padding:9px 10px; font-size:11px; }
+.topbar { min-height:72px; padding:14px 24px 9px; }
+.topbar h1 { font-size:25px; }
+.content { width:min(1280px,100%); padding:14px 24px 48px; }
+.grid,.team-grid { gap:12px; }
+.card { padding:15px; border-radius:16px; }
+.card h3 { margin-bottom:9px; }
+.metric { font-size:29px; margin-top:5px; }
+.metric-label { font-size:11px; }
+.section-head { margin:5px 0 10px; }
+.manager-hero { padding:19px; }
+.manager-hero h2 { margin:5px 0 4px; }
+.manager-hero-actions { gap:7px; margin-top:13px; }
+.manager-hero + .ios-banner { margin-top:10px; }
+.control-grid { gap:12px; margin-top:12px; }
+.next-action { grid-template-columns:42px minmax(0,1fr) auto; gap:10px; }
+.next-action-icon { width:42px; height:42px; border-radius:13px; font-size:19px; }
+.next-action p { margin-top:2px; font-size:12px; }
+.checklist { gap:6px; }
+.check-item { gap:7px; padding:7px 8px; font-size:12px; }
+.check-mark { width:20px; height:20px; }
+.next-match-card { padding:16px; }
+.next-match-teams { margin:11px 0; }
+.match-list { gap:7px; }
+.match { gap:8px; padding:9px 10px; border-radius:12px; }
+.match-actions { gap:5px; }
+.match-actions button { min-height:36px; padding:7px 9px; font-size:12px; }
+.round-block { margin-bottom:14px; }
+.round-title { margin-bottom:6px; }
+.schedule-summary { gap:5px; margin:6px 0 10px; }
+.status-chip { padding:5px 8px; font-size:11px; }
+.table-wrap { border-radius:12px; }
+th,td { padding:9px 11px; }
+.ios-banner { padding:10px 12px; border-radius:13px; font-size:12px; }
+.ios-banner button { min-height:36px; padding:7px 10px; }
+.install-steps { margin:10px 0 0; padding-left:22px; }
+.install-steps li { margin:7px 0; color:var(--muted); font-size:13px; }
+
 @media (max-width:980px) {
   .control-grid { grid-template-columns:1fr; }
-  .topbar-actions .share-label { display:none; }
 }
 @media (max-width:760px) {
   body { padding-bottom:72px; }
@@ -519,6 +569,59 @@ tr:hover td { background:#fbfcf8; }
   .awards-actions .ghost { width:100%; }
 }
 
+@media (max-width:760px) {
+  body { padding-bottom:64px; }
+  .sidebar { width:266px; left:-278px; padding:calc(14px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom)); }
+  .topbar { min-height:58px; padding:calc(7px + env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left)); gap:9px; }
+  .topbar h1 { font-size:20px; }
+  .topbar p { margin-top:1px; max-width:54vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
+  .menu-btn { min-height:38px; padding:7px 9px; }
+  .topbar-actions .live-pill { min-height:32px; max-width:112px; padding:5px 8px; }
+  .content { padding:8px 10px 22px; }
+  .grid.cols-4 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .grid.cols-3 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .grid.cols-3 > :last-child:nth-child(odd) { grid-column:1/-1; }
+  .card { padding:12px; border-radius:14px; }
+  .metric { font-size:25px; }
+  .manager-hero { padding:14px; }
+  .manager-hero h2 { font-size:25px; }
+  .manager-hero-actions { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
+  .manager-hero-actions::-webkit-scrollbar,.section-head .actions::-webkit-scrollbar { display:none; }
+  .manager-hero-actions button { flex:0 0 auto; min-height:36px; padding:7px 10px; font-size:12px; }
+  .next-action { grid-template-columns:38px 1fr; gap:8px; }
+  .next-action-icon { width:38px; height:38px; }
+  .next-action > button { grid-column:2; justify-self:start; width:auto; min-height:36px; padding:7px 10px; }
+  .control-grid > .card:last-child .checklist { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .control-grid > .card:last-child .check-item { align-items:flex-start; font-size:11px; }
+  .section-head { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:7px; }
+  .section-head .actions { grid-column:1/-1; width:100%; margin-left:0; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+  .section-head .actions button { flex:0 0 auto; min-height:36px; padding:7px 10px; white-space:nowrap; }
+  .match { gap:6px; padding:8px; }
+  .match-actions { display:grid; grid-template-columns:repeat(auto-fit,minmax(88px,1fr)); gap:5px; }
+  .match-actions button { min-width:0; }
+  .next-match-card { padding:13px; }
+  .next-match-teams { margin:8px 0; }
+  .next-match-team { font-size:17px; }
+  .ios-banner { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; }
+  .ios-banner button { width:auto; }
+  .setup-brand { gap:10px; margin:8px 0 12px; align-items:center; }
+  .setup-brand .brand-mark.large { width:58px; height:58px; }
+  .setup-brand h1 { font-size:23px; }
+  .setup-brand p { font-size:12px; }
+  .setup-brand #setupGuide { min-height:36px; padding:7px 9px; font-size:12px; }
+  .setup-card { padding:12px; }
+  .setup-preview { margin-top:10px; padding:10px; }
+  .setup-preview-grid { gap:6px; }
+  .setup-preview-grid div { padding:8px; }
+  .mobile-nav { min-height:58px; padding:4px max(5px,env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(5px,env(safe-area-inset-left)); }
+  .mobile-nav button { min-height:46px; padding:1px; gap:0; font-size:9px; border-radius:9px; }
+  .mobile-nav button span:first-child { font-size:17px; }
+}
+
+@media (min-width:390px) and (max-width:760px) {
+  .setup-card .form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+}
+
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 }
@@ -540,7 +643,7 @@ tr:hover td { background:#fbfcf8; }
         <div class="brand-mark"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="54" height="54" /></div>
         <div>
           <strong>Copparì</strong>
-          <span>cabina di regia · v<span id="appVersionLabel">3.5.4</span></span>
+          <span>cabina di regia · v<span id="appVersionLabel">3.6.0</span></span>
         </div>
       </div>
 
@@ -555,11 +658,14 @@ tr:hover td { background:#fbfcf8; }
       </nav>
 
       <div class="sidebar-footer">
-        <button class="ghost full" id="guideBtn">? Guida del gestore</button>
         <div class="sidebar-status"><strong>Salvataggio automatico</strong><span id="sidebarSaveStatus">Dati custoditi su questo dispositivo</span></div>
-        <button class="ghost full" id="liveShareBtn">● Condivisione live</button>
-        <button class="ghost full" id="exportBtn">Esporta backup</button>
-        <label class="ghost full file-label">Importa backup<input type="file" id="importInput" accept="application/json" hidden /></label>
+        <div class="sidebar-actions">
+          <button class="ghost" id="guideBtn">? Guida</button>
+          <button class="ghost" id="installAppBtn" data-install-app>＋ Installa</button>
+          <button class="ghost sidebar-live-action" id="liveShareBtn">● Condivisione live</button>
+          <button class="ghost" id="exportBtn">Esporta</button>
+          <label class="ghost file-label">Importa<input type="file" id="importInput" accept="application/json" hidden /></label>
+        </div>
       </div>
     </aside>
 
@@ -573,8 +679,6 @@ tr:hover td { background:#fbfcf8; }
         <div class="topbar-actions">
           <span class="save-pill live-pill" id="liveStatusPill" hidden><span class="live-dot"></span><span id="liveStatusText">Live</span></span>
           <span class="save-pill"><span class="save-dot"></span><span id="saveStatus">Salvato</span></span>
-          <button class="ghost icon-btn" id="shareBtn" title="Copia il riepilogo" aria-label="Copia il riepilogo">↗</button>
-          <button class="ghost icon-btn" id="printBtn" title="Stampa la schermata" aria-label="Stampa la schermata">⌁</button>
         </div>
       </header>
 
@@ -597,7 +701,7 @@ tr:hover td { background:#fbfcf8; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.5.4';
+const APP_VERSION = '3.6.0';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
@@ -610,7 +714,6 @@ const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_VVYN8s9nVaZQR_jiC5s3GA_p8LKZZbk
 const SUPABASE_JS_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js';
 const SUPABASE_JS_INTEGRITY = 'sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKgvar';
 const LIVE_ROOM_ID_PATTERN = /^coppari-[A-Za-z0-9_-]{20,80}$/;
-const LEGACY_KEYS = ['coppari.v2','coppari.v1.6','coppari.v1.5','coppari.v1.3','coppari.v1.2','coppari.v1.1','coppari.v1'];
 const teamPalette = ['#315b43','#934848','#385d7c','#9c7837','#6a4f86','#2f7471','#a05d37','#536b34','#7d4567','#596275','#8b6a28','#3d6d91'];
 const defaultTeamNames = [
   'Atletico Pasticciotto','Real Frisa','US Rustico','Sporting Negramaro',
@@ -640,11 +743,11 @@ function sessionSet(key,value){if(!sessionReady)return false;try{sessionStorage.
 function isIOSDevice(){return /iPad|iPhone|iPod/.test(navigator.userAgent||'') || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);}
 function isStandaloneMode(){return navigator.standalone===true || !!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);}
 function isLocalFileMode(){return location.protocol==='file:' || location.origin==='null';}
-function iosInstallBannerHtml(){
+function installBannerHtml(){
   if(!isIOSDevice())return '';
-  if(!storageReady)return `<div class="ios-banner" role="alert"><span>⚠️</span><div style="flex:1"><strong>Aprila in Safari per salvare il torneo</strong>Questa anteprima non consente un salvataggio affidabile. Usa un link web in Safari, poi aggiungilo alla schermata Home.</div><button class="ghost" data-ios-guide>Come fare</button></div>`;
+  if(!storageReady)return `<div class="ios-banner" role="alert"><span>⚠️</span><div style="flex:1"><strong>Aprila in Safari</strong>Salva il torneo e aggiungila alla schermata Home.</div><button class="ghost" data-install-app>Installa</button></div>`;
   if(isStandaloneMode())return '';
-  return `<div class="ios-banner" role="note"><span>📱</span><div style="flex:1"><strong>Consigliato su iPhone e iPad</strong>In Safari: Condividi → Aggiungi alla schermata Home. Avrai più spazio durante l'arbitraggio e un accesso immediato.</div><button class="ghost" data-ios-guide>Come fare</button></div>`;
+  return `<div class="ios-banner" role="note"><span>📱</span><div style="flex:1"><strong>Installa su iPhone</strong>Più spazio e accesso rapido durante il torneo.</div><button class="ghost" data-install-app>Installa</button></div>`;
 }
 
 const state = loadState();
@@ -655,6 +758,7 @@ let screenWakeLock = null;
 let screenWakeLockPending = null;
 let refGuardArm = null;
 let feedbackAudioContext = null;
+let deferredInstallPrompt = null;
 let liveRole = null;
 let liveRoomId = null;
 let liveSecret = null;
@@ -1296,7 +1400,7 @@ function renderSetup(){
   view.innerHTML=`
     <div class="setup-wrap">
       <div class="setup-brand"><div class="brand-mark large"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="82" height="82" /></div><div style="flex:1"><div class="kicker">Configurazione guidata</div><h1>Prepara il tuo torneo</h1><p>In pochi minuti avrai partecipanti, formula, orari e fase finale sotto controllo.</p></div><button class="ghost" id="setupGuide">? Guida gestore</button></div>
-      ${iosInstallBannerHtml()}
+      ${installBannerHtml()}
       <div class="card setup-card">
         <div class="step-tabs"><div class="step-tab active">1 · Identità</div><div class="step-tab active">2 · Partecipanti</div><div class="step-tab active">3 · Formula</div><div class="step-tab active">4 · Tempi</div></div>
         <div class="form-grid">
@@ -1321,7 +1425,6 @@ function renderSetup(){
   ['setupName','setupEdition','setupVenue','setupOrganizer','setupPlayers','setupRoster','setupFormat','setupMode','setupBronze','setupStartTime','setupMinutes','setupHalftime','setupChange'].forEach(id=>document.getElementById(id)?.addEventListener('input',updateSetupPreview));
   updateSetupPreview();
   document.getElementById('setupGuide').onclick=()=>openManagerGuide(false);
-  view.querySelectorAll('[data-ios-guide]').forEach(button=>button.onclick=openIOSGuide);
   document.getElementById('startTournament').onclick=()=>{
     if(!storageReady){if(isIOSDevice())openIOSGuide();else toast('Apri l’app in un browser che consenta il salvataggio',4200);return;}
     const p=setupPreviewValues();
@@ -1336,37 +1439,6 @@ function renderSetup(){
     state.teams=[]; state.matches=[]; state.players.forEach(x=>x.teamId=null);
     save(); currentView='home';sessionSet('coppari.currentView','home'); render(); toast('Cabina di regia pronta');
   };
-}
-
-function renderDashboard(){
-  setHeader(state.settings.name, `${state.settings.edition} · torneo in una notte`);
-  const played=playedMatches();
-  const goals=played.reduce((s,m)=>s+(+m.homeScore||0)+(+m.awayScore||0),0);
-  const count=activePlayers().length, target=state.settings.targetPlayers;
-  const pct=Math.min(100,Math.round((count/target)*100));
-  const next=nextScheduledMatch();
-  const nextHtml=next ? `${esc(teamById(next.homeTeamId)?.name||'?')} <strong>vs</strong> ${esc(teamById(next.awayTeamId)?.name||'?')}` : 'Nessuna partita programmata';
-  const dist=state.settings.teamCount?`${state.settings.rosterSize} ciascuna`:'configurazione non valida';
-  view.innerHTML=`
-    <div class="card hero">
-      <div class="kicker">Calcetto a 5 · formula personalizzata</div>
-      <h2>${esc(state.settings.name)}</h2>
-      <p>${target} partecipanti · ${state.settings.teamCount} squadre · rose ${dist} · ${formatMode()} · ${playoffText()}.</p>
-      <button class="secondary" data-go="night">🌙 Apri Serata Copparì</button>
-    </div>
-    <div class="grid cols-4" style="margin-top:16px">
-      ${metric('Iscritti', `${count}/${target}`, count<target?`${target-count} mancanti`:count>target?`${count-target} oltre configurazione`:'Lista completa')}
-      ${metric('Squadre', `${state.teams.length}/${state.settings.teamCount}`, `rose esatte ${state.settings.rosterSize}`)}
-      ${metric('Partite giocate', played.length, state.matches.length?`su ${state.matches.length} create`:'calendario da creare')}
-      ${metric('Gol segnati', goals)}
-    </div>
-    <div class="grid cols-2" style="margin-top:16px">
-      <div class="card"><h3>Iscrizioni</h3><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div><div class="target-line"><span>${count} partecipanti inseriti</span><strong>${pct}%</strong></div><div style="margin-top:12px"><button class="ghost" data-go="players">Gestisci partecipanti</button></div></div>
-      <div class="card"><h3>Prossima partita</h3><div style="font-size:20px;margin:12px 0">${nextHtml}</div><button class="ghost" data-go="night">Vai alla serata</button></div>
-    </div>
-    <div class="card" style="margin-top:16px"><h3>Formula</h3><div class="schedule-summary"><span class="status-chip">${state.settings.teamCount} squadre</span><span class="status-chip">${groupGamesExpected()} partite girone</span><span class="status-chip">${formatMode()}</span><span class="status-chip">${playoffText()}</span><span class="status-chip">${state.settings.matchMinutes} min gioco + ${state.settings.halftimeMinutes} min intervallo</span></div>${tournamentStatus()}</div>
-  `;
-  view.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>navigate(b.dataset.go));
 }
 
 function tournamentStatus(){
@@ -1417,8 +1489,8 @@ function renderHome(){
   const s=standings();
   const action=managerNextAction(),goals=playedMatches().reduce((sum,m)=>sum+(+m.homeScore||0)+(+m.awayScore||0),0),snap=latestSnapshot();
   view.innerHTML=`
-    <div class="card manager-hero"><div class="kicker">${esc(state.settings.edition)} · inizio ${esc(state.settings.startTime||'00:00')}${state.settings.venue?` · ${esc(state.settings.venue)}`:''}</div><h2>${esc(state.settings.name)}</h2><div class="note">${played} concluse · ${Math.max(0,totalExpected-played)} da giocare${state.settings.organizer?` · gestore ${esc(state.settings.organizer)}`:''}</div><div class="progress-track" style="margin-top:14px;background:#2b4735"><div class="progress-fill" style="width:${progress}%;background:var(--brand-2)"></div></div><div class="manager-hero-actions"><button class="secondary" id="heroGuide">? Guida gestore</button><button class="ghost" style="color:white;border-color:#52705c" id="heroBackup">↓ Esporta backup</button><button class="ghost" style="color:white;border-color:#52705c" id="heroShare">↗ Copia riepilogo</button></div></div>
-    ${iosInstallBannerHtml()}
+    <div class="card manager-hero"><div class="kicker">${esc(state.settings.edition)} · inizio ${esc(state.settings.startTime||'00:00')}${state.settings.venue?` · ${esc(state.settings.venue)}`:''}</div><h2>${esc(state.settings.name)}</h2><div class="note">${played} concluse · ${Math.max(0,totalExpected-played)} da giocare${state.settings.organizer?` · gestore ${esc(state.settings.organizer)}`:''}</div><div class="progress-track" style="margin-top:14px;background:#2b4735"><div class="progress-fill" style="width:${progress}%;background:var(--brand-2)"></div></div><div class="manager-hero-actions"><button class="secondary" id="heroGuide">? Guida gestore</button><button class="ghost" style="color:white;border-color:#52705c" id="heroBackup">↓ Esporta backup</button></div></div>
+    ${installBannerHtml()}
     ${liveShareCardHtml()}
     <div class="grid cols-4" style="margin-top:16px">${metric('Partecipanti',`${activePlayers().length}/${state.settings.targetPlayers}`,'attivi')}${metric('Squadre',`${state.teams.length}/${state.settings.teamCount}`,`${state.settings.rosterSize} per rosa`)}${metric('Partite',`${played}/${Math.max(state.matches.length,totalExpected)}`,'concluse')}${metric('Gol',goals,'registrati')}</div>
     <div class="control-grid">
@@ -1435,10 +1507,8 @@ function renderHome(){
   document.getElementById('syncKo')?.addEventListener('click',()=>{syncKnockout(true);renderHome();});
   document.getElementById('heroGuide').onclick=()=>openManagerGuide(false);
   document.getElementById('heroBackup').onclick=exportBackup;
-  document.getElementById('heroShare').onclick=shareSummary;
   document.getElementById('openLiveShare')?.addEventListener('click',openLiveShareModal);
   document.getElementById('startLiveFromHome')?.addEventListener('click',openLiveShareModal);
-  view.querySelectorAll('[data-ios-guide]').forEach(button=>button.onclick=openIOSGuide);
   document.getElementById('quickUndo')?.addEventListener('click',restoreLastSnapshot);
   document.getElementById('nextActionBtn').onclick=()=>action.referee?openRefereeMode(action.referee):navigate(action.view);
   document.getElementById('emptyStartPlayers')?.addEventListener('click',()=>navigate('players'));
@@ -1448,13 +1518,6 @@ function renderNextMatchCard(m){
   const live=m.status==='live';
   const score=(m.homeScore??0)+' — '+(m.awayScore??0);
   return `<div class="card next-match-card" style="margin-top:16px"><div class="next-match-stage">${live?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${stageLabel(m)}</div><div class="next-match-teams"><div class="next-match-team">${esc(h?.name||'?')}</div><div class="next-match-vs">${live?`<strong style="font-size:24px">${score}</strong>`:'VS'}</div><div class="next-match-team">${esc(a?.name||'?')}</div></div><div class="button-row center"><button class="primary referee-launch" id="openReferee">${live?'Riprendi arbitraggio':'Avvia arbitraggio'}</button><button class="ghost" id="openSheet">Gestisci tabellino</button></div><div class="inline-meta" style="justify-content:center"><span class="status-chip">${state.settings.matchMinutes} min gioco</span><span class="status-chip">${state.settings.halftimeMinutes} min intervallo</span><span class="status-chip">${state.settings.touchGuard?'🔒 Anti-tocco attivo':'Anti-tocco disattivato'}</span></div></div>`;
-}
-function quickSave(id){
-  const m=state.matches.find(x=>x.id===id); if(!m)return;
-  const hs=document.getElementById('quickHome').value, as=document.getElementById('quickAway').value;
-  if(hs===''||as==='')return toast('Inserisci entrambi i risultati');
-  if(m.stage!=='group' && +hs===+as){ toast('Nei playoff indica anche i rigori nel tabellino completo'); openMatchModal(id); return; }
-  m.homeScore=+hs; m.awayScore=+as; m.status='played'; m.stats=m.stats||[]; save(); syncKnockout(false); renderHome(); toast('Risultato salvato');
 }
 function renderKnockoutSummary(){
   if(!state.settings.playoffs) return `<p class="note">Playoff disattivati: al termine del ${formatMode()} vince la prima in classifica.</p>`;
@@ -1585,7 +1648,6 @@ function autoBalanceTeams(){
 function clockAdd(base,mins){const [h,m]=String(base||'00:00').split(':').map(Number);const x=(h*60+m+mins)%(24*60);return `${String(Math.floor(x/60)).padStart(2,'0')}:${String(x%60).padStart(2,'0')}`;}
 function matchSlotTime(index){return clockAdd('00:00',index*(matchOperationalMinutes()+Math.max(0,+state.settings.changeMinutes||0)));}
 function matchDisplayTime(m){if(!m.date)return matchSlotTime(state.matches.indexOf(m));const d=new Date(m.date);if(Number.isNaN(d.getTime()))return matchSlotTime(state.matches.indexOf(m));return d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
-function formatLabel(){return state.settings.tournamentFormat==='knockout'?'Eliminazione diretta':state.settings.tournamentFormat==='league'?'Girone':'Girone + eliminazione diretta';}
 function seedDirectKnockout(){
   const count=state.settings.teamCount;if(count<2)return false;
   let target=1;while(target*2<=count)target*=2;
@@ -2280,8 +2342,6 @@ function renderSettings(){
   document.getElementById('settingsGuide').onclick=()=>openManagerGuide(false);document.getElementById('restoreSnapshot')?.addEventListener('click',restoreLastSnapshot);document.getElementById('resetAllBtn').onclick=openResetModal;
   document.getElementById('exportBtn2').onclick=exportBackup;document.getElementById('importInput2').onchange=importBackup;
 }
-function estimateDuration(){ return humanDuration(estimatedTournamentMinutes()); }
-
 function openModal(html){
   stopRefereeTicker();clearRefGuard();activeRefereeMatchId=null;releaseRefereeWakeLock();modalReturnFocus=document.activeElement;
   modalBackdrop.classList.remove('referee-mode');modal.classList.remove('referee-modal');modal.innerHTML=html;modalBackdrop.classList.remove('hidden');modalBackdrop.setAttribute('aria-hidden','false');document.body.classList.add('modal-open');
@@ -2300,12 +2360,29 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!modalBackdrop.clas
 
 function openIOSGuide(){
   const localWarning=isLocalFileMode()?'<div class="notice warn" style="margin-top:14px"><span>!</span><span>Se stai vedendo il file in anteprima, i salvataggi possono dipendere da come iOS lo ha aperto. Per il torneo è preferibile usare un link web direttamente in Safari.</span></div>':'';
-  openModal(`<div class="kicker">Configurazione consigliata</div><h2 style="margin-top:6px">Usa Copparì su iPhone o iPad</h2><p class="modal-subtitle">Per avere più spazio, accesso rapido e un contesto di salvataggio stabile.</p><div class="checklist"><div class="card soft"><strong>1 · Apri il link in Safari</strong><p class="note">Se sei dentro WhatsApp, Mail o un'altra anteprima, usa “Apri in Safari”.</p></div><div class="card soft"><strong>2 · Tocca Condividi</strong><p class="note">È il pulsante con il quadrato e la freccia verso l'alto.</p></div><div class="card soft"><strong>3 · Aggiungi alla schermata Home</strong><p class="note">Se non lo vedi subito, scorri le azioni o usa “Altro”, quindi conferma “Aggiungi”.</p></div><div class="card soft"><strong>4 · Apri l'icona Copparì</strong><p class="note">Durante la partita mantieni attiva la protezione tocchi. Esporta inoltre un backup e salvalo in File.</p></div></div>${localWarning}<div class="modal-actions"><button class="ghost" id="iosFullGuide">Apri guida completa</button><button class="primary" data-close>Ho capito</button></div>`);
+  openModal(`<div class="kicker">Installazione su Home</div><h2 style="margin-top:6px">Installa Copparì su iPhone o iPad</h2><p class="modal-subtitle">Si apre a schermo intero e resta sempre a portata di mano.</p><ol class="install-steps"><li>Apri questo link direttamente in <strong>Safari</strong>.</li><li>Tocca <strong>Condividi</strong> (quadrato con freccia verso l'alto).</li><li>Scorri e scegli <strong>Aggiungi alla schermata Home</strong>.</li><li>Conferma con <strong>Aggiungi</strong>, poi apri l'icona Copparì.</li></ol>${localWarning}<div class="modal-actions"><button class="ghost" id="iosFullGuide">Guida completa</button><button class="primary" data-close>Ho capito</button></div>`);
   document.getElementById('iosFullGuide').onclick=()=>openManagerGuide(false);
+}
+function openInstallGuide(){
+  if(isIOSDevice())return openIOSGuide();
+  openModal(`<div class="kicker">Installazione su Home</div><h2 style="margin-top:6px">Installa Copparì</h2><p class="modal-subtitle">Aprila dal browser, poi usa il menu per aggiungerla al dispositivo.</p><ol class="install-steps"><li>Apri il menu del browser.</li><li>Scegli <strong>Installa app</strong> oppure <strong>Aggiungi a schermata Home</strong>.</li><li>Conferma e apri Copparì dalla nuova icona.</li></ol><div class="modal-actions"><button class="primary" data-close>Ho capito</button></div>`);
+}
+function updateInstallUI(){
+  document.querySelectorAll('[data-install-app]').forEach(button=>{button.hidden=isStandaloneMode();});
+}
+async function requestAppInstall(){
+  if(isStandaloneMode())return toast('Copparì è già installata');
+  if(isIOSDevice())return openIOSGuide();
+  if(!deferredInstallPrompt)return openInstallGuide();
+  deferredInstallPrompt.prompt();
+  const choice=await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt=null;
+  updateInstallUI();
+  if(choice?.outcome==='accepted')toast('Installazione avviata');
 }
 function openManagerGuide(initial=false){
   const localWarning=isLocalFileMode()?'<div class="notice warn" style="margin-top:10px"><span>!</span><span>Se hai ricevuto solo il file HTML e iOS lo mostra in anteprima, per il torneo è preferibile un link web aperto direttamente in Safari.</span></div>':'';
-  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Condivisione live</strong></summary><ol class="note"><li>Da Panoramica tocca “Avvia diretta”.</li><li>Invia il link pubblico a chi deve solo seguire risultati e classifiche.</li><li>Invia il link gestore soltanto agli organizzatori autorizzati.</li><li>Dopo il primo salvataggio i dati restano su Supabase: il telefono che ha avviato la Live può essere chiuso.</li><li>Evitate di modificare contemporaneamente la stessa partita da due telefoni.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> apri il link gestore sul nuovo dispositivo.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione con ↗, stampa le schermate utili ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
+  openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Condivisione live</strong></summary><ol class="note"><li>Da Panoramica tocca “Avvia diretta”.</li><li>Invia il link pubblico a chi deve solo seguire risultati e classifiche.</li><li>Invia il link gestore soltanto agli organizzatori autorizzati.</li><li>Dopo il primo salvataggio i dati restano su Supabase: il telefono che ha avviato la Live può essere chiuso.</li><li>Evitate di modificare contemporaneamente la stessa partita da due telefoni.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> apri il link gestore sul nuovo dispositivo.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione se serve ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
   const liveGuideDetails=[...modal.querySelectorAll('details')].find(item=>item.querySelector('summary')?.textContent.trim()==='Condivisione live');
   if(liveGuideDetails)liveGuideDetails.innerHTML=`<summary><strong>Condivisione live · istruzioni complete</strong></summary><div class="notice info" style="margin:12px 0"><span>☁</span><span><strong>Supabase è la sorgente ufficiale.</strong> Conserva il torneo e distribuisce ogni aggiornamento agli altri dispositivi anche quando il primo telefono è chiuso.</span></div><h4>1 · Avvia la diretta</h4><ol class="note"><li>Completa almeno la configurazione iniziale, poi da Panoramica tocca “Avvia diretta”.</li><li>Attendi la conferma “Diretta cloud attiva”, quindi condividi i link.</li><li>Esporta comunque un backup prima del torneo e dopo le modifiche più importanti.</li></ol><h4>2 · Scegli il link corretto</h4><ul class="note"><li><strong>Link pubblico:</strong> è sempre in sola lettura. Mostra risultati, calendario, classifica e premi; chi lo apre non può cambiare i dati.</li><li><strong>Link arbitro:</strong> consente soltanto partite, timer e referti.</li><li><strong>Link gestore:</strong> offre controllo completo. Conservalo come una password.</li></ul><h4>3 · Durante il torneo</h4><ol class="note"><li>Ogni modifica confermata viene salvata nel cloud e notificata agli altri dispositivi.</li><li>Il primo telefono può essere bloccato o chiuso; un altro dispositivo con il link gestore può continuare il torneo.</li><li>Se due gestori modificano la stessa revisione, Copparì conserva la prima modifica e chiede all’altro di ripetere l’operazione.</li><li>Se Internet cade, le modifiche vengono bloccate finché non avviene la riconnessione; l’ultimo stato resta disponibile.</li></ol><h4>4 · Chiusura e sicurezza</h4><ul class="note"><li>“Termina diretta” impedisce nuove modifiche, ma conserva nel cloud i dati finali in sola lettura.</li><li>Tratta i link gestore e arbitro come password. Se vengono condivisi per errore, termina la diretta e avviane una nuova.</li><li>I segreti dei link vengono verificati nel database e non sono salvati in chiaro.</li></ul>`;
   document.getElementById('closeGuide').onclick=()=>{storageSet(GUIDE_KEY,'1');closeModal(true);};
@@ -2315,15 +2392,6 @@ function openRefereeQuickGuide(){
   alert('PROTEZIONE TOCCHI\n\n• Primo tocco: arma ed evidenzia il comando.\n• Secondo tocco sullo stesso comando entro 2,8 secondi: conferma.\n• ↶ annulla un evento.\n• Il timer continua anche se esci e puoi riprendere la partita.\n• “Termina e aggiorna classifica” rende il risultato definitivo.'+iosTip);
 }
 function maybeShowInitialGuide(){if(!storageGet(GUIDE_KEY)&&modalBackdrop.classList.contains('hidden'))openManagerGuide(true);}
-function summaryText(){
-  const table=standings(),next=nextScheduledMatch(),lines=[`${state.settings.name} — ${state.settings.edition}`,state.settings.venue?`Luogo: ${state.settings.venue}`:'',`Formula: ${formatLabel()} · ${state.settings.teamCount} squadre`,`Partite concluse: ${playedMatches().length}/${state.matches.length||totalGamesExpected()}`].filter(Boolean);
-  if(next)lines.push(`Prossima: ${teamById(next.homeTeamId)?.name||'?'} vs ${teamById(next.awayTeamId)?.name||'?'} (${stageLabel(next)})`);
-  if(table.length)lines.push('', 'Classifica:',...table.map((x,i)=>`${i+1}. ${x.team.name} — ${x.pts} pt (${x.gf}:${x.ga})`));
-  const final=state.matches.find(m=>m.stage==='final'&&m.status==='played');if(final){const winner=teamById(matchWinner(final));if(winner)lines.push('',`Vincitore: ${winner.name} 🏆`);}
-  if(awardsAreFinal())lines.push('','Premi finali:',...awardsTextLines());
-  return lines.join('\n');
-}
-async function shareSummary(){const text=summaryText();try{await navigator.clipboard.writeText(text);toast('Riepilogo copiato');}catch{const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();toast('Riepilogo copiato');}}
 function backupFileName(){const safe=(state.settings.name||'coppari').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'coppari';return `${safe}-backup-${new Date().toISOString().slice(0,10)}.json`;}
 function downloadBackupFile(file){const a=document.createElement('a'),url=URL.createObjectURL(file);a.href=url;a.download=file.name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);}
 async function exportBackup(){
@@ -2352,14 +2420,17 @@ document.getElementById('guideBtn').onclick=()=>openManagerGuide(false);
 document.getElementById('liveShareBtn').onclick=openLiveShareModal;
 document.getElementById('exportBtn').onclick=exportBackup;
 document.getElementById('importInput').onchange=importBackup;
-document.getElementById('shareBtn').onclick=shareSummary;
-document.getElementById('printBtn').onclick=()=>window.print();
+document.addEventListener('click',e=>{if(e.target.closest('[data-install-app]'))requestAppInstall();});
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;updateInstallUI();});
+window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;updateInstallUI();toast('Copparì installata');});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){updateScreenWakeUI();return;}syncScreenWakeLock();if(liveRole&&!liveConnected&&!liveEnded)connectToLiveHost();});
 window.addEventListener('online',()=>{if(liveRole&&!liveConnected&&!liveEnded)connectToLiveHost();});
 window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY)toast('I dati sono cambiati in un’altra scheda: ricarica per allinearli',4200);});
 const joiningLiveSession=initLiveSharing();
 render();
 updateSaveIndicator();
+updateInstallUI();
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 if(!joiningLiveSession)setTimeout(maybeShowInitialGuide,250);
 
 </script>
