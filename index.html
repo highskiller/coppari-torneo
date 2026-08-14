@@ -501,6 +501,7 @@ tr:hover td { background:#fbfcf8; }
 .ref-event.latest { border:1px solid #d5e8ce; background:#f0f7ed; }
 .ref-event button { min-width:44px; }
 .ref-live-strip { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:8px; font-size:12px; color:var(--muted); }
+.ref-correction-note { margin:0 0 12px; }
 .live-dot { width:8px; height:8px; border-radius:50%; background:#db5656; box-shadow:0 0 0 5px rgba(219,86,86,.12); }
 
 .danger-zone { border-color:#edc9c7; background:#fffafa; }
@@ -979,7 +980,7 @@ body.spectator-mode .topbar-actions > .save-pill:not(.live-pill) { display:none;
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.9.2';
+const APP_VERSION = '3.9.3';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
@@ -2404,7 +2405,7 @@ function refMinuteLabel(m,event=null){
   if(r.phase==='halftime')return 'INT';
   return `${min}'`;
 }
-function eventLabel(e){return ({goal:'⚽ Gol',assist:'🎯 Assist',foul:'⚠️ Fallo',yellow:'🟨 Giallo',red:'🟥 Rosso',teamgoal:'⚽ Gol squadra'}[e.type]||e.type);}
+function eventLabel(e){return ({goal:'⚽ Gol',assist:'🎯 Assist',foul:'⚠️ Fallo',yellow:'🟨 Giallo',red:'🟥 Rosso',teamgoal:'⚽ Gol squadra / autorete'}[e.type]||e.type);}
 function refScore(m){return `${m.homeScore??0} — ${m.awayScore??0}`;}
 function setRefPhase(m,next){
   const r=ensureReferee(m),now=Date.now();
@@ -2417,8 +2418,37 @@ function setRefPhase(m,next){
   if(next!=='ended'&&m.status!=='played')m.status='live';
   save({matchId:m.id});renderRefereeMode(m.id);
 }
+function applyPlayedScoreCorrection(m,nextHome,nextAway,{prompt,snapshotLabel,successLabel,mutate}){
+  if(['viewer','referee'].includes(liveRole)){toast('Apri il link gestore per correggere un referto terminato',4200);return false;}
+  if(liveRole==='manager'&&(!liveConnected||liveEnded)){toast(liveEnded?'La diretta è terminata':'Collegamento live interrotto: attendi la riconnessione',4200);return false;}
+  const home=teamById(m.homeTeamId),away=teamById(m.awayTeamId);if(!home||!away)return false;
+  nextHome=Math.max(0,+nextHome||0);nextAway=Math.max(0,+nextAway||0);
+  const ko=isKnockoutMatch(m),oldWinner=matchWinner(m),newWinner=matchWinner({...m,homeScore:nextHome,awayScore:nextAway});
+  if(ko&&nextHome===nextAway&&!newWinner){toast('La correzione crea un pareggio senza vincitore: usa Tabellino manuale e indica anche i rigori',4600);return false;}
+  const generatedPlayoffs=m.stage==='group'&&knockoutMatches().length>0;
+  const winnerChanged=ko&&oldWinner!==newWinner,roundSize=+m.koSize||2;
+  const downstream=winnerChanged&&m.stage!=='bronze'&&roundSize>2&&knockoutMatches().some(x=>x.id!==m.id&&(x.stage==='bronze'||(+x.koSize||2)<roundSize));
+  const consequence=generatedPlayoffs?'\n\nLa fase finale già generata verrà ricreata in base alla nuova classifica. I suoi risultati attuali saranno rimossi.':downstream?'\n\nIl vincitore cambia: i turni successivi già generati verranno ricreati. I loro risultati attuali saranno rimossi.':'';
+  if(!confirm(`${prompt}\n\nRisultato: ${m.homeScore??0}-${m.awayScore??0} → ${nextHome}-${nextAway}.${consequence}`))return false;
+  createSnapshot(snapshotLabel);
+  if(generatedPlayoffs)removeAllKnockout();
+  else if(winnerChanged&&m.stage!=='bronze'&&roundSize>2)removeDownstreamKnockout(roundSize);
+  mutate(nextHome,nextAway);save({matchId:m.id});syncKnockout(false);playRefFeedback('event');renderRefereeMode(m.id);toast(successLabel,3200);return true;
+}
+function addPlayedOwnGoal(m,teamId){
+  const team=teamById(teamId);ensureReferee(m);
+  const forHome=teamId===m.homeTeamId,forAway=teamId===m.awayTeamId;if(!team||(!forHome&&!forAway))return false;
+  const nextHome=(+m.homeScore||0)+(forHome?1:0),nextAway=(+m.awayScore||0)+(forAway?1:0);
+  return applyPlayedScoreCorrection(m,nextHome,nextAway,{
+    prompt:`Aggiungere un’autorete a favore di ${team.name}?`,
+    snapshotLabel:`Prima di aggiungere un’autorete a favore di ${team.name}`,
+    successLabel:'Autorete aggiunta e classifica aggiornata',
+    mutate:(homeScore,awayScore)=>{m.homeScore=homeScore;m.awayScore=awayScore;m.events.push({id:uid('ev'),type:'teamgoal',teamId,playerId:null,minuteLabel:'FT',createdAt:Date.now()});}
+  });
+}
 function addRefEvent(matchId,type,teamId,playerId=null){
   const m=state.matches.find(x=>x.id===matchId);if(!m)return;
+  if(m.status==='played'){if(type!=='teamgoal')return toast('A partita terminata puoi correggere soltanto le autoreti');return addPlayedOwnGoal(m,teamId);}
   if(['yellow','red'].includes(type)&&!state.settings.cardsEnabled)return toast('I cartellini sono disattivati dal gestore');
   ensureReferee(m);if(m.homeScore==null)m.homeScore=0;if(m.awayScore==null)m.awayScore=0;if(m.status==='scheduled')m.status='live';
   const e={id:uid('ev'),type,teamId,playerId,minuteLabel:refMinuteLabel(m),createdAt:Date.now()};
@@ -2434,6 +2464,17 @@ function addRefEvent(matchId,type,teamId,playerId=null){
 function undoRefEvent(matchId,eventId){
   const m=state.matches.find(x=>x.id===matchId);if(!m)return;const i=(m.events||[]).findIndex(e=>e.id===eventId);if(i<0)return;
   const e=m.events[i],st=e.playerId?(m.stats||[]).find(x=>x.playerId===e.playerId):null;
+  if(m.status==='played'){
+    if(e.type!=='teamgoal')return toast('A partita terminata puoi correggere soltanto le autoreti');
+    const team=teamById(e.teamId),forHome=e.teamId===m.homeTeamId,forAway=e.teamId===m.awayTeamId;if(!team||(!forHome&&!forAway))return toast('Evento non correggibile');
+    const nextHome=Math.max(0,(+m.homeScore||0)-(forHome?1:0)),nextAway=Math.max(0,(+m.awayScore||0)-(forAway?1:0));
+    return applyPlayedScoreCorrection(m,nextHome,nextAway,{
+      prompt:`Rimuovere il gol squadra / autorete a favore di ${team.name}?`,
+      snapshotLabel:`Prima di rimuovere un’autorete a favore di ${team.name}`,
+      successLabel:'Autorete rimossa e classifica aggiornata',
+      mutate:(homeScore,awayScore)=>{m.homeScore=homeScore;m.awayScore=awayScore;m.events.splice(i,1);}
+    });
+  }
   if(e.type==='goal'||e.type==='teamgoal'){if(e.teamId===m.homeTeamId)m.homeScore=Math.max(0,(+m.homeScore||0)-1);else m.awayScore=Math.max(0,(+m.awayScore||0)-1);if(e.type==='goal'&&st)st.goals=Math.max(0,(st.goals||0)-1);}
   if(e.type==='assist'&&st)st.assists=Math.max(0,(st.assists||0)-1);
   if(e.type==='foul'&&st)st.fouls=Math.max(0,(st.fouls||0)-1);
@@ -2448,9 +2489,10 @@ function setMatchMvp(m,playerId){
   if(m.mvpPlayerId)matchStat(m,m.mvpPlayerId).mvp=true;
 }
 function refereeRosterHtml(m,team,readOnly=false){
-  const dis=readOnly?'disabled':'';
+  const canCorrectPlayed=readOnly&&!['viewer','referee'].includes(liveRole),playerDis=readOnly?'disabled':'',teamGoalDis=readOnly&&!canCorrectPlayed?'disabled':'';
+  const teamGoalText=readOnly?`+ Autorete a favore di ${esc(team.name)}`:'+ Gol squadra / autorete',teamAction=readOnly?`autorete a favore di ${esc(team.name)}`:`gol squadra o autorete per ${esc(team.name)}`;
   const cards=state.settings.cardsEnabled!==false;
-  return `<div class="ref-team" style="--team-color:${safeColor(team.color,'#d7f176')}"><div class="ref-team-title"><span>${esc(team.name)}</span><strong>${team.id===m.homeTeamId?(m.homeScore??0):(m.awayScore??0)}</strong></div><button class="ghost full ref-team-goal" data-ref-event="teamgoal" data-team="${team.id}" data-action-label="gol squadra ${esc(team.name)}" aria-label="Gol squadra o autorete per ${esc(team.name)}" ${dis}>+ Gol squadra / autorete</button><div class="ref-roster">${teamPlayers(team.id).map(p=>`<div class="ref-player ${cards?'':'cards-off'}"><div class="grow"><strong>${esc(p.name)}</strong><span>${roleLabel(p.role)}</span></div><button title="Gol · ${esc(p.name)}" aria-label="Gol di ${esc(p.name)}" data-action-label="gol di ${esc(p.name)}" data-ref-event="goal" data-team="${team.id}" data-player="${p.id}" ${dis}>⚽</button><button title="Assist · ${esc(p.name)}" aria-label="Assist di ${esc(p.name)}" data-action-label="assist di ${esc(p.name)}" data-ref-event="assist" data-team="${team.id}" data-player="${p.id}" ${dis}>🎯</button><button title="Fallo · ${esc(p.name)}" aria-label="Fallo di ${esc(p.name)}" data-action-label="fallo di ${esc(p.name)}" data-ref-event="foul" data-team="${team.id}" data-player="${p.id}" ${dis}>⚠️</button>${cards?`<button title="Giallo · ${esc(p.name)}" aria-label="Ammonizione a ${esc(p.name)}" data-action-label="giallo a ${esc(p.name)}" data-ref-event="yellow" data-team="${team.id}" data-player="${p.id}" ${dis}>🟨</button><button title="Rosso · ${esc(p.name)}" aria-label="Espulsione di ${esc(p.name)}" data-action-label="rosso a ${esc(p.name)}" data-ref-event="red" data-team="${team.id}" data-player="${p.id}" ${dis}>🟥</button>`:''}</div>`).join('')}</div></div>`;
+  return `<div class="ref-team" style="--team-color:${safeColor(team.color,'#d7f176')}"><div class="ref-team-title"><span>${esc(team.name)}</span><strong>${team.id===m.homeTeamId?(m.homeScore??0):(m.awayScore??0)}</strong></div><button class="ghost full ref-team-goal" data-ref-event="teamgoal" data-team="${team.id}" data-action-label="${teamAction}" aria-label="${teamAction}" ${teamGoalDis}>${teamGoalText}</button><div class="ref-roster">${teamPlayers(team.id).map(p=>`<div class="ref-player ${cards?'':'cards-off'}"><div class="grow"><strong>${esc(p.name)}</strong><span>${roleLabel(p.role)}</span></div><button title="Gol · ${esc(p.name)}" aria-label="Gol di ${esc(p.name)}" data-action-label="gol di ${esc(p.name)}" data-ref-event="goal" data-team="${team.id}" data-player="${p.id}" ${playerDis}>⚽</button><button title="Assist · ${esc(p.name)}" aria-label="Assist di ${esc(p.name)}" data-action-label="assist di ${esc(p.name)}" data-ref-event="assist" data-team="${team.id}" data-player="${p.id}" ${playerDis}>🎯</button><button title="Fallo · ${esc(p.name)}" aria-label="Fallo di ${esc(p.name)}" data-action-label="fallo di ${esc(p.name)}" data-ref-event="foul" data-team="${team.id}" data-player="${p.id}" ${playerDis}>⚠️</button>${cards?`<button title="Giallo · ${esc(p.name)}" aria-label="Ammonizione a ${esc(p.name)}" data-action-label="giallo a ${esc(p.name)}" data-ref-event="yellow" data-team="${team.id}" data-player="${p.id}" ${playerDis}>🟨</button><button title="Rosso · ${esc(p.name)}" aria-label="Espulsione di ${esc(p.name)}" data-action-label="rosso a ${esc(p.name)}" data-ref-event="red" data-team="${team.id}" data-player="${p.id}" ${playerDis}>🟥</button>`:''}</div>`).join('')}</div></div>`;
 }
 function bindRefTeamSwitcher(){
   const layout=modal.querySelector('[data-ref-team-layout]'),buttons=[...modal.querySelectorAll('[data-ref-team-jump]')],panels=[...modal.querySelectorAll('[data-ref-team-panel]')];
@@ -2464,7 +2506,7 @@ function bindRefTeamSwitcher(){
 function refereeEventLog(m,readOnly=false){
   const events=[...(m.events||[])].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   if(!events.length)return '<div class="empty compact">Nessun evento registrato.</div>';
-  return `<div class="ref-events">${events.map((e,i)=>{const p=playerById(e.playerId),t=teamById(e.teamId);return `<div class="ref-event ${i===0?'latest':''}"><span class="ref-minute">${esc(e.minuteLabel||'—')}</span><span class="grow"><strong>${eventLabel(e)}</strong> ${p?esc(p.name):''}<small>${esc(t?.name||'')}</small></span><button class="ghost" data-undo-event="${e.id}" data-action-label="annulla ${eventLabel(e)}" aria-label="Annulla evento ${eventLabel(e)}" ${readOnly?'disabled':''}>↶</button></div>`}).join('')}</div>`;
+  return `<div class="ref-events">${events.map((e,i)=>{const p=playerById(e.playerId),t=teamById(e.teamId),canUndo=!readOnly||(e.type==='teamgoal'&&!['viewer','referee'].includes(liveRole));return `<div class="ref-event ${i===0?'latest':''}"><span class="ref-minute">${esc(e.minuteLabel||'—')}</span><span class="grow"><strong>${eventLabel(e)}</strong> ${p?esc(p.name):''}<small>${esc(t?.name||'')}</small></span><button class="ghost" data-undo-event="${e.id}" data-action-label="annulla ${eventLabel(e)}" aria-label="Annulla evento ${eventLabel(e)}" ${canUndo?'':'disabled'}>↶</button></div>`}).join('')}</div>`;
 }
 function toggleRefClock(m){
   const r=ensureReferee(m); if(!['first','halftime','second'].includes(r.phase))return;
@@ -2493,7 +2535,7 @@ function resetRefereeMatch(id){
 function renderRefereeMode(id){
   stopRefereeTicker();
   const m=state.matches.find(x=>x.id===id);if(!m)return closeModal();const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId);if(!h||!a)return toast('Squadre non disponibili');
-  const r=ensureReferee(m),ko=isKnockoutMatch(m),readOnly=m.status==='played',allPlayers=[...teamPlayers(h.id),...teamPlayers(a.id)];
+  const r=ensureReferee(m),ko=isKnockoutMatch(m),readOnly=m.status==='played',canCorrectOwnGoal=readOnly&&!['viewer','referee'].includes(liveRole),allPlayers=[...teamPlayers(h.id),...teamPlayers(a.id)];
   if(![h.id,a.id].includes(activeRefereeTeamId))activeRefereeTeamId=h.id;
   activeRefereeMatchId=id;requestRefereeWakeLock();document.body.classList.add('modal-open');modalBackdrop.setAttribute('aria-hidden','false');
   modalBackdrop.classList.add('referee-mode');modal.classList.add('referee-modal');modalBackdrop.classList.remove('hidden');
@@ -2506,11 +2548,12 @@ function renderRefereeMode(id){
     <div class="ref-head"><button class="ghost" id="exitReferee">← Esci</button><div class="ref-stage">${esc(stageLabel(m))}</div><div class="ref-head-actions"><button class="ghost icon-btn" id="refHelp" title="Guida arbitro" aria-label="Apri guida arbitro">?</button>${fullscreenControl}<span class="phase-badge ${ko?'ko':''}">${esc(phaseLabel(r.phase))}</span></div></div>
     <div class="ref-control-deck">
       <div class="ref-scoreboard"><div>${esc(h.name)}</div><strong>${refScore(m)}</strong><div>${esc(a.name)}</div></div>
-      <div class="ref-live-strip">${!readOnly?'<span class="live-dot"></span><span>Referto salvato automaticamente</span>':'<span>Referto definitivo · sola lettura</span>'}</div>
+      <div class="ref-live-strip">${!readOnly?'<span class="live-dot"></span><span>Referto salvato automaticamente</span>':canCorrectOwnGoal?'<span>Referto definitivo · correzione autoreti disponibile</span>':'<span>Referto definitivo · sola lettura</span>'}</div>
       <div class="ref-timer"><span id="refClock">00:00</span><small id="refPhaseText">${esc(phaseLabel(r.phase))}${target?` · obiettivo ${targetLabel}`:''}</small><div class="ref-progress" ${target?'':'hidden'}><i id="refProgress"></i></div></div>
       ${!readOnly?`<div class="ref-guard-bar ${state.settings.touchGuard?'':'off'}"><span>${state.settings.touchGuard?'🔒':'⚠'}</span><span id="refGuardStatus">${state.settings.touchGuard?'Doppio tocco per confermare':'Comandi a tocco singolo'}</span><button class="ghost ref-guard-toggle" id="toggleTouchGuard">${state.settings.touchGuard?'Disattiva':'Attiva'}</button></div>`:''}
       <div class="ref-phase-actions">${phaseButtons}${['first','halftime','second'].includes(r.phase)?`<button class="ghost" id="toggleRefClock" data-action-label="${r.phaseStartedAt?'metti in pausa il timer':'riprendi il timer'}">${r.phaseStartedAt?'⏸ Pausa timer':'▶ Riprendi timer'}</button>`:''}</div>
     </div>
+    ${canCorrectOwnGoal?'<div class="notice info ref-correction-note"><span>↳</span><span>Per aggiungere un’autorete, usa il pulsante della squadra che riceve il gol. Il risultato e la classifica verranno aggiornati.</span></div>':''}
     <div class="ref-team-switch" role="tablist" aria-label="Scegli squadra"><button class="${activeRefereeTeamId===h.id?'active':''}" data-ref-team-jump="${h.id}" role="tab" aria-selected="${activeRefereeTeamId===h.id}">${esc(h.name)}</button><button class="${activeRefereeTeamId===a.id?'active':''}" data-ref-team-jump="${a.id}" role="tab" aria-selected="${activeRefereeTeamId===a.id}">${esc(a.name)}</button></div>
     <div class="ref-layout" data-ref-team-layout><div class="ref-team-panel" data-ref-team-panel="${h.id}">${refereeRosterHtml(m,h,readOnly)}</div><div class="ref-team-panel" data-ref-team-panel="${a.id}">${refereeRosterHtml(m,a,readOnly)}</div></div>
     <div class="ref-bottom-grid"><div class="card ref-log-card"><div class="section-head"><h3>Registro eventi</h3><span class="badge">${(m.events||[]).length}</span></div>${refereeEventLog(m,readOnly)}</div><div class="card"><h3>Chiusura partita</h3><div class="field"><label>MVP</label><select id="refMvp" ${readOnly?'disabled':''}><option value="">— Nessuno —</option>${allPlayers.map(p=>`<option value="${p.id}" ${m.mvpPlayerId===p.id?'selected':''}>${esc(p.name)} · ${esc(teamById(p.teamId)?.name||'')}</option>`).join('')}</select></div>${penHtml}<p class="note">La classifica si aggiorna soltanto dopo la chiusura definitiva.</p><button class="primary full" id="finishMatch" data-action-label="termina definitivamente la partita" ${m.status==='played'||r.phase!=='ended'?'disabled':''}>✓ Termina e aggiorna classifica</button><button class="ghost full" style="margin-top:8px" id="manualSheet">Tabellino manuale</button>${canReset?'<button class="danger-outline full" style="margin-top:8px" id="resetRefereeMatch">↺ Azzera partita</button>':''}</div></div>`;
@@ -2522,8 +2565,8 @@ function renderRefereeMode(id){
   document.getElementById('refIOSHelp')?.addEventListener('click',openRefereeQuickGuide);
   document.getElementById('toggleTouchGuard')?.addEventListener('click',()=>{if(liveRole==='referee')return toast('La protezione tocchi è impostata dal gestore');if(state.settings.touchGuard&&!confirm('Disattivare la protezione? Ogni comando verrà registrato con un solo tocco.'))return;state.settings.touchGuard=!state.settings.touchGuard;save();renderRefereeMode(m.id);toast(state.settings.touchGuard?'Protezione tocchi attivata':'Protezione tocchi disattivata');});
   modal.querySelectorAll('[data-ref-phase]').forEach(b=>b.onclick=()=>guardedRefAction(b,`phase-${b.dataset.refPhase}`,b.dataset.actionLabel,()=>setRefPhase(m,b.dataset.refPhase)));
-  modal.querySelectorAll('[data-ref-event]').forEach(b=>b.onclick=()=>{activeRefereeTeamId=b.dataset.team;guardedRefAction(b,`event-${b.dataset.refEvent}-${b.dataset.team}-${b.dataset.player||''}`,b.dataset.actionLabel,()=>addRefEvent(m.id,b.dataset.refEvent,b.dataset.team,b.dataset.player||null));});
-  modal.querySelectorAll('[data-undo-event]').forEach(b=>b.onclick=()=>guardedRefAction(b,`undo-${b.dataset.undoEvent}`,b.dataset.actionLabel,()=>undoRefEvent(m.id,b.dataset.undoEvent)));
+  modal.querySelectorAll('[data-ref-event]').forEach(b=>b.onclick=()=>{activeRefereeTeamId=b.dataset.team;const action=()=>addRefEvent(m.id,b.dataset.refEvent,b.dataset.team,b.dataset.player||null);if(readOnly)action();else guardedRefAction(b,`event-${b.dataset.refEvent}-${b.dataset.team}-${b.dataset.player||''}`,b.dataset.actionLabel,action);});
+  modal.querySelectorAll('[data-undo-event]').forEach(b=>b.onclick=()=>{const action=()=>undoRefEvent(m.id,b.dataset.undoEvent);if(readOnly)action();else guardedRefAction(b,`undo-${b.dataset.undoEvent}`,b.dataset.actionLabel,action);});
   document.getElementById('prepareEnd')?.addEventListener('click',e=>guardedRefAction(e.currentTarget,'phase-ended',e.currentTarget.dataset.actionLabel,()=>setRefPhase(m,'ended')));
   document.getElementById('resumeSecond')?.addEventListener('click',e=>guardedRefAction(e.currentTarget,'phase-resume-second',e.currentTarget.dataset.actionLabel,()=>setRefPhase(m,'second')));
   document.getElementById('toggleRefClock')?.addEventListener('click',e=>guardedRefAction(e.currentTarget,'clock-toggle',e.currentTarget.dataset.actionLabel,()=>toggleRefClock(m)));
