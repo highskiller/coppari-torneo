@@ -1,7 +1,7 @@
 {
-  "name": "Copparì — Cabina di regia",
+  "name": "Copparì — Torneo notturno annuale",
   "short_name": "Copparì",
-  "description": "Gestione compatta del torneo di calcetto Copparì.",
+  "description": "Pagina pubblica e cabina di regia del torneo notturno annuale Copparì.",
   "lang": "it",
   "start_url": "./",
   "scope": "./",

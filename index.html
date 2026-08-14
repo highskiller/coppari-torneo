@@ -407,6 +407,13 @@ button:active:not(:disabled) { transform:translateY(1px) scale(.985); }
 .live-link-row input { flex:1; min-width:0; border:1px solid var(--line); border-radius:10px; padding:9px 10px; background:white; color:var(--ink); font-size:12px; }
 .spectator-hero { overflow:hidden; position:relative; background:linear-gradient(135deg,#13251a,#2d6547); color:white; border:0; }
 .spectator-hero .note,.spectator-hero .kicker { color:#c8d6cc; }
+.edition-story { display:grid; grid-template-columns:minmax(220px,.9fr) minmax(0,1.1fr); gap:0; overflow:hidden; padding:0; margin-top:10px; }
+.edition-story-media { min-height:240px; background:#13251a; }
+.edition-story-media img { display:block; width:100%; height:100%; min-height:240px; object-fit:cover; }
+.edition-story-copy { display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding:24px; }
+.edition-story-copy h3 { margin:5px 0 8px; font-size:clamp(21px,3vw,30px); }
+.edition-story-copy p { margin:0 0 16px; }
+.edition-story-copy a { text-decoration:none; }
 .ref-legend { margin-top:16px; padding:14px 16px; }
 .ref-legend-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
 .ref-legend-head h3 { margin:0; }
@@ -586,6 +593,9 @@ th,td { padding:9px 11px; }
   .collective-review-field { grid-template-columns:72px minmax(0,1fr); }
   .collective-nav button { min-height:40px; padding:8px 10px; }
   .public-match-rosters { grid-template-columns:1fr; }
+  .edition-story { grid-template-columns:1fr; }
+  .edition-story-media,.edition-story-media img { min-height:210px; }
+  .edition-story-copy { padding:18px; }
   .modal-backdrop { padding:0; align-items:end; height:100vh; height:100dvh; overscroll-behavior:none; }
   .modal:not(.referee-modal) { max-height:94vh; border-radius:22px 22px 0 0; padding:18px 15px calc(18px + env(safe-area-inset-bottom)); }
   .referee-modal { min-height:100vh; min-height:100dvh; max-height:100vh; max-height:100dvh; padding:calc(12px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
@@ -980,7 +990,7 @@ body.spectator-mode .topbar-actions > .save-pill:not(.live-pill) { display:none;
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '3.9.3';
+const APP_VERSION = '4.0.0';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
@@ -991,6 +1001,8 @@ const PLAYER_ARCHIVE_KEY = 'coppari.v3.player-profiles';
 const WAKE_PREF_KEY = 'coppari.v3.keep-screen-awake';
 const RATING_NICKNAME_KEY = 'coppari.v3.collective-ratings.nickname';
 const PUBLIC_APP_URL = 'https://highskiller.github.io/coppari-torneo/';
+const PUBLIC_LIVE_ROOM_ID = 'coppari-sXVl6BoriBjt7B5zq1X0NElh2QHZR1lE';
+const COPPARI_ANTHEM_URL = 'https://youtu.be/92NBFUtn6Mw?is=w89plxciWFp8P5oT';
 const SUPABASE_URL = 'https://lndqbduvyzjehkeetywt.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_VVYN8s9nVaZQR_jiC5s3GA_p8LKZZbk';
 const SUPABASE_JS_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js';
@@ -1177,7 +1189,7 @@ function totalGamesExpected(settings=state.settings){
   return groupGamesExpected(teams,settings)+knockoutGamesExpected(teams,settings);
 }
 function groupComplete(){ const expected=groupGamesExpected(); return expected>0 && groupMatches().length===expected && playedMatches('group').length===expected; }
-function formatMode(settings=state.settings){ return settings.scheduleMode==='double'?'andata + ritorno':'solo andata'; }
+function formatMode(settings=state.settings){ return settings.scheduleMode==='double'?'due incontri per coppia':'un incontro per coppia'; }
 function knockoutRoundName(size){
   if(size===2) return 'Finalissima';
   if(size===4) return 'Semifinali';
@@ -1202,7 +1214,7 @@ function knockoutMatchLabel(size,slot){
 function isKnockoutMatch(m){ return (m.stage||'group')!=='group'; }
 function playoffText(settings=state.settings){
   const size=knockoutBracketSize(settings.teamCount,settings);
-  if(!size) return 'nessun playoff';
+  if(!size) return 'nessuna finale';
   if(size===2) return 'finale tra 1ª e 2ª';
   return `${knockoutRoundName(size).toLowerCase()} per le prime ${size} + finale${settings.bronzeFinal?' + 3° posto':''}`;
 }
@@ -1211,7 +1223,7 @@ function stageLabel(m){
   if(m.stage==='prelim') return 'Turno preliminare';
   if(isKnockoutMatch(m)){
     const size=m.koSize || ({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage]);
-    return size?knockoutMatchLabel(size,m.slot):'Fase finale';
+    return size?knockoutMatchLabel(size,m.slot):'Finalissima';
   }
   const leg = legsCount()===2 ? (m.leg===2?' · Ritorno':' · Andata') : '';
   const slot=groupMatches().findIndex(x=>x.id===m.id)+1;
@@ -1449,10 +1461,22 @@ function parseLiveJoinFromLocation(){
   const hash=new URLSearchParams(location.hash.replace(/^#/,'')),managerSecret=cleanLiveSecret(hash.get('manage')),refereeSecret=cleanLiveSecret(hash.get('referee'));
   return {roomId,role:managerSecret?'manager':refereeSecret?'referee':'viewer',secret:managerSecret||refereeSecret};
 }
+function isCanonicalPublicLocation(){
+  if(isLocalFileMode())return false;
+  const canonical=new URL(PUBLIC_APP_URL),path=value=>`${value.replace(/\/+$/,'')}/`;
+  return location.origin===canonical.origin&&path(location.pathname)===path(canonical.pathname);
+}
+function canonicalPublicJoinFromLocation(){
+  if(!isCanonicalPublicLocation()||new URLSearchParams(location.search).has('live'))return null;
+  const hash=new URLSearchParams(location.hash.replace(/^#/,''));
+  if(hash.has('manage')||hash.has('referee'))return null;
+  return {roomId:PUBLIC_LIVE_ROOM_ID,role:'viewer',secret:null};
+}
 function liveLinks(){
   if(!liveRoomId)return {viewer:'',manager:'',referee:''};
   const base=new URL(isLocalFileMode()?PUBLIC_APP_URL:location.origin+location.pathname);base.searchParams.set('live',liveRoomId);
-  return {viewer:`${base.toString()}#view`,manager:liveSecret?`${base.toString()}#manage=${encodeURIComponent(liveSecret)}`:'',referee:liveRefereeSecret?`${base.toString()}#referee=${encodeURIComponent(liveRefereeSecret)}`:''};
+  const viewer=liveRoomId===PUBLIC_LIVE_ROOM_ID?PUBLIC_APP_URL:`${base.toString()}#view`;
+  return {viewer,manager:liveSecret?`${base.toString()}#manage=${encodeURIComponent(liveSecret)}`:'',referee:liveRefereeSecret?`${base.toString()}#referee=${encodeURIComponent(liveRefereeSecret)}`:''};
 }
 function sharedStateSnapshot(){return JSON.parse(JSON.stringify(state));}
 function loadLiveLibrary(){
@@ -1683,12 +1707,15 @@ function maybeShowPublicGuide(){
   const key=publicGuideSeenKey();if(publicGuidePromptedKey===key||publicGuideWasSeen(key))return;
   openPublicGuide(true);publicGuidePromptedKey=key;rememberPublicGuide(key);
 }
+function editionStoryHtml(){
+  return `<section class="card edition-story" aria-label="Edizione 2026"><div class="edition-story-media"><img src="./assets/coppari-edizione-2026.jpg" alt="Foto di gruppo dell'edizione 2026 della Copparì" width="1536" height="1152" loading="lazy"></div><div class="edition-story-copy"><div class="kicker">Albo d'oro · Edizione 2026</div><h3>La notte della Copparì</h3><p class="note">Una sola serata, una classifica costruita partita dopo partita e la finalissima tra la prima e la seconda.</p><a class="secondary" href="${esc(COPPARI_ANTHEM_URL)}" target="_blank" rel="noopener noreferrer">▶ Ascolta l'inno della Copparì</a></div></section>`;
+}
 function renderSpectatorHome(){
   setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Diretta pubblica · pagelle degli amici');
   if(!state.settings.configured){view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="spectator-hero-main"><div class="spectator-hero-copy"><div class="kicker">Copparì Live</div><h2>Torneo in preparazione</h2><p class="note">Questa pagina si aggiorna automaticamente appena il gestore completa la configurazione.</p></div><button class="ghost spectator-guide-btn" data-public-guide>? Come funziona</button></div></div>`;bindPublicGuideButtons();return;}
-  const played=playedMatches().length,total=Math.max(state.matches.length,totalGamesExpected()),goals=playedMatches().reduce((sum,m)=>sum+(+m.homeScore||0)+(+m.awayScore||0),0),liveMatch=state.matches.find(match=>match.status==='live'),next=liveMatch||nextScheduledMatch(),table=standings();
+  const played=playedMatches().length,total=Math.max(state.matches.length,totalGamesExpected()),goals=playedMatches().reduce((sum,m)=>sum+(+m.homeScore||0)+(+m.awayScore||0),0),liveMatch=state.matches.find(match=>match.status==='live'),next=liveMatch||nextScheduledMatch(),table=displayStandings();
   const priority=next?`<div class="card next-match-card public-priority ${next.status==='live'?'is-live':''}" style="margin-top:10px"><div class="next-match-stage">${next.status==='live'?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${esc(stageLabel(next))}</div><div class="next-match-teams"><div class="next-match-team">${esc(teamById(next.homeTeamId)?.name||'?')}</div><div class="next-match-vs">${next.status==='live'?`<strong style="font-size:24px">${refScore(next)}</strong><small style="display:block;margin-top:3px">${esc(phaseLabel(publicMatchPhase(next)))}</small>`:'VS'}</div><div class="next-match-team">${esc(teamById(next.awayTeamId)?.name||'?')}</div></div><div class="button-row center"><button class="${next.status==='live'?'primary':'ghost'}" data-public-match="${next.id}">${next.status==='live'?'Apri la diretta':'Dettagli partita'}</button></div></div>`:'';
-  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="spectator-hero-main"><div class="spectator-hero-copy"><div class="kicker">${esc(state.settings.edition)} · Copparì Live</div><h2>${esc(state.settings.name)}</h2><p class="note">Partite, classifica e premi in un’unica diretta.</p>${state.settings.venue?`<div class="inline-meta"><span class="status-chip">⌖ ${esc(state.settings.venue)}</span></div>`:''}</div><button class="ghost spectator-guide-btn" data-public-guide>? Come funziona</button></div></div>${priority}<div class="grid cols-4 metric-grid" style="margin-top:10px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',liveMatch?'In campo':next?'In arrivo':'Concluso')}</div><div class="grid cols-2 public-section-grid"><div class="card"><div class="section-head"><h3>Classifica live</h3><button class="ghost" data-go-standings>Completa</button></div>${table.length?`<div class="leaderboard">${table.slice(0,6).map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}</div></div>`;
+  view.innerHTML=`${spectatorLiveBarHtml()}<div class="card spectator-hero"><div class="spectator-hero-main"><div class="spectator-hero-copy"><div class="kicker">${esc(state.settings.edition)} · Copparì</div><h2>${esc(state.settings.name)}</h2><p class="note">Il torneo notturno annuale: una serata, tutte le partite e la finalissima tra le prime due.</p>${state.settings.venue?`<div class="inline-meta"><span class="status-chip">⌖ ${esc(state.settings.venue)}</span></div>`:''}</div><button class="ghost spectator-guide-btn" data-public-guide>? Come funziona</button></div></div>${priority}<div class="grid cols-4 metric-grid" style="margin-top:10px">${metric('Squadre',state.teams.length)}${metric('Partite',`${played}/${total}`,'concluse')}${metric('Gol',goals,'registrati')}${metric('Stato',liveMatch?'In campo':next?'In arrivo':'Concluso')}</div><div class="grid cols-2 public-section-grid"><div class="card"><div class="section-head"><h3>${awardsAreFinal()?'Classifica finale':'Classifica live'}</h3><button class="ghost" data-go-standings>Completa</button></div>${table.length?`<div class="leaderboard">${table.slice(0,6).map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">In attesa delle squadre</div>'}</div><div class="card"><h3>Finalissima</h3>${renderKnockoutSummary()}</div></div>${editionStoryHtml()}`;
   bindPublicGuideButtons();
   view.querySelectorAll('[data-public-match]').forEach(button=>button.onclick=()=>openPublicMatchDetails(button.dataset.publicMatch));
   view.querySelector('[data-go-standings]')?.addEventListener('click',()=>navigate('standings'));
@@ -1753,8 +1780,9 @@ function screenWakeControlHtml(){
 }
 function liveModalHtml(){
   if(!liveRole)return `<div data-live-modal><div class="kicker">Condivisione senza account</div><h2 style="margin-top:6px">Avvia la diretta cloud</h2><p class="modal-subtitle">Il torneo viene salvato su Supabase e resta raggiungibile anche quando questo telefono è chiuso.</p><div class="notice info"><span>●</span><span>Verranno creati tre accessi: pubblico con contributi limitati alle Copparigelle, arbitro limitato a partite e referti, gestore con controllo completo.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="startLiveNow">Avvia e crea i link</button></div></div>`;
-  const links=liveLinks(),status=liveRole==='host'?(liveRealtimeConnected?`Diretta attiva · <strong id="liveConnectedCount">${hostConnectionCount()}</strong> collegati`:'Diretta cloud attiva'):liveRole==='manager'?'Collegato come gestore':liveRole==='referee'?'Collegato come arbitro':'Collegato come spettatore';
-  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione persistente tramite Supabase, con aggiornamento automatico di riserva.</p>${liveAccessHtml(links)}${liveRole==='referee'?screenWakeControlHtml():''}<div class="notice info" style="margin-top:14px"><span>☁</span><span>I dati restano disponibili nel cloud. Il telefono che ha creato la diretta può essere chiuso; un altro gestore autorizzato può continuare il torneo.</span></div>${liveRole==='host'?'<div class="notice warn" style="margin-top:12px"><span>↩</span><span>Se questa sessione è bloccata, “Scollega questo telefono” rimuove soltanto il collegamento locale e conserva tutti i dati del torneo.</span></div>':''}<div class="modal-actions">${liveRole==='host'?'<button class="ghost" id="leaveLiveLocal">Scollega questo telefono</button><button class="danger-outline" id="stopLiveNow">Termina diretta</button>':''}<button class="primary" data-close>Chiudi</button></div></div>`;
+  const links=liveLinks(),status=liveEnded?'Edizione conclusa':liveRole==='host'?(liveRealtimeConnected?`Diretta attiva · <strong id="liveConnectedCount">${hostConnectionCount()}</strong> collegati`:'Diretta cloud attiva'):liveRole==='manager'?'Collegato come gestore':liveRole==='referee'?'Collegato come arbitro':'Collegato come spettatore';
+  const managerActions=['host','manager'].includes(liveRole)?(liveEnded?'<button class="primary" id="startNextEdition">Prepara nuova edizione</button>':'<button class="danger-outline" id="stopLiveNow">Chiudi e pubblica edizione</button>'):'';
+  return `<div data-live-modal><div class="kicker">Copparì Live</div><h2 style="margin-top:6px">${status}</h2><p class="modal-subtitle">Sincronizzazione persistente tramite Supabase, con aggiornamento automatico di riserva.</p>${liveAccessHtml(links)}${liveRole==='referee'?screenWakeControlHtml():''}<div class="notice info" style="margin-top:14px"><span>☁</span><span>Il link pubblico stabile è <strong>${esc(PUBLIC_APP_URL)}</strong>. A edizione chiusa conserva i risultati in sola lettura; dalla prossima edizione si aggiornerà tramite il link privato del gestore.</span></div>${liveRole==='host'?'<div class="notice warn" style="margin-top:12px"><span>↩</span><span>“Scollega questo telefono” rimuove soltanto il collegamento locale e conserva tutti i dati del torneo.</span></div>':''}<div class="modal-actions">${liveRole==='host'?'<button class="ghost" id="leaveLiveLocal">Scollega questo telefono</button>':''}${managerActions}<button class="primary" data-close>Chiudi</button></div></div>`;
 }
 function bindLiveModalActions(){
   modal.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>closeModal());
@@ -1765,7 +1793,8 @@ function bindLiveModalActions(){
   document.getElementById('copyRefereeLink')?.addEventListener('click',()=>copyLiveLink(liveLinks().referee,'Link arbitro copiato'));
   document.getElementById('shareViewerLink')?.addEventListener('click',()=>shareLiveViewerLink());
   document.getElementById('leaveLiveLocal')?.addEventListener('click',leaveLiveHostLocally);
-  document.getElementById('stopLiveNow')?.addEventListener('click',stopLiveHost);
+  document.getElementById('stopLiveNow')?.addEventListener('click',closeLiveEdition);
+  document.getElementById('startNextEdition')?.addEventListener('click',startNextEdition);
 }
 function openLiveShareModal(){openModal(liveModalHtml());bindLiveModalActions();}
 async function copyLiveLink(link,message){try{await navigator.clipboard.writeText(link);toast(message);}catch{const input=document.createElement('textarea');input.value=link;input.style.position='fixed';input.style.opacity='0';document.body.appendChild(input);input.select();document.execCommand('copy');input.remove();toast(message);}}
@@ -1777,15 +1806,27 @@ function leaveLiveHostLocally(){
   if(liveRole!=='host'||!confirm('Scollegare soltanto questo telefono? La stanza cloud, se esiste, non verrà terminata. Partecipanti, squadre, calendario e risultati resteranno salvati su questo dispositivo.'))return;
   clearLocalLiveSession('Telefono scollegato dalla vecchia sessione Live');
 }
-async function stopLiveHost(){
-  if(liveRole!=='host'||!confirm('Terminare la diretta? Tutti i dispositivi collegati perderanno la connessione.'))return;
-  try{const stopped=await liveRpc('coppari_live_stop',{p_room_id:liveRoomId,p_manager_secret:liveSecret});if(stopped!==true)throw new Error('LIVE_ROOM_NOT_FOUND');notifyLiveRefresh();liveEnded=true;clearLocalLiveSession('Diretta terminata: i dati finali restano nel cloud');}
-  catch(error){toast(`${liveErrorText(error)} Puoi usare “Scollega questo telefono” per uscire senza cancellare il torneo.`,7200);}
+async function closeLiveEdition(){
+  if(!['host','manager'].includes(liveRole)||liveEnded||!confirm('Chiudere e pubblicare questa edizione? I risultati resteranno sul link pubblico in sola lettura.'))return;
+  try{const stopped=await liveRpc('coppari_live_stop',{p_room_id:liveRoomId,p_manager_secret:liveSecret});if(stopped!==true)throw new Error('LIVE_ROOM_NOT_FOUND');notifyLiveRefresh();liveEnded=true;if(liveRole==='host')storageRemove(LIVE_CONFIG_KEY);closeModal(true);render();updateLiveStatusUI();toast('Edizione chiusa e pubblicata sul link pubblico',5200);}
+  catch(error){toast(liveErrorText(error),7200);}
+}
+function nextEditionState(){
+  const fresh=emptyState(),year=String(state.settings.edition||'').match(/\b(20\d{2})\b/),nextYear=year?String(+year[1]+1):String(new Date().getFullYear()+1);
+  fresh.settings={...fresh.settings,name:state.settings.name,edition:`Edizione ${nextYear}`,pointsWin:state.settings.pointsWin,pointsDraw:state.settings.pointsDraw,pointsLoss:state.settings.pointsLoss,targetPlayers:state.settings.targetPlayers,rosterSize:state.settings.rosterSize,scheduleMode:'single',tournamentFormat:'groups_ko',matchMinutes:state.settings.matchMinutes,halftimeMinutes:state.settings.halftimeMinutes,changeMinutes:state.settings.changeMinutes,playoffs:true,bronzeFinal:false,venue:state.settings.venue,organizer:state.settings.organizer,touchGuard:state.settings.touchGuard,cardsEnabled:state.settings.cardsEnabled,hapticFeedback:state.settings.hapticFeedback,soundFeedback:state.settings.soundFeedback,configured:false};
+  return fresh;
+}
+async function startNextEdition(){
+  if(!['host','manager'].includes(liveRole)||!liveEnded||!confirm('Preparare la nuova edizione? Quella appena conclusa resterà archiviata; la pagina pubblica mostrerà il nuovo torneo in preparazione.'))return;
+  try{const row=await liveRpc('coppari_live_start_edition',{p_room_id:liveRoomId,p_manager_secret:liveSecret,p_state:nextEditionState()});applyLiveRow(row,true);notifyLiveRefresh();scheduleLivePolling();connectLiveChannel({fetchState:false}).catch(()=>{});closeModal(true);render();toast('Nuova edizione pronta sullo stesso link pubblico',5200);}
+  catch(error){toast(liveErrorText(error),7200);}
 }
 function initLiveSharing(){
   const join=parseLiveJoinFromLocation();
   if(join){liveRole=join.role;liveRoomId=join.roomId;if(join.role==='manager')liveSecret=join.secret;if(join.role==='referee')liveRefereeSecret=join.secret;liveConnecting=true;liveHasState=false;connectToLiveHost();return true;}
   const host=readLiveHostConfig();if(host){liveRole='host';liveRoomId=host.roomId;liveSecret=host.secret;liveRefereeSecret=host.refereeSecret;startLiveHost({resume:true});}
+  const publicJoin=!host&&canonicalPublicJoinFromLocation();
+  if(publicJoin){liveRole='viewer';liveRoomId=publicJoin.roomId;liveConnecting=true;liveHasState=false;connectToLiveHost();return true;}
   return false;
 }
 
@@ -1816,7 +1857,7 @@ function setupPreviewValues(){
   const ko=knockoutGamesExpected(teams,settings);
   const games=group+ko;
   const totalMinutes=estimatedTournamentMinutes(settings);
-  const koText=!playoffs?'Nessun playoff':bracket===2?'Finale 1ª vs 2ª':`${knockoutRoundName(bracket)} (prime ${bracket}) + finale${bronze?' + 3° posto':''}`;
+  const koText=!playoffs?'Nessuna finale':bracket===2?'Finale 1ª vs 2ª':`${knockoutRoundName(bracket)} (prime ${bracket}) + finale${bronze?' + 3° posto':''}`;
   return {name,edition,venue,organizer,total,roster,mode,tournamentFormat,playoffs,bronze,startTime,periods,minutes,halftime,change,teams,sizes,group,ko,koText,games,totalMinutes,bracket,valid:compatibility.valid,compatibility};
 }
 function humanDuration(minutes){
@@ -1843,14 +1884,14 @@ function updateSetupPreview(){
     box.innerHTML=`<div class="card" style="border-color:#d6a23f;background:#fff8e8"><strong>Configurazione non valida</strong><p class="note" style="margin:8px 0 0">${p.total} non è divisibile per ${p.roster}. Le squadre devono avere tutte esattamente lo stesso numero di giocatori. ${totalHint} ${rosterHint}</p></div>`;
     return;
   }
-  box.innerHTML=`<div class="setup-preview-grid"><div><span>Squadre</span><strong>${p.teams}</strong></div><div><span>Rosa per squadra</span><strong>${p.roster}</strong></div><div><span>Girone</span><strong>${p.group} partite</strong></div><div><span>Fase finale</span><strong>${p.koText}</strong></div><div><span>Totale</span><strong>${p.games} partite</strong></div><div><span>Durata stimata</span><strong>${humanDuration(p.totalMinutes)}</strong></div></div><p class="note" style="margin-top:10px"><strong>${p.teams} squadre da ${p.roster} giocatori</strong>: tutti i ${p.total} partecipanti sono assegnati e tutte le rose hanno la stessa dimensione. Ogni partita occupa circa <strong>${p.minutes+p.halftime} min</strong>: ${p.minutes} min di gioco + ${p.halftime} min di intervallo. Tra due partite sono previsti ${p.change} min.</p>`;
+  box.innerHTML=`<div class="setup-preview-grid"><div><span>Squadre</span><strong>${p.teams}</strong></div><div><span>Rosa per squadra</span><strong>${p.roster}</strong></div><div><span>Fase a classifica</span><strong>${p.group} partite</strong></div><div><span>Finalissima</span><strong>${p.koText}</strong></div><div><span>Totale</span><strong>${p.games} partite</strong></div><div><span>Durata stimata</span><strong>${humanDuration(p.totalMinutes)}</strong></div></div><p class="note" style="margin-top:10px"><strong>${p.teams} squadre da ${p.roster} giocatori</strong>: tutti i ${p.total} partecipanti sono assegnati e tutte le rose hanno la stessa dimensione. Ogni partita occupa circa <strong>${p.minutes+p.halftime} min</strong>: ${p.minutes} min di gioco + ${p.halftime} min di intervallo. Tra due partite sono previsti ${p.change} min.</p>`;
 }
 function renderSetup(){
   setSetupMode(true);
   const s=state.settings;
   view.innerHTML=`
     <div class="setup-wrap">
-      <div class="setup-brand"><div class="brand-mark large"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="82" height="82" /></div><div style="flex:1"><div class="kicker">Configurazione guidata</div><h1>Prepara il tuo torneo</h1><p>In pochi minuti avrai partecipanti, formula, orari e fase finale sotto controllo.</p></div><button class="ghost" id="setupGuide">? Guida gestore</button></div>
+      <div class="setup-brand"><div class="brand-mark large"><img src="./assets/coppari-logo.webp" alt="Logo Copparì" width="82" height="82" /></div><div style="flex:1"><div class="kicker">Configurazione guidata</div><h1>Prepara il tuo torneo</h1><p>In pochi minuti avrai partecipanti, orari, classifica e finalissima sotto controllo.</p></div><button class="ghost" id="setupGuide">? Guida gestore</button></div>
       ${installBannerHtml()}
       <div class="card setup-card">
         <div class="setup-sections">
@@ -1864,9 +1905,9 @@ function renderSetup(){
             <div class="field"><label>Partecipanti</label><input id="setupPlayers" type="number" min="10" max="200" value="${s.targetPlayers}"></div>
             <div class="field"><label>Giocatori per rosa</label><input id="setupRoster" type="number" min="5" max="20" value="${s.rosterSize}"></div>
           </div></section>
-          <section class="setup-section"><div class="setup-section-head"><span class="setup-step-number">3</span><div><h2>Formula</h2><p>Girone e fase finale.</p></div></div><div class="form-grid">
-            <div class="field"><label>Formula torneo</label><select id="setupFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Campionato + Finale</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div>
-            <div class="field"><label>Girone <span aria-hidden="true">·</span> se previsto</label><select id="setupMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div>
+          <section class="setup-section"><div class="setup-section-head"><span class="setup-step-number">3</span><div><h2>Formula</h2><p>Una serata, classifica e finalissima.</p></div></div><div class="form-grid">
+            <div class="field"><label>Formula torneo</label><select id="setupFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Classifica senza finale</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Torneo serale · classifica + finale</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div>
+            <div class="field"><label>Incontri tra squadre <span aria-hidden="true">·</span> se previsti</label><select id="setupMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Una volta</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Due volte</option></select></div>
             <div class="field"><label>Finale 3° posto</label><select id="setupBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div>
           </div></section>
           <section class="setup-section"><div class="setup-section-head"><span class="setup-step-number">4</span><div><h2>Tempi</h2><p>Durata e ritmo della serata.</p></div></div><div class="form-grid">
@@ -1905,17 +1946,17 @@ function tournamentStatus(){
   const count=activePlayers().length, target=state.settings.targetPlayers, expectedGroup=groupGamesExpected();
   if(count!==target) return `<p class="note">Hai ${count}/${target} partecipanti attivi. ${count<target?`Ne mancano ${target-count}.`:`Sono ${count-target} in più rispetto alla configurazione.`}</p>`;
   if(state.teams.length!==state.settings.teamCount) return `<p class="note">Partecipanti pronti. Genera le ${state.settings.teamCount} squadre equilibrate.</p>`;
-  if(groupMatches().length!==expectedGroup) return `<p class="note">Squadre pronte. Genera il calendario (${expectedGroup} partite di girone).</p>`;
-  if(playedMatches('group').length<expectedGroup) return `<p class="note">Girone in corso: ${playedMatches('group').length}/${expectedGroup} partite completate.</p>`;
-  if(!state.settings.playoffs) return `<p class="note"><strong>Girone completato.</strong> La prima in classifica vince ${esc(state.settings.name)}.</p>`;
+  if(groupMatches().length!==expectedGroup) return `<p class="note">Squadre pronte. Genera il calendario (${expectedGroup} partite della fase a classifica).</p>`;
+  if(playedMatches('group').length<expectedGroup) return `<p class="note">Fase a classifica in corso: ${playedMatches('group').length}/${expectedGroup} partite completate.</p>`;
+  if(!state.settings.playoffs) return `<p class="note"><strong>Fase a classifica completata.</strong> La prima vince ${esc(state.settings.name)}.</p>`;
   const bracket=knockoutBracketSize();
   const kos=knockoutMatches();
-  if(!kos.length) return `<p class="note">Girone terminato: crea ${knockoutRoundName(bracket).toLowerCase()} per le prime ${bracket}.</p>`;
+  if(!kos.length) return `<p class="note">Classifica definita: crea la finalissima tra la prima e la seconda.</p>`;
   const final=state.matches.find(m=>m.stage==='final');
   if(final?.status==='played') return `<p class="note"><strong>${esc(state.settings.name)} completato.</strong> La finalissima è stata giocata.</p>`;
   const next=kos.find(m=>m.status!=='played');
-  if(next) return `<p class="note">Fase finale in corso: <strong>${stageLabel(next)}</strong>.</p>`;
-  return '<p class="note">Fase finale pronta per il turno successivo.</p>';
+  if(next) return `<p class="note">Finalissima in corso: <strong>${stageLabel(next)}</strong>.</p>`;
+  return '<p class="note">Finalissima pronta.</p>';
 }
 
 function nextScheduledMatch(){ return state.matches.find(m=>m.status==='live') || state.matches.find(m=>m.status!=='played'); }
@@ -1957,10 +1998,10 @@ function renderHome(){
       <div class="card soft"><div class="kicker">Prossimo passo consigliato</div><div class="next-action" style="margin-top:12px"><span class="next-action-icon">${action.icon}</span><div><strong>${esc(action.title)}</strong><p>${esc(action.text)}</p></div><button class="primary" id="nextActionBtn">${esc(action.label)}</button></div>${snap?`<div class="notice info" style="margin-top:14px"><span>↶</span><span><strong>Rete di sicurezza attiva.</strong> Ultimo punto di ripristino: ${esc(snap.label)}.</span><button class="ghost" id="quickUndo">Ripristina</button></div>`:''}</div>
       <div class="card"><div class="section-head"><h3>Controllo serata</h3><span class="badge">${progress}%</span></div>${managerChecklistHtml()}</div>
     </div>
-    ${next?renderNextMatchCard(next):state.matches.length?`<div class="card" style="margin-top:16px;text-align:center"><h2>🏆 ${state.settings.playoffs?'Torneo completato':'Girone completato'}</h2><p class="note">Non ci sono altre partite programmate.</p></div>`:`<div class="card" style="margin-top:16px;text-align:center"><h2>La serata parte da qui</h2><p class="note">Completa partecipanti e squadre, poi genera il calendario. La cabina di regia ti indicherà sempre il prossimo passo.</p><button class="secondary" id="emptyStartPlayers">Inserisci partecipanti</button></div>`}
+    ${next?renderNextMatchCard(next):state.matches.length?`<div class="card" style="margin-top:16px;text-align:center"><h2>🏆 ${state.settings.playoffs?'Torneo completato':'Classifica completata'}</h2><p class="note">Non ci sono altre partite programmate.</p></div>`:`<div class="card" style="margin-top:16px;text-align:center"><h2>La serata parte da qui</h2><p class="note">Completa partecipanti e squadre, poi genera il calendario. La cabina di regia ti indicherà sempre il prossimo passo.</p><button class="secondary" id="emptyStartPlayers">Inserisci partecipanti</button></div>`}
     <div class="grid cols-2 public-section-grid">
       <div class="card"><h3>Classifica live</h3>${s.length?`<div class="leaderboard">${s.slice(0,Math.min(6,s.length)).map((x,i)=>`<div class="qualified-row"><span class="rank">${i+1}</span><strong>${esc(x.team.name)}</strong><span>${x.pts} pt</span></div>`).join('')}</div>`:'<div class="empty">La classifica apparirà dopo la creazione delle squadre.</div>'}</div>
-      <div class="card"><h3>Fase finale</h3>${renderKnockoutSummary()}${state.settings.playoffs?'<div style="margin-top:12px"><button class="ghost full" id="syncKo">Aggiorna fase finale</button></div>':''}</div>
+      <div class="card"><h3>Finalissima</h3>${renderKnockoutSummary()}${state.settings.playoffs?'<div style="margin-top:12px"><button class="ghost full" id="syncKo">Aggiorna finalissima</button></div>':''}</div>
     </div>`;
   document.getElementById('openReferee')?.addEventListener('click',()=>openRefereeMode(next.id));
   document.getElementById('openSheet')?.addEventListener('click',()=>openMatchModal(next.id));
@@ -1980,11 +2021,11 @@ function renderNextMatchCard(m){
   return `<div class="card next-match-card" style="margin-top:16px"><div class="next-match-stage">${live?'● PARTITA IN CORSO':'PROSSIMA PARTITA'} · ${stageLabel(m)}</div><div class="next-match-teams"><div class="next-match-team">${esc(h?.name||'?')}</div><div class="next-match-vs">${live?`<strong style="font-size:24px">${score}</strong>`:'VS'}</div><div class="next-match-team">${esc(a?.name||'?')}</div></div><div class="button-row center"><button class="primary referee-launch" id="openReferee">${live?'Riprendi arbitraggio':'Avvia arbitraggio'}</button><button class="ghost" id="openSheet">Gestisci tabellino</button></div><div class="inline-meta" style="justify-content:center"><span class="status-chip">${state.settings.matchMinutes} min gioco</span><span class="status-chip">${state.settings.halftimeMinutes} min intervallo</span><span class="status-chip">${state.settings.touchGuard?'🔒 Anti-tocco attivo':'Anti-tocco disattivato'}</span></div></div>`;
 }
 function renderKnockoutSummary(){
-  if(!state.settings.playoffs) return `<p class="note">Playoff disattivati: al termine del ${formatMode()} vince la prima in classifica.</p>`;
+  if(!state.settings.playoffs) return `<p class="note">Finalissima non prevista: al termine della fase a classifica vince la prima.</p>`;
   const kos=knockoutMatches();
   const bracket=knockoutBracketSize();
   if(!kos.length){
-    return `<p class="note">La fase finale viene creata automaticamente quando tutte le ${groupGamesExpected()} partite del girone sono concluse: si qualificano le prime <strong>${bracket}</strong> e si parte dai <strong>${knockoutRoundName(bracket).toLowerCase()}</strong>.</p>`;
+    return `<p class="note">La finalissima viene creata automaticamente quando tutte le ${groupGamesExpected()} partite della fase a classifica sono concluse: giocano la <strong>prima</strong> e la <strong>seconda</strong>.</p>`;
   }
   return `<div class="match-list">${kos.map(m=>{const h=teamById(m.homeTeamId),a=teamById(m.awayTeamId);return `<div class="roster-row"><span class="phase-badge ko">${stageLabel(m)}</span><span class="grow"><strong>${esc(h?.name||'?')}</strong> vs <strong>${esc(a?.name||'?')}</strong></span><span>${m.status==='played'?`${m.homeScore}-${m.awayScore}`:'—'}</span></div>`}).join('')}</div>`;
 }
@@ -2128,11 +2169,11 @@ function seedDirectKnockout(){
   return true;
 }
 function renderCalendar(){
-  setHeader('Calendario',`Sequenza continua dalle 00:00 · ${formatMode()}${state.settings.playoffs?' + fase finale automatica':''}`); syncKnockout(false);
+  setHeader('Calendario',`Sequenza continua dalle 00:00 · ${formatMode()}${state.settings.playoffs?' + finalissima automatica':''}`); syncKnockout(false);
   const groups={};state.matches.forEach(m=>{const key=(m.stage||'group')==='group'?'Sequenza continua dalle 00:00':m.stage==='bronze'?'Finale 3° posto':m.stage==='prelim'?'Turno preliminare':knockoutRoundName(m.koSize||({final:2,semi:4,quarter:8,round16:16,round32:32}[m.stage])||2);(groups[key]??=[]).push(m);});
   const ordered=[...Object.entries(groups)];
   const ko=knockoutGamesExpected();
-  view.innerHTML=`<div class="section-head"><h2>Partite <span class="badge">${state.matches.length}</span></h2><div class="actions"><button class="secondary" id="genCalendar">${state.matches.length?'Genera variante':'Genera calendario'}</button>${state.settings.playoffs?'<button class="ghost" id="syncPlayoffs">Aggiorna playoff</button>':''}${state.teams.length>=2?'<button class="ghost" id="addMatch">+ Partita manuale</button>':''}${state.matches.length?'<button class="danger-outline" id="deleteCalendar">Cancella calendario</button>':''}</div></div><div class="schedule-summary"><span class="status-chip">${groupGamesExpected()} partite di girone</span><span class="status-chip">inizio 00:00</span><span class="status-chip">ordine variabile</span><span class="status-chip">fine stimata ${clockAdd('00:00',estimatedTournamentMinutes())}</span><span class="status-chip">${formatMode()}</span>${ko?`<span class="status-chip">${ko} playoff</span>`:'<span class="status-chip">vince la classifica</span>'}</div>${ordered.length?ordered.map(([label,matches])=>`<div class="round-block"><div class="round-title">${label}</div><div class="match-list">${matches.map(matchRow).join('')}</div></div>`).join(''):`<div class="empty"><strong>Calendario non ancora generato</strong>Servono ${state.settings.teamCount} squadre. Verranno create ${groupGamesExpected()} partite consecutive a partire dalle 00:00.</div>`}`;
+  view.innerHTML=`<div class="section-head"><h2>Partite <span class="badge">${state.matches.length}</span></h2><div class="actions"><button class="secondary" id="genCalendar">${state.matches.length?'Genera variante':'Genera calendario'}</button>${state.settings.playoffs?'<button class="ghost" id="syncPlayoffs">Aggiorna finalissima</button>':''}${state.teams.length>=2?'<button class="ghost" id="addMatch">+ Partita manuale</button>':''}${state.matches.length?'<button class="danger-outline" id="deleteCalendar">Cancella calendario</button>':''}</div></div><div class="schedule-summary"><span class="status-chip">${groupGamesExpected()} partite di classifica</span><span class="status-chip">inizio 00:00</span><span class="status-chip">ordine variabile</span><span class="status-chip">fine stimata ${clockAdd('00:00',estimatedTournamentMinutes())}</span><span class="status-chip">${formatMode()}</span>${ko?`<span class="status-chip">finalissima 1ª vs 2ª</span>`:'<span class="status-chip">vince la classifica</span>'}</div>${ordered.length?ordered.map(([label,matches])=>`<div class="round-block"><div class="round-title">${label}</div><div class="match-list">${matches.map(matchRow).join('')}</div></div>`).join(''):`<div class="empty"><strong>Calendario non ancora generato</strong>Servono ${state.settings.teamCount} squadre. Verranno create ${groupGamesExpected()} partite consecutive a partire dalle 00:00.</div>`}`;
   document.getElementById('genCalendar').onclick=generateCalendar;
   document.getElementById('deleteCalendar')?.addEventListener('click',deleteCalendar);
   document.getElementById('addMatch')?.addEventListener('click',openCreateMatchModal);
@@ -2146,7 +2187,7 @@ function openCreateMatchModal(){
   if(state.teams.length<2)return toast('Servono almeno due squadre');
   const options=state.teams.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
   const nextRound=Math.max(0,...groupMatches().map(m=>+m.round||0))+1;
-  openModal(`<h2>Aggiungi partita</h2><p class="modal-subtitle">Controllo manuale per recuperi, variazioni o calendari personalizzati.</p><div class="form-grid"><div class="field"><label>Squadra di casa</label><select id="newHome"><option value="">Scegli…</option>${options}</select></div><div class="field"><label>Squadra ospite</label><select id="newAway"><option value="">Scegli…</option>${options}</select></div><div class="field"><label>Posizione nella sequenza</label><input id="newRound" type="number" min="1" value="${nextRound}"></div><div class="field"><label>Data / ora (facoltativa)</label><input id="newDate" type="datetime-local"></div></div><div class="notice info" style="margin-top:12px"><span>i</span><span>La partita manuale entra nella sequenza del girone e aggiorna classifica e statistiche.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="saveNewMatch">Aggiungi partita</button></div>`);
+  openModal(`<h2>Aggiungi partita</h2><p class="modal-subtitle">Controllo manuale per variazioni o calendari personalizzati.</p><div class="form-grid"><div class="field"><label>Squadra di casa</label><select id="newHome"><option value="">Scegli…</option>${options}</select></div><div class="field"><label>Squadra ospite</label><select id="newAway"><option value="">Scegli…</option>${options}</select></div><div class="field"><label>Posizione nella sequenza</label><input id="newRound" type="number" min="1" value="${nextRound}"></div><div class="field"><label>Data / ora (facoltativa)</label><input id="newDate" type="datetime-local"></div></div><div class="notice info" style="margin-top:12px"><span>i</span><span>La partita manuale entra nella sequenza della serata e aggiorna classifica e statistiche.</span></div><div class="modal-actions"><button class="ghost" data-close>Annulla</button><button class="primary" id="saveNewMatch">Aggiungi partita</button></div>`);
   document.getElementById('saveNewMatch').onclick=()=>{const home=document.getElementById('newHome').value,away=document.getElementById('newAway').value;if(!home||!away)return toast('Scegli entrambe le squadre');if(home===away)return toast('Le squadre devono essere diverse');createSnapshot('Prima di aggiungere una partita');state.matches.push({id:uid('m'),stage:'group',leg:1,round:Math.max(1,+document.getElementById('newRound').value||nextRound),homeTeamId:home,awayTeamId:away,date:document.getElementById('newDate').value,status:'scheduled',homeScore:null,awayScore:null,stats:[],events:[],referee:null,mvpPlayerId:null,manual:true});save();closeModal();renderCalendar();toast('Partita aggiunta');};
 }
 function createRoundRobinLeg(teamIds){
@@ -2245,9 +2286,9 @@ function removeDownstreamKnockout(fromSize){
   state.matches=state.matches.filter(m=>!isKnockoutMatch(m) || (m.stage!=='bronze' && (m.koSize||2)>=fromSize));
 }
 function syncKnockout(showToast=false){
-  if(!state.settings.playoffs){ if(showToast)toast('I playoff sono disattivati'); return; }
+  if(!state.settings.playoffs){ if(showToast)toast('La finalissima è disattivata'); return; }
   const expected=groupGamesExpected();
-  if(state.settings.tournamentFormat!=='knockout' && (groupMatches().length!==expected||playedMatches('group').length!==expected)){if(showToast)toast(`Completa prima tutte le ${expected} partite del girone`);return;}
+  if(state.settings.tournamentFormat!=='knockout' && (groupMatches().length!==expected||playedMatches('group').length!==expected)){if(showToast)toast(`Completa prima tutte le ${expected} partite della fase a classifica`);return;}
   const table=standings();
   const bracket=knockoutBracketSize();
   if(state.settings.tournamentFormat==='knockout'){
@@ -2428,7 +2469,7 @@ function applyPlayedScoreCorrection(m,nextHome,nextAway,{prompt,snapshotLabel,su
   const generatedPlayoffs=m.stage==='group'&&knockoutMatches().length>0;
   const winnerChanged=ko&&oldWinner!==newWinner,roundSize=+m.koSize||2;
   const downstream=winnerChanged&&m.stage!=='bronze'&&roundSize>2&&knockoutMatches().some(x=>x.id!==m.id&&(x.stage==='bronze'||(+x.koSize||2)<roundSize));
-  const consequence=generatedPlayoffs?'\n\nLa fase finale già generata verrà ricreata in base alla nuova classifica. I suoi risultati attuali saranno rimossi.':downstream?'\n\nIl vincitore cambia: i turni successivi già generati verranno ricreati. I loro risultati attuali saranno rimossi.':'';
+  const consequence=generatedPlayoffs?'\n\nLa finalissima già generata verrà ricreata in base alla nuova classifica. Il suo risultato attuale sarà rimosso.':downstream?'\n\nIl vincitore cambia: i turni successivi già generati verranno ricreati. I loro risultati attuali saranno rimossi.':'';
   if(!confirm(`${prompt}\n\nRisultato: ${m.homeScore??0}-${m.awayScore??0} → ${nextHome}-${nextAway}.${consequence}`))return false;
   createSnapshot(snapshotLabel);
   if(generatedPlayoffs)removeAllKnockout();
@@ -2579,7 +2620,7 @@ function renderRefereeMode(id){
 function openRefereeMode(id){if(activeRefereeMatchId!==id)modalReturnFocus=document.activeElement;renderRefereeMode(id);}
 function finishRefereeMatch(id){
   const m=state.matches.find(x=>x.id===id);if(!m)return;const r=ensureReferee(m);if(m.homeScore==null)m.homeScore=0;if(m.awayScore==null)m.awayScore=0;
-  if(isKnockoutMatch(m)&&+m.homeScore===+m.awayScore){const ph=document.getElementById('refPenHome')?.value,pa=document.getElementById('refPenAway')?.value;if(ph===''||pa===''||ph==null||pa==null||+ph===+pa)return toast('Nei playoff indica un vincitore ai rigori');m.penHome=+ph;m.penAway=+pa;}else{delete m.penHome;delete m.penAway;}
+  if(isKnockoutMatch(m)&&+m.homeScore===+m.awayScore){const ph=document.getElementById('refPenHome')?.value,pa=document.getElementById('refPenAway')?.value;if(ph===''||pa===''||ph==null||pa==null||+ph===+pa)return toast('Nella finalissima indica un vincitore ai rigori');m.penHome=+ph;m.penAway=+pa;}else{delete m.penHome;delete m.penAway;}
   createSnapshot(`Prima di terminare ${teamById(m.homeTeamId)?.name||''} vs ${teamById(m.awayTeamId)?.name||''}`);setMatchMvp(m,document.getElementById('refMvp')?.value||m.mvpPlayerId||'');
   r.phase='ended';r.phaseStartedAt=null;m.status='played';m.ratings=[];m.ratingsRoundId=uid('ratings');m.ratingsOpen=false;m.ratingsPublished=false;if(!m.date){const d=new Date();m.date=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
   save({matchId:m.id});if(liveRole!=='referee')syncKnockout(false);closeModal();render();toast('Partita terminata · il gestore può aprire la Copparigella',4200);
@@ -2601,7 +2642,7 @@ function openMatchModal(id){
     const oldWinner=matchWinner(m), oldHs=m.homeScore, oldAs=m.awayScore,firstCompletion=m.status!=='played';
     const scoreChanged=m.status==='played' && (+hs!==+oldHs || +as!==+oldAs);
     if(!ko && scoreChanged && knockoutMatches().length){
-      if(!confirm('Questo risultato può cambiare la classifica e il tabellone playoff. La fase finale verrà rigenerata. Continuare?'))return;
+      if(!confirm('Questo risultato può cambiare le prime due in classifica. La finalissima verrà rigenerata. Continuare?'))return;
     }
     if((m.events||[]).length && !confirm('Salvare il tabellino manualmente sostituirà il referto live e cancellerà il registro eventi della modalità arbitro. Continuare?'))return;
     createSnapshot(`Prima di modificare ${home.name} vs ${away.name}`);
@@ -2619,7 +2660,7 @@ function openMatchModal(id){
   };
   document.getElementById('clearResult').onclick=()=>{
     if(m.stage==='group'&&knockoutMatches().length){
-      if(!confirm('Togliere questo risultato rende il girone incompleto e cancella la fase finale generata. Continuare?'))return;
+      if(!confirm('Togliere questo risultato rende la classifica incompleta e cancella la finalissima generata. Continuare?'))return;
       removeAllKnockout();
     } else if(ko && (m.koSize||2)>2){
       const downstream=knockoutMatches().some(x=>x.stage==='bronze'||((x.koSize||2)<(m.koSize||2)));
@@ -2818,10 +2859,31 @@ function standings(){
   return result;
 }
 
+function displayStandings(){
+  const table=standings(),final=state.matches.find(match=>match.stage==='final'),winner=final?matchWinner(final):null,loser=final?matchLoser(final):null;
+  if(!winner||!loser)return table;
+  return [table.find(row=>row.team.id===winner),table.find(row=>row.team.id===loser),...table.filter(row=>![winner,loser].includes(row.team.id))].filter(Boolean);
+}
+
+function placementBadge(teamId,table){
+  const final=state.matches.find(match=>match.stage==='final'),winner=final?matchWinner(final):null;
+  if(winner){
+    if(teamId===winner)return 'Vincitore';
+    if(teamId===matchLoser(final))return '2° posto';
+    return '';
+  }
+  if(groupComplete()&&state.settings.playoffs){
+    if(teamId===table[0]?.team.id)return 'Finalista · 1ª';
+    if(teamId===table[1]?.team.id)return 'Finalista · 2ª';
+  }
+  if(groupComplete()&&!state.settings.playoffs&&teamId===table[0]?.team.id)return 'Vincitore';
+  return '';
+}
+
 function renderStandings(){
-  setHeader('Classifica','Girone: punti → scontri diretti → differenza reti → gol fatti');
-  const s=standings(), complete=groupComplete(), q=qualifiedCount();
-  view.innerHTML=s.length?`<div class="section-head"><h2>Classifica live</h2><span class="badge">${s.length} squadre</span></div><div class="schedule-summary"><span class="status-chip">${state.settings.pointsWin} pt vittoria</span><span class="status-chip">${state.settings.pointsDraw} pt pareggio</span>${complete?`<span class="status-chip done">Girone concluso</span>`:groupGamesExpected()?`<span class="status-chip">${playedMatches('group').length}/${groupGamesExpected()} partite</span>`:'<span class="status-chip">Eliminazione diretta</span>'}</div><div class="table-wrap"><table class="standings-table"><thead><tr><th>#</th><th>Squadra</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>Pt</th></tr></thead><tbody>${s.map((x,i)=>`<tr><td><span class="rank">${i+1}</span></td><td><strong>${esc(x.team.name)}</strong>${complete&&state.settings.playoffs&&i<q?' <span class="badge green">Qualificata</span>':''}${complete&&!state.settings.playoffs&&i===0?' <span class="badge green">Vincitore</span>':''}</td><td>${x.pg}</td><td>${x.w}</td><td>${x.d}</td><td>${x.l}</td><td>${x.gf}</td><td>${x.ga}</td><td>${x.gd>0?'+':''}${x.gd}</td><td><strong>${x.pts}</strong></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty"><strong>Nessuna squadra</strong>La classifica apparirà qui.</div>';
+  setHeader('Classifica','Punti → scontri diretti → differenza reti → gol fatti');
+  const s=displayStandings(),complete=groupComplete(),finalPlayed=state.matches.some(match=>match.stage==='final'&&match.status==='played');
+  view.innerHTML=s.length?`<div class="section-head"><h2>${finalPlayed?'Classifica finale':'Classifica live'}</h2><span class="badge">${s.length} squadre</span></div><div class="schedule-summary"><span class="status-chip">${state.settings.pointsWin} pt vittoria</span><span class="status-chip">${state.settings.pointsDraw} pt pareggio</span>${complete?`<span class="status-chip done">Fase a classifica conclusa</span>`:groupGamesExpected()?`<span class="status-chip">${playedMatches('group').length}/${groupGamesExpected()} partite</span>`:'<span class="status-chip">Eliminazione diretta</span>'}</div><div class="table-wrap"><table class="standings-table"><thead><tr><th>#</th><th>Squadra</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>Pt</th></tr></thead><tbody>${s.map((x,i)=>{const label=placementBadge(x.team.id,s);return `<tr><td><span class="rank">${i+1}</span></td><td><strong>${esc(x.team.name)}</strong>${label?` <span class="badge green">${esc(label)}</span>`:''}</td><td>${x.pg}</td><td>${x.w}</td><td>${x.d}</td><td>${x.l}</td><td>${x.gf}</td><td>${x.ga}</td><td>${x.gd>0?'+':''}${x.gd}</td><td><strong>${x.pts}</strong></td></tr>`;}).join('')}</tbody></table></div>`:'<div class="empty"><strong>Nessuna squadra</strong>La classifica apparirà qui.</div>';
 }
 function aggregateStats(){
   const map=new Map(state.players.map(p=>[p.id,{player:p,goals:0,assists:0,fouls:0,yellow:0,red:0,mvp:0}]));
@@ -2933,7 +2995,7 @@ function settingsPreviewHtml(s=state.settings){
   }
   const teams=c.teams;
   const effective={...s,teamCount:teams,bronzeFinal:s.playoffs&&knockoutBracketSize(teams,{...s,teamCount:teams})>=4&&s.bronzeFinal};
-  return `<div class="schedule-summary"><span class="status-chip">${teams} squadre</span><span class="status-chip">${s.rosterSize} giocatori ciascuna</span><span class="status-chip">${groupGamesExpected(teams,effective)} girone</span><span class="status-chip">${formatMode(effective)}</span><span class="status-chip">${playoffText(effective)}</span><span class="status-chip">${humanDuration(estimatedTournamentMinutes(effective))}</span></div>`;
+  return `<div class="schedule-summary"><span class="status-chip">${teams} squadre</span><span class="status-chip">${s.rosterSize} giocatori ciascuna</span><span class="status-chip">${groupGamesExpected(teams,effective)} partite di classifica</span><span class="status-chip">${formatMode(effective)}</span><span class="status-chip">${playoffText(effective)}</span><span class="status-chip">${humanDuration(estimatedTournamentMinutes(effective))}</span></div>`;
 }
 function readSettingsForm(){
   const targetPlayers=clamp(+document.getElementById('setTarget').value||25,10,200);
@@ -2979,7 +3041,7 @@ function renderSettings(){
       <div class="card"><div class="kicker">Identità</div><h3>Il tuo torneo</h3><div class="form-grid"><div class="field"><label>Nome torneo</label><input id="setName" maxlength="80" value="${esc(s.name)}"></div><div class="field"><label>Edizione</label><input id="setEdition" maxlength="80" value="${esc(s.edition)}"></div><div class="field"><label>Luogo</label><input id="setVenue" maxlength="120" value="${esc(s.venue||'')}" placeholder="Facoltativo"></div><div class="field"><label>Gestore</label><input id="setOrganizer" maxlength="120" value="${esc(s.organizer||'')}" placeholder="Facoltativo"></div></div></div>
       <div class="card"><div class="kicker">Modalità arbitro e Live</div><h3>Protezione e feedback</h3><div class="form-grid"><div class="field full"><label>Protezione tocchi involontari</label><select id="setTouchGuard"><option value="1" ${s.touchGuard?'selected':''}>Attiva · doppio tocco intenzionale</option><option value="0" ${!s.touchGuard?'selected':''}>Disattiva · tocco singolo</option></select></div><label class="roster-row" style="grid-column:1/-1"><span class="grow"><strong>Cartellini</strong><span class="note">Mostra i comandi giallo e rosso agli arbitri collegati</span></span><input id="setCardsEnabled" type="checkbox" ${s.cardsEnabled!==false?'checked':''}></label><label class="roster-row"><span class="grow"><strong>Vibrazione</strong><span class="note">Conferma eventi e fine tempo, se supportata</span></span><input id="setHaptic" type="checkbox" ${s.hapticFeedback?'checked':''}></label><label class="roster-row"><span class="grow"><strong>Suono</strong><span class="note">Avviso al tempo regolamentare</span></span><input id="setSound" type="checkbox" ${s.soundFeedback?'checked':''}></label></div>${screenWakeControlHtml()}<div class="notice info" style="margin-top:12px"><span>🔒</span><span>Le impostazioni della modalità arbitro si aggiornano automaticamente sui dispositivi collegati. Disattivare i cartellini nasconde i comandi, senza cancellare quelli già registrati.</span></div></div>
     </div>
-    <div class="card settings-form-card" style="margin-top:10px"><div class="kicker">Formula</div><h3>Struttura e tempi</h3><div class="form-grid"><div class="field"><label>N° partecipanti</label><input type="number" min="10" max="200" id="setTarget" value="${s.targetPlayers}"></div><div class="field"><label>Giocatori per rosa</label><input type="number" min="5" max="20" id="setRoster" value="${s.rosterSize}"></div><div class="field"><label>Formula torneo</label><select id="setFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Girone / campionato</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Campionato + Finale</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div><div class="field"><label>Girone</label><select id="setMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Solo andata</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Andata e ritorno</option></select></div><div class="field"><label>Finale 3° posto</label><select id="setBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div><div class="field"><label>Inizio torneo</label><input id="setStartTime" type="time" value="00:00" disabled><small>Le partite proseguono in sequenza fino alla fine.</small></div><div class="field"><label>Durata totale di gioco (min)</label><input type="number" min="2" max="120" id="setMinutes" value="${s.matchMinutes}"></div><div class="field"><label>Intervallo (min)</label><input type="number" min="0" max="30" id="setHalftime" value="${s.halftimeMinutes}"></div><div class="field"><label>Cambio campo (min)</label><input type="number" min="0" max="60" id="setChange" value="${s.changeMinutes}"></div><div class="field"><label>Punti vittoria</label><input type="number" id="setWin" value="${s.pointsWin}"></div><div class="field"><label>Punti pareggio</label><input type="number" id="setDraw" value="${s.pointsDraw}"></div><div class="field"><label>Punti sconfitta</label><input type="number" id="setLoss" value="${s.pointsLoss}"></div></div><div id="settingsPreview" style="margin-top:10px">${settingsPreviewHtml()}</div><div class="modal-actions"><button class="ghost" id="rerunSetup">Riapri configurazione guidata</button><button class="primary" id="saveSettings">Salva impostazioni</button></div></div>
+    <div class="card settings-form-card" style="margin-top:10px"><div class="kicker">Formula</div><h3>Struttura e tempi</h3><div class="form-grid"><div class="field"><label>N° partecipanti</label><input type="number" min="10" max="200" id="setTarget" value="${s.targetPlayers}"></div><div class="field"><label>Giocatori per rosa</label><input type="number" min="5" max="20" id="setRoster" value="${s.rosterSize}"></div><div class="field"><label>Formula torneo</label><select id="setFormat"><option value="league" ${s.tournamentFormat==='league'?'selected':''}>Classifica senza finale</option><option value="groups_ko" ${s.tournamentFormat==='groups_ko'?'selected':''}>Torneo serale · classifica + finale</option><option value="knockout" ${s.tournamentFormat==='knockout'?'selected':''}>Solo eliminazione diretta</option></select></div><div class="field"><label>Incontri tra squadre</label><select id="setMode"><option value="single" ${s.scheduleMode==='single'?'selected':''}>Una volta</option><option value="double" ${s.scheduleMode==='double'?'selected':''}>Due volte</option></select></div><div class="field"><label>Finale 3° posto</label><select id="setBronze"><option value="0" ${!s.bronzeFinal?'selected':''}>No</option><option value="1" ${s.bronzeFinal?'selected':''}>Sì</option></select></div><div class="field"><label>Inizio torneo</label><input id="setStartTime" type="time" value="00:00" disabled><small>Le partite proseguono in sequenza fino alla fine.</small></div><div class="field"><label>Durata totale di gioco (min)</label><input type="number" min="2" max="120" id="setMinutes" value="${s.matchMinutes}"></div><div class="field"><label>Intervallo (min)</label><input type="number" min="0" max="30" id="setHalftime" value="${s.halftimeMinutes}"></div><div class="field"><label>Cambio campo (min)</label><input type="number" min="0" max="60" id="setChange" value="${s.changeMinutes}"></div><div class="field"><label>Punti vittoria</label><input type="number" id="setWin" value="${s.pointsWin}"></div><div class="field"><label>Punti pareggio</label><input type="number" id="setDraw" value="${s.pointsDraw}"></div><div class="field"><label>Punti sconfitta</label><input type="number" id="setLoss" value="${s.pointsLoss}"></div></div><div id="settingsPreview" style="margin-top:10px">${settingsPreviewHtml()}</div><div class="modal-actions"><button class="ghost" id="rerunSetup">Riapri configurazione guidata</button><button class="primary" id="saveSettings">Salva impostazioni</button></div></div>
     <div class="grid cols-2 settings-grid" style="margin-top:10px"><div class="card"><h3>Guida del gestore</h3><p class="note">Procedura completa prima, durante e dopo il torneo, inclusa la gestione delle emergenze.</p><button class="ghost" id="settingsGuide">Apri la guida</button></div><div class="card"><h3>Backup e ripristino</h3><p class="note">Il backup comprende torneo e archivio storico dei giocatori. Esportalo prima dell’inizio e durante la serata.</p><div class="button-row"><button class="ghost" id="exportBtn2">Esporta backup</button><label class="ghost file-label">Importa backup<input type="file" id="importInput2" accept="application/json" hidden></label>${snap?`<button class="ghost" id="restoreSnapshot">↶ ${esc(snap.label)}</button>`:''}</div></div></div>
     <div class="card" style="margin-top:16px"><div class="kicker">Memoria tra le edizioni</div><h3>Archivio giocatori</h3><p class="note"><strong>${playerArchive.profiles.length} profili</strong> conservati. Presenze, gol, assist, falli, cartellini, MVP e Copparigelle vengono aggiornati dai referti e riutilizzati quando inserisci nuovamente lo stesso nome. Lo storico non è visibile nei link pubblico e arbitro.</p><div class="notice info" style="margin-top:12px"><span>◎</span><span>L’azzeramento del torneo non cancella questo archivio. Per proteggerlo anche in caso di cambio dispositivo, conserva un backup.</span></div></div>
     <div class="card danger-zone" style="margin-top:16px"><h3>Zona sensibile</h3><p class="note">L’azzeramento cancella torneo, squadre, partite e statistiche dell’edizione corrente, ma conserva l’archivio storico dei giocatori. Prima viene comunque creato un punto di ripristino.</p><button class="danger-outline" id="resetAllBtn">Azzera il torneo</button></div>`;
@@ -2995,8 +3057,8 @@ function renderSettings(){
     const pointsChanged=next.pointsWin!==s.pointsWin||next.pointsDraw!==s.pointsDraw||next.pointsLoss!==s.pointsLoss;
     if(squadChanged&&(state.teams.length||state.matches.length)&&!confirm('Cambiare partecipanti o dimensione rosa richiede di rigenerare squadre e calendario. Continuare?'))return;
     if(!squadChanged&&scheduleChanged&&state.matches.length&&!confirm('Cambiare andata/ritorno richiede di rigenerare il calendario e cancellerà i risultati. Continuare?'))return;
-    if(!squadChanged&&!scheduleChanged&&playoffChanged&&knockoutMatches().length&&!confirm('Cambiare la fase finale cancellerà il tabellone playoff già generato e i relativi risultati. Continuare?'))return;
-    if(!squadChanged&&!scheduleChanged&&pointsChanged&&knockoutMatches().length&&!confirm('Cambiare il sistema punti può cambiare le qualificate. La fase finale verrà rigenerata. Continuare?'))return;
+    if(!squadChanged&&!scheduleChanged&&playoffChanged&&knockoutMatches().length&&!confirm('Cambiare la finalissima cancellerà la partita già generata e il relativo risultato. Continuare?'))return;
+    if(!squadChanged&&!scheduleChanged&&pointsChanged&&knockoutMatches().length&&!confirm('Cambiare il sistema punti può cambiare le prime due. La finalissima verrà rigenerata. Continuare?'))return;
     createSnapshot('Prima di modificare le impostazioni');Object.assign(s,next,{configured:true});
     if(squadChanged){state.teams=[];state.matches=[];state.players.forEach(p=>p.teamId=null);}
     else if(scheduleChanged){state.matches=[];}
@@ -3049,7 +3111,7 @@ function openManagerGuide(initial=false){
   const localWarning=isLocalFileMode()?'<div class="notice warn" style="margin-top:10px"><span>!</span><span>Se hai ricevuto solo il file HTML e iOS lo mostra in anteprima, per il torneo è preferibile un link web aperto direttamente in Safari.</span></div>':'';
   openModal(`<div class="kicker">${initial?'Benvenuto nella cabina di regia':'Guida sempre consultabile'}</div><h2 style="margin-top:6px">Guida del gestore</h2><p class="modal-subtitle">Il percorso essenziale per preparare, dirigere e chiudere il torneo senza perdere nulla.</p><div class="step-tabs"><div class="step-tab done">1 · Prepara</div><div class="step-tab done">2 · Organizza</div><div class="step-tab done">3 · Dirigi</div><div class="step-tab done">4 · Condividi</div></div><div class="checklist"><details class="card soft" ${initial?'open':''}><summary><strong>Prima del torneo · 5 minuti</strong></summary><ol class="note"><li>Configura nome, partecipanti, formula e durata.</li><li>Incolla la lista dei giocatori; completa ruolo e livello solo dove serve.</li><li>Genera le squadre, controlla i portieri e nomina i capitani.</li><li>Genera il calendario e verifica orari e prima partita.</li><li>Esporta un backup prima del calcio d'inizio.</li></ol></details><details class="card soft" ${isIOSDevice()?'open':''}><summary><strong>Su iPhone e iPad</strong></summary><ol class="note"><li>Apri il link direttamente in Safari, non dentro l'anteprima di un messaggio.</li><li>Tocca Condividi → Aggiungi alla schermata Home e avvia Copparì dalla sua icona.</li><li>Durante la serata evita di cancellare i dati di Safari.</li><li>Con “Esporta backup” usa il menu Condividi e salva il JSON in File.</li></ol>${localWarning}</details><details class="card soft"><summary><strong>Durante la serata</strong></summary><ol class="note"><li>Segui sempre il “Prossimo passo consigliato” in Panoramica.</li><li>Apri “Avvia arbitraggio” sulla partita corretta.</li><li>Registra gol, assist, falli e cartellini: tutto viene salvato subito.</li><li>Chiudi il secondo tempo, scegli l'MVP e termina la partita.</li><li>Controlla classifica e fase finale generate automaticamente.</li></ol></details><details class="card soft"><summary><strong>Condivisione live</strong></summary><ol class="note"><li>Da Panoramica tocca “Avvia diretta”.</li><li>Invia il link pubblico a chi segue il torneo e scrive le pagelle.</li><li>Invia il link gestore soltanto agli organizzatori autorizzati.</li><li>Dopo il primo salvataggio i dati restano su Supabase: il telefono che ha avviato la Live può essere chiuso.</li><li>Evitate di modificare contemporaneamente la stessa partita da due telefoni.</li></ol></details><details class="card soft"><summary><strong>Copparigella collettiva</strong></summary><ol class="note"><li>Dopo una partita vai in Partite → Copparigella e apri la raccolta.</li><li>Gli amici compilano una scheda alla volta dal link pubblico; i giudizi restano nascosti.</li><li>Chiudi la raccolta e prepara la definitiva: il voto parte dalla mediana.</li><li>Rivedi un giocatore alla volta, correggi il testo e pubblica.</li><li>I contributi originali diventano consultabili solo sotto la pagella definitiva.</li></ol></details><details class="card soft"><summary><strong>Protezione tocchi in modalità arbitro</strong></summary><p class="note">Quando è attiva, il primo tocco arma ed evidenzia il comando; solo un secondo tocco sullo stesso comando entro 2,8 secondi lo esegue. Vale per eventi, timer, fasi, annullamenti e chiusura. Lo sfondo e il tasto Esc non fanno uscire accidentalmente.</p></details><details class="card soft"><summary><strong>Emergenze e correzioni</strong></summary><ul class="note"><li><strong>Errore appena fatto:</strong> usa ↶ nel registro eventi.</li><li><strong>Errore importante:</strong> usa “Ripristina ultima modifica” dalla Panoramica o dalle Impostazioni.</li><li><strong>Telefono cambiato:</strong> apri il link gestore sul nuovo dispositivo.</li><li><strong>Risultato da correggere:</strong> Partite → Gestisci → modifica tabellino.</li><li><strong>Rosa da cambiare:</strong> Squadre → Gestisci assegnazioni o Scambia.</li></ul></details><details class="card soft"><summary><strong>Dopo il torneo</strong></summary><p class="note">Apri Statistiche per vedere i premi finali, copia la premiazione se serve ed esporta il backup definitivo.</p></details></div><div class="notice info" style="margin-top:14px"><span>?</span><span>Questa guida resta sempre disponibile dal menu, dalla Panoramica e dalle Impostazioni.</span></div><div class="modal-actions"><button class="primary" id="closeGuide">${initial?'Ho capito, iniziamo':'Chiudi guida'}</button></div>`);
   const liveGuideDetails=[...modal.querySelectorAll('details')].find(item=>item.querySelector('summary')?.textContent.trim()==='Condivisione live');
-  if(liveGuideDetails)liveGuideDetails.innerHTML=`<summary><strong>Condivisione live · istruzioni complete</strong></summary><div class="notice info" style="margin:12px 0"><span>☁</span><span><strong>Supabase è la sorgente ufficiale.</strong> Conserva il torneo e distribuisce ogni aggiornamento agli altri dispositivi anche quando il primo telefono è chiuso.</span></div><h4>1 · Avvia la diretta</h4><ol class="note"><li>Completa almeno la configurazione iniziale, poi da Panoramica tocca “Avvia diretta”.</li><li>Attendi la conferma “Diretta cloud attiva”, quindi condividi i link.</li><li>Esporta comunque un backup prima del torneo e dopo le modifiche più importanti.</li></ol><h4>2 · Scegli il link corretto</h4><ul class="note"><li><strong>Link pubblico:</strong> è sempre in sola lettura. Mostra rose e giocatori, risultati, calendario, classifica e premi; chi lo apre non può cambiare i dati.</li><li><strong>Link arbitro:</strong> consente di consultare le rose e gestire soltanto partite, timer e referti.</li><li><strong>Link gestore:</strong> offre controllo completo. Conservalo come una password.</li></ul><h4>3 · Durante il torneo</h4><ol class="note"><li>Ogni modifica confermata viene salvata nel cloud e notificata agli altri dispositivi.</li><li>Il primo telefono può essere bloccato o chiuso; un altro dispositivo con il link gestore può continuare il torneo.</li><li>Se due gestori modificano la stessa revisione, Copparì conserva la prima modifica e chiede all’altro di ripetere l’operazione.</li><li>Se Internet cade, le modifiche vengono bloccate finché non avviene la riconnessione; l’ultimo stato resta disponibile.</li></ol><h4>4 · Chiusura e sicurezza</h4><ul class="note"><li>“Termina diretta” impedisce nuove modifiche, ma conserva nel cloud i dati finali in sola lettura.</li><li>Tratta i link gestore e arbitro come password. Se vengono condivisi per errore, termina la diretta e avviane una nuova.</li><li>I segreti dei link vengono verificati nel database e non sono salvati in chiaro.</li></ul>`;
+  if(liveGuideDetails)liveGuideDetails.innerHTML=`<summary><strong>Pubblicazione annuale · istruzioni complete</strong></summary><div class="notice info" style="margin:12px 0"><span>☁</span><span><strong>Il link pubblico della repo è l'indirizzo ufficiale.</strong> È sempre in sola lettura e riceve ogni aggiornamento dal cloud.</span></div><h4>1 · Prima della serata</h4><ol class="note"><li>Apri il link privato del gestore e completa la configurazione dell'edizione.</li><li>Condividi con il pubblico soltanto <strong>${esc(PUBLIC_APP_URL)}</strong>.</li><li>Esporta comunque un backup prima del torneo e dopo le modifiche più importanti.</li></ol><h4>2 · Scegli il link corretto</h4><ul class="note"><li><strong>Link pubblico della repo:</strong> mostra rose, partite, classifica, finalissima e premi; non consente di modificare i dati.</li><li><strong>Link arbitro:</strong> consente di consultare le rose e gestire soltanto partite, timer e referti.</li><li><strong>Link gestore:</strong> offre controllo completo, compresa la chiusura dell'edizione. Conservalo come una password.</li></ul><h4>3 · Durante il torneo</h4><ol class="note"><li>Ogni modifica confermata dal gestore o dall'arbitro viene salvata nel cloud e compare automaticamente sul link pubblico.</li><li>Non serve avviare una trasmissione dal telefono: il link pubblico resta sempre lo stesso.</li><li>Se due gestori modificano la stessa revisione, Copparì conserva la prima modifica e chiede all’altro di ripetere l’operazione.</li><li>Se Internet cade, le modifiche vengono bloccate finché non avviene la riconnessione; l’ultimo stato resta disponibile.</li></ol><h4>4 · Fine serata e anno successivo</h4><ul class="note"><li>“Chiudi e pubblica edizione” rende i risultati definitivi e blocca nuove modifiche.</li><li>Alla prossima Copparì, dal link gestore scegli “Prepara nuova edizione”: l'indirizzo pubblico non cambia.</li><li>Tratta i link gestore e arbitro come password.</li></ul>`;
   document.getElementById('closeGuide').onclick=()=>{storageSet(GUIDE_KEY,'1');closeModal(true);};
 }
 function openRefereeQuickGuide(){
