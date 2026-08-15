@@ -411,6 +411,7 @@ button:active:not(:disabled) { transform:translateY(1px) scale(.985); }
 .edition-story-media { min-height:240px; background:#13251a; }
 .edition-story-media img { display:block; width:100%; height:100%; min-height:240px; object-fit:cover; }
 .edition-story-media .winner-photo { object-position:center 66%; }
+.edition-story-media .participants-photo { object-position:center 52%; }
 .edition-story-copy { display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding:24px; }
 .edition-story-copy h3 { margin:5px 0 8px; font-size:clamp(21px,3vw,30px); }
 .edition-story-copy p { margin:0 0 16px; }
@@ -991,7 +992,7 @@ body.spectator-mode .topbar-actions > .save-pill:not(.live-pill) { display:none;
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-const APP_VERSION = '4.1.0';
+const APP_VERSION = '4.1.1';
 document.getElementById('appVersionLabel').textContent=APP_VERSION;
 const STORAGE_KEY = 'coppari.v3.4.squadre-decise';
 const HISTORY_KEY = 'coppari.v3.4.squadre-decise.history';
@@ -1708,7 +1709,7 @@ function maybeShowPublicGuide(){
   openPublicGuide(true);publicGuidePromptedKey=key;rememberPublicGuide(key);
 }
 function editionStoryHtml(){
-  return `<section class="card edition-story" aria-label="Vincitori dell'edizione 2026"><div class="edition-story-media"><img class="winner-photo" src="./assets/coppari-vincitori-2026.jpg" alt="I vincitori dell'edizione 2026 della Copparì con il trofeo" width="864" height="1536" loading="lazy"></div><div class="edition-story-copy"><div class="kicker">Albo d'oro · Edizione 2026</div><h3>I vincitori della Copparì</h3><p class="note">La squadra campione con il trofeo, al termine della finalissima della notte Copparì.</p><a class="secondary" href="${esc(COPPARI_ANTHEM_URL)}" target="_blank" rel="noopener noreferrer">▶ Ascolta l'inno della Copparì</a></div></section>`;
+  return `<section class="card edition-story" aria-label="Vincitori dell'edizione 2026"><div class="edition-story-media"><img class="winner-photo" src="./assets/coppari-vincitori-2026.jpg" alt="I vincitori dell'edizione 2026 della Copparì con il trofeo" width="864" height="1536" loading="lazy"></div><div class="edition-story-copy"><div class="kicker">Albo d'oro · Edizione 2026</div><h3>I vincitori della Copparì</h3><p class="note">La squadra campione con il trofeo, al termine della finalissima della notte Copparì.</p><a class="secondary" href="${esc(COPPARI_ANTHEM_URL)}" target="_blank" rel="noopener noreferrer">▶ Ascolta l'inno della Copparì</a></div></section><section class="card edition-story" aria-label="Partecipanti dell'edizione 2026"><div class="edition-story-media"><img class="participants-photo" src="./assets/coppari-edizione-2026.jpg" alt="Foto di gruppo dei partecipanti all'edizione 2026 della Copparì" width="1536" height="1152" loading="lazy"></div><div class="edition-story-copy"><div class="kicker">La notte Copparì · Edizione 2026</div><h3>Tutti i partecipanti</h3><p class="note">La foto di gruppo della serata con tutti i protagonisti dell’edizione.</p></div></section>`;
 }
 function renderSpectatorHome(){
   setHeader(state.settings.configured?state.settings.name:'Torneo in preparazione','Torneo annuale · sola lettura');
